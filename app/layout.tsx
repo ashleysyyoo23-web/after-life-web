@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Mulish, Newsreader } from "next/font/google";
+import { GlobalClickSound } from "@/app/components/GlobalClickSound";
+import { SessionProvider } from "@/components/providers/session-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const newsreader = Newsreader({
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
   subsets: ["latin"],
+  variable: "--font-newsreader",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const mulish = Mulish({
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
+  variable: "--font-mulish",
 });
 
 export const metadata: Metadata = {
@@ -24,10 +29,19 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="ko"
+      className={`${newsreader.variable} ${mulish.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/earlyaccess/jejumyeongjo.css"
+        />
+      </head>
+      <body className={`${mulish.className} min-h-full flex flex-col`}>
+        <GlobalClickSound />
+        <SessionProvider>{children}</SessionProvider>
+      </body>
     </html>
   );
 }
