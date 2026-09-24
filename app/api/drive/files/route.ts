@@ -1,74 +1,58 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-
-const GOOGLE_DRIVE_FILES_API = "https://www.googleapis.com/drive/v3/files";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  fetchDriveImageFiles,
+  getValidDriveAccessToken,
+} from "@/lib/deceased-drive-token";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  const accessToken = session?.accessToken;
+  const userEmail = session?.user?.email;
 
-  if (!accessToken) {
+  if (!userEmail) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const query = new URLSearchParams({
-    q: "mimeType contains 'image/' and trashed = false",
-    fields:
-      "files(id,name,mimeType,thumbnailLink,webViewLink,iconLink),nextPageToken",
-    pageSize: "50",
-  });
+  const supabase = getSupabaseServerClient();
 
-  const filesRes = await fetch(`${GOOGLE_DRIVE_FILES_API}?${query.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
-
-  if (!filesRes.ok) {
-    const driveErrorText = await filesRes.text();
-
-    console.log("[drive/files] Google Drive API request failed", {
-      status: filesRes.status,
-      statusText: filesRes.statusText,
-      url: `${GOOGLE_DRIVE_FILES_API}?${query.toString()}`,
-      responseBody: driveErrorText,
-    });
-
+  if (!supabase) {
     return NextResponse.json(
-      {
-        error: "Google Drive API request failed",
-        details: driveErrorText,
-      },
+      { error: "Supabase is not configured" },
       { status: 500 },
     );
   }
 
-  const filesJson = (await filesRes.json()) as {
-    files?: Array<{
-      id: string;
-      name: string;
-      mimeType: string;
-      thumbnailLink?: string;
-      webViewLink?: string;
-      iconLink?: string;
-    }>;
-    nextPageToken?: string;
-  };
+  const tokenResult = await getValidDriveAccessToken(supabase, userEmail);
 
-  const files =
-    filesJson.files?.map((file) => ({
-      id: file.id,
-      name: file.name,
-      mimeType: file.mimeType,
-      thumbnailUrl: file.thumbnailLink ?? file.iconLink ?? null,
-      webViewLink: file.webViewLink ?? null,
-    })) ?? [];
+  if (!tokenResult) {
+    return NextResponse.json(
+      { error: "Drive not connected", code: "drive_not_connected" },
+      { status: 401 },
+    );
+  }
 
-  return NextResponse.json({
-    files,
-    nextPageToken: filesJson.nextPageToken ?? null,
-    userEmail: session.user?.email ?? null,
-  });
+  try {
+    const { files, nextPageToken } = await fetchDriveImageFiles(
+      tokenResult.accessToken,
+    );
+
+    return NextResponse.json({
+      files,
+      nextPageToken,
+      userEmail,
+      driveEmail: tokenResult.driveEmail,
+    });
+  } catch (driveError) {
+    console.error("[drive/files] Google Drive API request failed", driveError);
+
+    return NextResponse.json(
+      {
+        error: "Google Drive API request failed",
+        details: driveError instanceof Error ? driveError.message : String(driveError),
+      },
+      { status: 500 },
+    );
+  }
 }

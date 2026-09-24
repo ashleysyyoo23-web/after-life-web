@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const userEmail = decodeOAuthState(state);
+    const { userEmail, returnTo } = decodeOAuthState(state);
     const tokens = await exchangeCodeForTokens(code);
     const driveEmail = await fetchDriveEmail(tokens.access_token);
 
@@ -66,6 +66,12 @@ export async function GET(request: NextRequest) {
       console.error("[deceased-drive/callback] Supabase upsert failed", upsertError);
       return NextResponse.redirect(
         buildMylandRedirect(request, { drive_error: "save_failed" }),
+      );
+    }
+
+    if (returnTo === "legacy") {
+      return NextResponse.redirect(
+        new URL("/mainland?settings=legacy&drive_connected=true", request.url),
       );
     }
 

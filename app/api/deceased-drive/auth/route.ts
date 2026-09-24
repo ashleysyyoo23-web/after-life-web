@@ -8,9 +8,12 @@ import {
   getDeceasedGoogleCredentials,
 } from "@/lib/deceased-drive-oauth";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   const userEmail = session?.user?.email;
+  const { searchParams } = new URL(request.url);
+  const returnToParam = searchParams.get("returnTo");
+  const returnTo = returnToParam === "legacy" ? "legacy" : "myland";
 
   if (!userEmail) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,7 +35,7 @@ export async function GET() {
     scope: DECEASED_DRIVE_SCOPE,
     access_type: "offline",
     prompt: "consent select_account",
-    state: encodeOAuthState(userEmail),
+    state: encodeOAuthState(userEmail, returnTo),
   });
 
   return NextResponse.redirect(

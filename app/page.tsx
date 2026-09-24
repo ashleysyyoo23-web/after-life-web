@@ -28,6 +28,14 @@ export default function OnboardingPage() {
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
       />
+
+      <img
+        src="/icons/onboarding-logo.svg"
+        alt="AFTER LIFE"
+        width={299}
+        height={174}
+        className="pointer-events-none absolute left-1/2 top-[7%] z-10 h-[174px] w-[299px] max-w-[80vw] -translate-x-1/2 object-contain"
+      />
     </div>
   );
 }

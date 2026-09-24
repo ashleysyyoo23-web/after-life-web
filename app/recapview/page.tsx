@@ -5,11 +5,12 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
-const SLIDE_COUNT = 11;
+const FALLBACK_SLIDE_COUNT = 11;
 
 const PHOTO_TITLES = [
   "할머니와 함께 설레는 제주 여행!",
@@ -24,6 +25,12 @@ const PHOTO_TITLES = [
   "할머니의 따뜻한 온기",
   "오래도록 마음에 남을 우리의 제주",
 ];
+
+type AlbumPhoto = {
+  driveFileId: string;
+  fileName: string | null;
+  mediaUrl: string;
+};
 
 export default function RecapviewPage() {
   return (
@@ -45,20 +52,69 @@ function RecapviewPageContent() {
   const [shareActive, setShareActive] = useState(false);
   const [bookmarkActive, setBookmarkActive] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [albumTitle, setAlbumTitle] = useState("");
+  const [albumSubtitle, setAlbumSubtitle] = useState("");
+  const [albumPhotos, setAlbumPhotos] = useState<AlbumPhoto[]>([]);
+  const [albumLoading, setAlbumLoading] = useState(true);
 
   const bg = searchParams.get("bg") ?? "recapauto";
+  const sticker = getTravelAlbumSticker(bg);
 
   useEffect(() => {
-    if (!isPlaying) {
+    setCurrentIndex(0);
+    setAlbumLoading(true);
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/legacy/travel-albums/${encodeURIComponent(bg)}`, {
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          setAlbumPhotos([]);
+          setAlbumTitle(sticker?.title ?? "");
+          setAlbumSubtitle(sticker?.subtitle ?? "");
+          return;
+        }
+
+        const data = (await res.json()) as {
+          title?: string;
+          subtitle?: string | null;
+          photos?: AlbumPhoto[];
+        };
+
+        setAlbumTitle(data.title ?? sticker?.title ?? "");
+        setAlbumSubtitle(data.subtitle ?? sticker?.subtitle ?? "");
+        setAlbumPhotos(data.photos ?? []);
+      } catch {
+        setAlbumPhotos([]);
+        setAlbumTitle(sticker?.title ?? "");
+        setAlbumSubtitle(sticker?.subtitle ?? "");
+      } finally {
+        setAlbumLoading(false);
+      }
+    })();
+  }, [bg, sticker?.subtitle, sticker?.title]);
+
+  const slideCount = useMemo(() => {
+    if (albumPhotos.length > 0) {
+      return albumPhotos.length;
+    }
+
+    return FALLBACK_SLIDE_COUNT;
+  }, [albumPhotos.length]);
+
+  useEffect(() => {
+    if (!isPlaying || slideCount === 0) {
       return;
     }
 
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % SLIDE_COUNT);
+      setCurrentIndex((prev) => (prev + 1) % slideCount);
     }, 3000);
 
     return () => clearInterval(timer);
-  }, [isPlaying]);
+  }, [isPlaying, slideCount]);
 
   useEffect(() => {
     if (!showConfirm) {
@@ -73,12 +129,18 @@ function RecapviewPageContent() {
   }, [showConfirm]);
 
   const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + SLIDE_COUNT) % SLIDE_COUNT);
+    setCurrentIndex((prev) => (prev - 1 + slideCount) % slideCount);
   };
 
   const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % SLIDE_COUNT);
+    setCurrentIndex((prev) => (prev + 1) % slideCount);
   };
+
+  const currentTitle =
+    albumPhotos.length > 0
+      ? (albumPhotos[currentIndex]?.fileName ??
+        `${albumTitle} ${currentIndex + 1}`)
+      : PHOTO_TITLES[currentIndex % PHOTO_TITLES.length];
 
   if (showConfirm) {
     return (
@@ -246,10 +308,10 @@ function RecapviewPageContent() {
 
             <div className="pointer-events-none absolute left-1/2 top-24 mt-8 -translate-x-1/2 text-center">
               <h1 className="font-newsreader text-3xl text-[#1a1a1a]">
-                {PHOTO_TITLES[currentIndex]}
+                {albumLoading ? "..." : currentTitle}
               </h1>
               <p className="mt-1 text-center font-mulish text-sm text-[#AF9083]">
-                할머니와 함께한 제주도 여행
+                {albumSubtitle || albumTitle}
               </p>
             </div>
           </div>
@@ -271,21 +333,35 @@ function RecapviewPageContent() {
                   className="flex h-full transition-transform duration-500 ease-in-out"
                   style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                 >
-                  {Array.from({ length: SLIDE_COUNT }, (_, index) => (
-                    <div
-                      key={index}
-                      className="relative h-full min-w-full shrink-0"
-                    >
-                      <Image
-                        src={`/recap${index + 1}.jpg`}
-                        alt=""
-                        fill
-                        unoptimized
-                        className="rounded-lg object-cover"
-                        sizes="55vw"
-                      />
-                    </div>
-                  ))}
+                  {albumPhotos.length > 0
+                    ? albumPhotos.map((photo) => (
+                        <div
+                          key={photo.driveFileId}
+                          className="relative h-full min-w-full shrink-0"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={photo.mediaUrl}
+                            alt={photo.fileName ?? ""}
+                            className="h-full w-full rounded-lg object-cover"
+                          />
+                        </div>
+                      ))
+                    : Array.from({ length: FALLBACK_SLIDE_COUNT }, (_, index) => (
+                        <div
+                          key={index}
+                          className="relative h-full min-w-full shrink-0"
+                        >
+                          <Image
+                            src={`/recap${index + 1}.jpg`}
+                            alt=""
+                            fill
+                            unoptimized
+                            className="rounded-lg object-cover"
+                            sizes="55vw"
+                          />
+                        </div>
+                      ))}
                 </div>
                 <button
                   type="button"
@@ -308,7 +384,7 @@ function RecapviewPageContent() {
               </div>
 
               <div className="mt-3 flex items-center justify-center gap-2">
-                {Array.from({ length: SLIDE_COUNT }, (_, index) => (
+                {Array.from({ length: slideCount }, (_, index) => (
                   <button
                     key={index}
                     type="button"
@@ -357,7 +433,7 @@ function RecapviewPageContent() {
               <div className="h-6 w-6 shrink-0 rounded-full bg-gray-300" />
               <span>할머니</span>
               <span>|</span>
-              <span>할머니와 함께한 제주도 여행</span>
+              <span>{albumSubtitle || albumTitle}</span>
             </div>
 
             <textarea

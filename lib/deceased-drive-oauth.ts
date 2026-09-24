@@ -18,12 +18,80 @@ export function getDeceasedGoogleCredentials() {
   };
 }
 
-export function encodeOAuthState(userEmail: string): string {
-  return Buffer.from(userEmail, "utf8").toString("base64");
+export type DeceasedDriveOAuthReturnTo = "myland" | "legacy";
+
+export type DeceasedDriveOAuthState = {
+  userEmail: string;
+  returnTo: DeceasedDriveOAuthReturnTo;
+};
+
+export function encodeOAuthState(
+  userEmail: string,
+  returnTo: DeceasedDriveOAuthReturnTo = "myland",
+): string {
+  const payload: DeceasedDriveOAuthState = { userEmail, returnTo };
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
-export function decodeOAuthState(state: string): string {
-  return Buffer.from(state, "base64").toString("utf8");
+export function decodeOAuthState(state: string): DeceasedDriveOAuthState {
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(state, "base64url").toString("utf8"),
+    ) as Partial<DeceasedDriveOAuthState>;
+
+    if (parsed.userEmail) {
+      return {
+        userEmail: parsed.userEmail,
+        returnTo: parsed.returnTo === "legacy" ? "legacy" : "myland",
+      };
+    }
+  } catch {
+    // fall through to legacy plain-email state
+  }
+
+  try {
+    const userEmail = Buffer.from(state, "base64").toString("utf8");
+    if (userEmail.includes("@")) {
+      return { userEmail, returnTo: "myland" };
+    }
+  } catch {
+    // ignore
+  }
+
+  throw new Error("Invalid OAuth state");
+}
+
+export async function refreshDeceasedAccessToken(refreshToken: string) {
+  const { clientId, clientSecret } = getDeceasedGoogleCredentials();
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Token refresh failed: ${errorText}`);
+  }
+
+  return response.json() as Promise<{
+    access_token: string;
+    expires_in: number;
+  }>;
+}
+
+export async function refreshDriveAccessToken(refreshToken: string) {
+  const refreshed = await refreshDeceasedAccessToken(refreshToken);
+  return {
+    access_token: refreshed.access_token,
+    refresh_token: undefined as string | undefined,
+  };
 }
 
 export async function exchangeCodeForTokens(code: string) {
