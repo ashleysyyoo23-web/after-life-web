@@ -5,12 +5,9 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-const EMOTION_LOGS_SQL = `ALTER TABLE emotion_logs ADD COLUMN user_email text;`;
+import { useState } from "react";
 
 const MOOD_OPTIONS = [
   { mood: "평온", emoji: "☀️", background: "/moodcheckone.jpg" },
@@ -34,17 +31,10 @@ function LoadingSpinner() {
 
 export default function MoodcheckPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [showSettings, setShowSettings] = useState(false);
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    console.log(
-      "[moodcheck] Run this SQL manually in Supabase:\n",
-      EMOTION_LOGS_SQL,
-    );
-  }, []);
 
   const handleSave = async () => {
     if (!selectedMood || isSaving) {
@@ -54,20 +44,14 @@ export default function MoodcheckPage() {
     setIsSaving(true);
 
     try {
-      const supabase = getSupabaseClient();
+      const res = await fetch("/api/emotion-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mood: selectedMood }),
+      });
 
-      if (!supabase) {
-        console.error("Supabase is not configured.");
-      } else {
-        const userEmail = session?.user?.email ?? "guest";
-        const { error } = await supabase.from("emotion_logs").insert({
-          user_email: userEmail,
-          mood: selectedMood,
-        });
-
-        if (error) {
-          console.error("Failed to save emotion log.", error);
-        }
+      if (!res.ok) {
+        console.error("Failed to save emotion log.", await res.text());
       }
     } finally {
       setIsSaving(false);

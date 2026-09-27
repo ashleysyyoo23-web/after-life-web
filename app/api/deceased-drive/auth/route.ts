@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import {
-  DECEASED_DRIVE_REDIRECT_URI,
   DECEASED_DRIVE_SCOPE,
   encodeOAuthState,
+  getDeceasedDriveRedirectUri,
   getDeceasedGoogleCredentials,
 } from "@/lib/deceased-drive-oauth";
 
@@ -28,9 +28,21 @@ export async function GET(request: Request) {
     );
   }
 
+  let redirectUri: string;
+
+  try {
+    redirectUri = getDeceasedDriveRedirectUri();
+  } catch (redirectError) {
+    const message =
+      redirectError instanceof Error
+        ? redirectError.message
+        : "Redirect URI is not configured";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: DECEASED_DRIVE_REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: "code",
     scope: DECEASED_DRIVE_SCOPE,
     access_type: "offline",

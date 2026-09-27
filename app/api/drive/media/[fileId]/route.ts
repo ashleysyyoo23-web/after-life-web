@@ -17,13 +17,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
   }
 
-  const supabase = getSupabaseServerClient();
+  let supabase;
 
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Supabase is not configured" },
-      { status: 500 },
-    );
+  try {
+    supabase = getSupabaseServerClient();
+  } catch (configError) {
+    const message =
+      configError instanceof Error ? configError.message : "Supabase misconfigured";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   const { data: album, error: albumError } = await supabase

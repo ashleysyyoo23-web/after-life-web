@@ -41,9 +41,11 @@ export async function GET(request: NextRequest) {
     const tokens = await exchangeCodeForTokens(code);
     const driveEmail = await fetchDriveEmail(tokens.access_token);
 
-    const supabase = getSupabaseServerClient();
+    let supabase;
 
-    if (!supabase) {
+    try {
+      supabase = getSupabaseServerClient();
+    } catch {
       return NextResponse.redirect(
         buildMylandRedirect(request, { drive_error: "supabase_not_configured" }),
       );

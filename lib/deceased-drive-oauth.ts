@@ -1,9 +1,21 @@
 export const DECEASED_DRIVE_SCOPE =
   "https://www.googleapis.com/auth/drive.readonly";
 
-export const DECEASED_DRIVE_REDIRECT_URI =
-  process.env.DECEASED_DRIVE_REDIRECT_URI ??
-  "http://localhost:3003/api/deceased-drive/callback";
+export function getDeceasedDriveRedirectUri(): string {
+  if (process.env.DECEASED_DRIVE_REDIRECT_URI) {
+    return process.env.DECEASED_DRIVE_REDIRECT_URI;
+  }
+
+  const nextAuthUrl = process.env.NEXTAUTH_URL;
+
+  if (!nextAuthUrl) {
+    throw new Error(
+      "DECEASED_DRIVE_REDIRECT_URI or NEXTAUTH_URL must be configured",
+    );
+  }
+
+  return `${nextAuthUrl.replace(/\/$/, "")}/api/deceased-drive/callback`;
+}
 
 export function getDeceasedGoogleCredentials() {
   return {
@@ -104,7 +116,7 @@ export async function exchangeCodeForTokens(code: string) {
       code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: DECEASED_DRIVE_REDIRECT_URI,
+      redirect_uri: getDeceasedDriveRedirectUri(),
       grant_type: "authorization_code",
     }),
   });

@@ -15,13 +15,14 @@ type SavePhotoPayload = {
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { slug } = await context.params;
-  const supabase = getSupabaseServerClient();
+  let supabase;
 
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Supabase is not configured" },
-      { status: 500 },
-    );
+  try {
+    supabase = getSupabaseServerClient();
+  } catch (configError) {
+    const message =
+      configError instanceof Error ? configError.message : "Supabase misconfigured";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   const sticker = getTravelAlbumSticker(slug);
@@ -94,13 +95,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
   const photos = body.photos ?? [];
 
-  const supabase = getSupabaseServerClient();
+  let supabase;
 
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Supabase is not configured" },
-      { status: 500 },
-    );
+  try {
+    supabase = getSupabaseServerClient();
+  } catch (configError) {
+    const message =
+      configError instanceof Error ? configError.message : "Supabase misconfigured";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   const { data: existingAlbum, error: fetchAlbumError } = await supabase
