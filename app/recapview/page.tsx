@@ -5,12 +5,21 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { RecapBookView } from "@/components/RecapBookView";
+import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
 const FALLBACK_SLIDE_COUNT = 11;
+// 자동 넘김 속도(초). 기본 3초.
+const SPEED_OPTIONS = [2, 3, 5, 8];
+const DEFAULT_SLIDE_SECONDS = 3;
+// 사진이 많으면 점 대신 "3 / 120" 으로 표시
+const MAX_DOTS = 20;
+// 지금 사진 앞뒤 몇 장까지만 미리 불러올지 (사진이 많을 때 한꺼번에 받지 않도록)
+const PRELOAD_RANGE = 2;
 
 const PHOTO_TITLES = [
   "할머니와 함께 설레는 제주 여행!",
@@ -30,6 +39,7 @@ type AlbumPhoto = {
   driveFileId: string;
   fileName: string | null;
   mediaUrl: string;
+  caption?: string;
 };
 
 export default function RecapviewPage() {
@@ -56,11 +66,68 @@ function RecapviewPageContent() {
   const [albumSubtitle, setAlbumSubtitle] = useState("");
   const [albumPhotos, setAlbumPhotos] = useState<AlbumPhoto[]>([]);
   const [albumLoading, setAlbumLoading] = useState(true);
+  const [slideSeconds, setSlideSeconds] = useState(DEFAULT_SLIDE_SECONDS);
+  const [sectionBookId, setSectionBookId] = useState<string | null>(null);
+  const [sectionError, setSectionError] = useState(false);
+  // 섹션 보기 방식: 자동으로 넘어가는 화면(처음) ↔ 책을 손으로 넘기는 화면
+  const [viewMode, setViewMode] = useState<"auto" | "book">("auto");
+  const [drawings, setDrawings] = useState<Record<number, DrawingStroke[]>>({});
 
+  // 앨범(책) 안의 섹션에서 들어오면 ?section=… , 예전 여행 앨범은 ?bg=…
+  const sectionId = searchParams.get("section");
+  const isSectionMode = Boolean(sectionId);
   const bg = searchParams.get("bg") ?? "recapauto";
   const sticker = getTravelAlbumSticker(bg);
 
   useEffect(() => {
+    if (!sectionId) {
+      return;
+    }
+
+    void (async () => {
+      // 다른 섹션으로 바로 이동했을 때를 위해 처음 상태로
+      setCurrentIndex(0);
+      setAlbumLoading(true);
+      setSectionError(false);
+
+      try {
+        const res = await fetch(
+          `/api/album-sections/${encodeURIComponent(sectionId)}`,
+          { cache: "no-store" },
+        );
+
+        if (!res.ok) {
+          setSectionError(true);
+          setAlbumPhotos([]);
+          return;
+        }
+
+        const data = (await res.json()) as {
+          section: { id: string; title: string };
+          book: { id: string; title: string } | null;
+          photos: AlbumPhoto[];
+          drawings?: Record<number, DrawingStroke[]>;
+        };
+
+        setAlbumTitle(data.section.title);
+        setAlbumSubtitle(data.book?.title ?? "");
+        setSectionBookId(data.book?.id ?? null);
+        setAlbumPhotos(data.photos);
+        setDrawings(data.drawings ?? {});
+      } catch {
+        setSectionError(true);
+        setAlbumPhotos([]);
+      } finally {
+        setAlbumLoading(false);
+      }
+    })();
+  }, [sectionId]);
+
+  useEffect(() => {
+    if (sectionId) {
+      return;
+    }
+
     setCurrentIndex(0);
     setAlbumLoading(true);
 
@@ -94,27 +161,58 @@ function RecapviewPageContent() {
         setAlbumLoading(false);
       }
     })();
-  }, [bg, sticker?.subtitle, sticker?.title]);
+  }, [bg, sectionId, sticker?.subtitle, sticker?.title]);
+
+  const isBookMode = isSectionMode && viewMode === "book";
 
   const slideCount = useMemo(() => {
     if (albumPhotos.length > 0) {
       return albumPhotos.length;
     }
 
-    return FALLBACK_SLIDE_COUNT;
-  }, [albumPhotos.length]);
+    // 섹션은 예시 사진 없이 비어 있는 그대로
+    return isSectionMode ? 0 : FALLBACK_SLIDE_COUNT;
+  }, [albumPhotos.length, isSectionMode]);
 
+  // 사진이 바뀔 때마다 타이머를 새로 시작 → 손으로 넘겨도 그 사진을 온전히 보여줌
   useEffect(() => {
-    if (!isPlaying || slideCount === 0) {
+    if (!isPlaying || slideCount <= 1 || isBookMode) {
       return;
     }
 
-    const timer = setInterval(() => {
+    const timer = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % slideCount);
-    }, 3000);
+    }, slideSeconds * 1000);
 
-    return () => clearInterval(timer);
-  }, [isPlaying, slideCount]);
+    return () => clearTimeout(timer);
+  }, [isPlaying, slideCount, slideSeconds, currentIndex, isBookMode]);
+
+  // 키보드: ← → 로 넘기기, 스페이스로 멈춤/재생
+  useEffect(() => {
+    // 책 화면은 책 화면이 직접 키보드를 처리
+    if (slideCount === 0 || isBookMode) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea")) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        setCurrentIndex((prev) => (prev - 1 + slideCount) % slideCount);
+      } else if (event.key === "ArrowRight") {
+        setCurrentIndex((prev) => (prev + 1) % slideCount);
+      } else if (event.key === " ") {
+        event.preventDefault();
+        setIsPlaying((playing) => !playing);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [slideCount, isBookMode]);
 
   useEffect(() => {
     if (!showConfirm) {
@@ -129,18 +227,48 @@ function RecapviewPageContent() {
   }, [showConfirm]);
 
   const goToPrevious = () => {
+    if (slideCount === 0) return;
     setCurrentIndex((prev) => (prev - 1 + slideCount) % slideCount);
   };
 
   const goToNext = () => {
+    if (slideCount === 0) return;
     setCurrentIndex((prev) => (prev + 1) % slideCount);
   };
 
-  const currentTitle =
-    albumPhotos.length > 0
+  // 지금 사진과 앞뒤 몇 장만 불러오기 (처음·끝이 이어지도록 원형으로 계산)
+  const isNearCurrent = (index: number) => {
+    if (slideCount === 0) return false;
+    const distance = Math.abs(index - currentIndex);
+    return Math.min(distance, slideCount - distance) <= PRELOAD_RANGE;
+  };
+
+  const currentTitle = isSectionMode
+    ? albumTitle
+    : albumPhotos.length > 0
       ? (albumPhotos[currentIndex]?.fileName ??
         `${albumTitle} ${currentIndex + 1}`)
       : PHOTO_TITLES[currentIndex % PHOTO_TITLES.length];
+
+  const currentSubtitle = isBookMode
+    ? albumSubtitle
+    : isSectionMode
+    ? [albumSubtitle, slideCount > 0 ? `${currentIndex + 1} / ${slideCount}` : ""]
+        .filter(Boolean)
+        .join(" · ")
+    : albumSubtitle || albumTitle;
+
+  // 섹션에서는 탭이 보기 방식을 바꾸고, 예전 여행 앨범에서는 기존처럼 이동
+  const bookTabActive = isSectionMode ? viewMode === "book" : activeView === "book";
+  const shareTabActive = isSectionMode ? viewMode === "auto" : activeView === "share";
+
+  const handleStop = () => {
+    router.push(
+      sectionBookId
+        ? `/recapfeedback?book=${encodeURIComponent(sectionBookId)}`
+        : "/recapfeedback",
+    );
+  };
 
   if (showConfirm) {
     return (
@@ -157,6 +285,25 @@ function RecapviewPageContent() {
   return (
     <>
       <div className="relative h-screen w-screen overflow-hidden">
+        {isBookMode && (
+          <RecapBookView
+            sectionId={sectionId!}
+            photos={albumPhotos.map((photo) => ({ ...photo, caption: photo.caption ?? "" }))}
+            drawings={drawings}
+            onCaptionSaved={(driveFileId, caption) =>
+              setAlbumPhotos((prev) =>
+                prev.map((photo) =>
+                  photo.driveFileId === driveFileId ? { ...photo, caption } : photo,
+                ),
+              )
+            }
+            onDrawingSaved={(spreadIndex, strokes) =>
+              setDrawings((prev) => ({ ...prev, [spreadIndex]: strokes }))
+            }
+          />
+        )}
+        {!isBookMode && (
+        <>
         <img
           src={`/${bg}.jpg`}
           alt=""
@@ -167,22 +314,31 @@ function RecapviewPageContent() {
           alt=""
           className="absolute inset-0 z-[1] h-full w-full object-cover"
         />
+        </>
+        )}
 
-        <div className="relative z-10 flex h-full flex-col">
+        <div
+          className={`relative z-10 flex h-full flex-col ${
+            isBookMode ? "pointer-events-none" : ""
+          }`}
+        >
           <div className="relative px-8 pt-24">
             <div className="flex items-start justify-between">
-              <div className="flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
+              <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
                   <button
                     type="button"
+                    onClick={() => {
+                      if (isSectionMode) setViewMode("book");
+                    }}
                     className={`relative h-12 w-[79px] cursor-pointer border-0 p-0 ${
-                      activeView === "book" ? "bg-[#FDD9BD]" : "bg-white"
+                      bookTabActive ? "bg-[#FDD9BD]" : "bg-white"
                     }`}
-                    aria-label="책"
-                    aria-pressed={activeView === "book"}
+                    aria-label={isSectionMode ? "책으로 넘겨 보기" : "책"}
+                    aria-pressed={bookTabActive}
                   >
                     <img
                       src={
-                        activeView === "book"
+                        bookTabActive
                           ? "/icons/recap-tab-book-bg.svg"
                           : "/icons/recap-icon-book-bg.svg"
                       }
@@ -201,16 +357,22 @@ function RecapviewPageContent() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push("/recapmanual")}
+                    onClick={() => {
+                      if (isSectionMode) {
+                        setViewMode("auto");
+                      } else {
+                        router.push("/recapmanual");
+                      }
+                    }}
                     className={`relative h-12 w-[79px] cursor-pointer border-0 p-0 ${
-                      activeView === "share" ? "bg-[#FDD9BD]" : "bg-white"
+                      shareTabActive ? "bg-[#FDD9BD]" : "bg-white"
                     }`}
-                    aria-label="보내기"
-                    aria-pressed={activeView === "share"}
+                    aria-label={isSectionMode ? "자동으로 넘겨 보기" : "보내기"}
+                    aria-pressed={shareTabActive}
                   >
                     <img
                       src={
-                        activeView === "share"
+                        shareTabActive
                           ? "/icons/recap-icon-export-bg.svg"
                           : "/icons/recap-tab-export-bg.svg"
                       }
@@ -230,7 +392,7 @@ function RecapviewPageContent() {
                   </button>
                 </div>
 
-              <div className="fixed right-8 top-24 z-20 flex flex-col items-end gap-2">
+              <div className="pointer-events-auto fixed right-8 top-24 z-20 flex flex-col items-end gap-2">
                 <div className="flex h-14 items-center gap-7 rounded-[42px] bg-[#FDD9BD] px-5 py-3 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]">
                   <button
                     type="button"
@@ -298,7 +460,7 @@ function RecapviewPageContent() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => router.push("/recapfeedback")}
+                  onClick={handleStop}
                   className="mt-10 cursor-pointer rounded-full border-0 bg-[#FDD9BD] px-4 py-2 font-mulish font-semibold text-[#AF9083]"
                 >
                   그만보기
@@ -311,11 +473,12 @@ function RecapviewPageContent() {
                 {albumLoading ? "..." : currentTitle}
               </h1>
               <p className="mt-1 text-center font-mulish text-sm text-[#AF9083]">
-                {albumSubtitle || albumTitle}
+                {currentSubtitle}
               </p>
             </div>
           </div>
 
+          {!isBookMode && (
           <div className="relative flex flex-1 items-center justify-center px-8">
             <div className="flex flex-col items-center">
               <div className="relative">
@@ -334,20 +497,25 @@ function RecapviewPageContent() {
                   style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                 >
                   {albumPhotos.length > 0
-                    ? albumPhotos.map((photo) => (
+                    ? albumPhotos.map((photo, index) => (
                         <div
                           key={photo.driveFileId}
-                          className="relative h-full min-w-full shrink-0"
+                          className="relative h-full min-w-full shrink-0 bg-white/40"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={photo.mediaUrl}
-                            alt={photo.fileName ?? ""}
-                            className="h-full w-full rounded-lg object-cover"
-                          />
+                          {isNearCurrent(index) && (
+                            // 본인만 볼 수 있는 API 주소라 일반 img 사용
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={photo.mediaUrl}
+                              alt={photo.fileName ?? ""}
+                              className="h-full w-full rounded-lg object-cover"
+                            />
+                          )}
                         </div>
                       ))
-                    : Array.from({ length: FALLBACK_SLIDE_COUNT }, (_, index) => (
+                    : isSectionMode
+                      ? null
+                      : Array.from({ length: FALLBACK_SLIDE_COUNT }, (_, index) => (
                         <div
                           key={index}
                           className="relative h-full min-w-full shrink-0"
@@ -363,14 +531,42 @@ function RecapviewPageContent() {
                         </div>
                       ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPlaying((playing) => !playing)}
-                  className="absolute right-3 top-3 z-10 cursor-pointer rounded-full border-0 bg-white/80 px-2 py-1"
-                  aria-label={isPlaying ? "일시정지" : "재생"}
-                >
-                  {isPlaying ? "⏸" : "▶"}
-                </button>
+                {isSectionMode && !albumLoading && slideCount === 0 && (
+                  <p className="absolute inset-0 flex items-center justify-center rounded-lg bg-white/60 px-6 text-center font-mulish text-base text-[#4A423C]">
+                    {sectionError
+                      ? "섹션을 불러오지 못했어요. 앨범으로 돌아가 다시 골라 주세요."
+                      : "이 섹션에는 아직 사진이 없어요."}
+                  </p>
+                )}
+                {slideCount > 1 && (
+                  <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-white/80 px-1.5 py-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsPlaying((playing) => !playing)}
+                      className="cursor-pointer rounded-full border-0 bg-transparent px-2 py-0.5"
+                      aria-label={isPlaying ? "일시정지" : "재생"}
+                    >
+                      {isPlaying ? "⏸" : "▶"}
+                    </button>
+                    <span className="h-4 w-px bg-[#C0BDBD]" aria-hidden="true" />
+                    {SPEED_OPTIONS.map((seconds) => (
+                      <button
+                        key={seconds}
+                        type="button"
+                        onClick={() => setSlideSeconds(seconds)}
+                        aria-pressed={slideSeconds === seconds}
+                        aria-label={`${seconds}초마다 넘기기`}
+                        className={`cursor-pointer rounded-full border-0 px-2 py-0.5 font-mulish text-xs transition-colors ${
+                          slideSeconds === seconds
+                            ? "bg-[#FDD9BD] font-semibold text-[#4A423C]"
+                            : "bg-transparent text-[#898787] hover:text-[#4A423C]"
+                        }`}
+                      >
+                        {seconds}초
+                      </button>
+                    ))}
+                  </div>
+                )}
                 </div>
 
                 <button
@@ -383,6 +579,11 @@ function RecapviewPageContent() {
                 </button>
               </div>
 
+              {slideCount > MAX_DOTS ? (
+                <p className="mt-3 font-mulish text-sm text-[#AF9083]">
+                  {currentIndex + 1} / {slideCount}
+                </p>
+              ) : (
               <div className="mt-3 flex items-center justify-center gap-2">
                 {Array.from({ length: slideCount }, (_, index) => (
                   <button
@@ -398,8 +599,10 @@ function RecapviewPageContent() {
                   />
                 ))}
               </div>
+              )}
             </div>
           </div>
+          )}
         </div>
       </div>
 

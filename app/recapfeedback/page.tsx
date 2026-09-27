@@ -93,7 +93,13 @@ export default function RecapfeedbackPage() {
 
       <button
         type="button"
-        onClick={() => router.push("/archivebook")}
+        onClick={() => {
+          // 섹션 리캡에서 왔으면 그 앨범(책)으로 돌아가기
+          const bookId = new URLSearchParams(window.location.search).get("book");
+          router.push(
+            bookId ? `/archivebook?book=${encodeURIComponent(bookId)}` : "/archiveshelf",
+          );
+        }}
         className="fixed bottom-12 left-1/2 z-20 -translate-x-1/2 cursor-pointer rounded-full border-0 bg-[#AF9083] px-12 py-3 font-mulish font-semibold text-white"
       >
         저장하기

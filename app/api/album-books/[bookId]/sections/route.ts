@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { getLatestDriveConnection } from "@/lib/deceased-drive-token";
+import { parseSectionInput } from "@/lib/album-sections";
 
 type RouteParams = {
   params: Promise<{ bookId: string }>;
 };
 
-const TITLE_MAX_LENGTH = 20;
 // 지금은 한 쪽(8칸)만 사용. 쪽 넘기기는 섹션이 더 필요해질 때 추가.
 const SECTION_SLOTS_PER_BOOK = 8;
 
@@ -17,30 +17,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { supabase, userEmail } = context;
   const { bookId } = await params;
 
-  let body: { title?: string; coverDriveFileId?: string; coverFileName?: string };
+  let body: Record<string, unknown>;
 
   try {
-    body = (await request.json()) as typeof body;
+    body = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const title = body.title?.trim() ?? "";
-  const coverDriveFileId = body.coverDriveFileId ?? "";
+  const input = parseSectionInput(body);
 
-  if (!title || title.length > TITLE_MAX_LENGTH) {
-    return NextResponse.json(
-      { error: `섹션 이름은 1~${TITLE_MAX_LENGTH}자로 적어 주세요.` },
-      { status: 400 },
-    );
+  if ("error" in input) {
+    return NextResponse.json({ error: input.error }, { status: 400 });
   }
 
-  if (!/^[A-Za-z0-9_-]+$/.test(coverDriveFileId)) {
-    return NextResponse.json(
-      { error: "대표 이미지를 골라 주세요." },
-      { status: 400 },
-    );
-  }
+  const { title, photos, cover } = input;
 
   const { data: book, error: bookError } = await supabase
     .from("album_books")
@@ -88,8 +79,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       book_id: book.id,
       owner_email: userEmail,
       title,
-      cover_drive_file_id: coverDriveFileId,
-      cover_file_name: body.coverFileName?.slice(0, 200) ?? null,
+      cover_drive_file_id: cover.driveFileId,
+      cover_file_name: cover.fileName,
       drive_connection_id: connection?.id ?? null,
       slot,
     })
@@ -100,8 +91,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const { error: photosError } = await supabase.from("album_section_photos").insert(
+    photos.map((photo, index) => ({
+      section_id: data.id,
+      drive_file_id: photo.driveFileId,
+      file_name: photo.fileName,
+      sort_order: index,
+    })),
+  );
+
+  if (photosError) {
+    // 사진 저장에 실패하면 섹션도 되돌려서 빈 섹션이 남지 않게
+    await supabase.from("album_sections").delete().eq("id", data.id);
+    return NextResponse.json({ error: photosError.message }, { status: 500 });
+  }
+
   return NextResponse.json(
-    { section: { ...data, hasCover: true } },
+    {
+      section: {
+        ...data,
+        hasCover: true,
+        coverFileId: cover.driveFileId,
+        photoCount: photos.length,
+      },
+    },
     { status: 201 },
   );
 }

@@ -37,7 +37,8 @@ export async function GET() {
   try {
     const { files, nextPageToken } = await fetchDriveImageFiles(
       tokenResult.accessToken,
-      50,
+      200, // 섹션 사진 고르기에서 "모두 선택"이 폴더 사진을 넉넉히 담도록
+
       process.env.DRIVE_TEST_FOLDER_ID,
     );
 

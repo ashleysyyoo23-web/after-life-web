@@ -5,7 +5,7 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
-import { CreateSectionModal, type CreatedSection } from "@/components/AlbumModals";
+import { SectionPhotosModal, type CreatedSection } from "@/components/AlbumModals";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -39,6 +39,7 @@ function ArchivebookPageContent() {
   const bookId = searchParams.get("book");
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [book, setBook] = useState<Book | null>(null);
   const [sections, setSections] = useState<CreatedSection[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "not-found">(
@@ -79,6 +80,13 @@ function ArchivebookPageContent() {
     setShowCreateModal(false);
   };
 
+  const handleEdited = (section: CreatedSection) => {
+    setSections((prev) =>
+      prev.map((item) => (item.id === section.id ? { ...item, ...section } : item)),
+    );
+    setEditingSectionId(null);
+  };
+
   return (
     <>
       <div className="relative h-screen w-screen overflow-hidden bg-[#FDF0E8]">
@@ -103,29 +111,48 @@ function ArchivebookPageContent() {
             if (!slot) return null;
 
             return (
-              <div key={section.id}>
+              <div key={section.id} className="group">
                 <div
-                  className="absolute bg-white shadow-[0_1px_3px_rgba(42,37,34,0.18)]"
+                  className="absolute transition-transform duration-300 group-hover:-translate-y-[0.6cqh] group-focus-within:-translate-y-[0.6cqh]"
                   style={{
                     left: `${slot.left}%`,
                     top: `${slot.top}%`,
                     width: `${SLOT_SIZE_CQW}cqw`,
                     height: `${SLOT_SIZE_CQW}cqw`,
-                    padding: "0.3cqw",
                   }}
                 >
-                  {section.hasCover && (
-                    // 본인만 볼 수 있는 API 주소라 일반 img 사용
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/album-sections/${section.id}/cover`}
-                      alt={section.title}
-                      className="h-full w-full bg-[#F2EAE2] object-cover"
-                    />
-                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(`/recapview?section=${encodeURIComponent(section.id)}`)
+                    }
+                    aria-label={`${section.title} 리캡 보기`}
+                    className="block h-full w-full cursor-pointer border-0 bg-white shadow-[0_1px_3px_rgba(42,37,34,0.18)] transition-shadow group-hover:shadow-[0_6px_14px_rgba(42,37,34,0.22)]"
+                    style={{ padding: "0.3cqw" }}
+                  >
+                    {section.hasCover && (
+                      // 본인만 볼 수 있는 API 주소라 일반 img 사용
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/album-sections/${section.id}/cover?v=${encodeURIComponent(
+                          section.coverFileId ?? "",
+                        )}`}
+                        alt=""
+                        className="h-full w-full bg-[#F2EAE2] object-cover"
+                      />
+                    )}
+                  </button>
+                  {/* 마우스를 올리면 나타나는 사진 편집 버튼 */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingSectionId(section.id)}
+                    className="absolute right-[0.5cqw] top-[0.5cqw] cursor-pointer rounded-full border-0 bg-white/90 px-3 py-1 font-mulish text-xs font-semibold text-[#4A423C] opacity-0 shadow transition-opacity hover:bg-[#FDD9BD] focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    사진 편집
+                  </button>
                 </div>
                 <p
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-jeju-myeongjo text-[#2A2522]"
+                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-jeju-myeongjo text-[#2A2522]"
                   style={{
                     left: `${slot.left + SLOT_SIZE_CQW / 2}%`,
                     top: `${slot.labelTop}%`,
@@ -191,10 +218,19 @@ function ArchivebookPageContent() {
       />
 
       {showCreateModal && book && (
-        <CreateSectionModal
+        <SectionPhotosModal
           bookId={book.id}
           onClose={() => setShowCreateModal(false)}
-          onCreated={handleCreated}
+          onSaved={handleCreated}
+        />
+      )}
+
+      {editingSectionId && book && (
+        <SectionPhotosModal
+          bookId={book.id}
+          sectionId={editingSectionId}
+          onClose={() => setEditingSectionId(null)}
+          onSaved={handleEdited}
         />
       )}
     </>

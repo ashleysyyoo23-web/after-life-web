@@ -40,6 +40,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       title: section.title,
       slot: section.slot,
       hasCover: Boolean(section.cover_drive_file_id),
+      // 대표 이미지가 바뀌면 주소도 바뀌게 (브라우저에 남은 옛 이미지 방지)
+      coverFileId: section.cover_drive_file_id,
     })),
   });
 }
