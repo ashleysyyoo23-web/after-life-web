@@ -66,6 +66,8 @@ export const DRAWING_COLORS = ["#000000", "#E60012", "#0050E6", "#FFD000", "#00A
 // 예전에 쓰던 색. 이미 그려 둔 그림을 되돌리기·지우기 하며 다시 저장할 수 있게 계속 허용.
 const LEGACY_DRAWING_COLORS = ["#2A2522", "#AF9083", "#D99B82", "#6F822B"];
 export const DRAWING_WIDTHS = [2, 5];
+// 지우개 굵기 (펜보다 넓게)
+export const ERASER_WIDTHS = [14, 32];
 const MAX_STROKES = 300;
 const MAX_POINTS_PER_STROKE = 2000;
 const MAX_TOTAL_POINTS = 20000;
@@ -73,6 +75,8 @@ const MAX_TOTAL_POINTS = 20000;
 export type DrawingStroke = {
   color: string;
   width: number;
+  // "erase" 면 지우개: 이 선이 지나간 곳의 그림(앞서 그린 선)을 지움
+  mode?: "erase";
   // 펼친 책 영역 기준 0~1 좌표 (화면 크기가 달라도 같은 자리)
   points: Array<[number, number]>;
 };
@@ -86,13 +90,20 @@ export function parseDrawingStrokes(raw: unknown): DrawingStroke[] | { error: st
   const strokes: DrawingStroke[] = [];
 
   for (const item of raw) {
-    const stroke = item as { color?: unknown; width?: unknown; points?: unknown };
+    const stroke = item as {
+      color?: unknown;
+      width?: unknown;
+      points?: unknown;
+      mode?: unknown;
+    };
+    const isEraser = stroke?.mode === "erase";
 
     if (
+      (stroke?.mode !== undefined && !isEraser) ||
       typeof stroke?.color !== "string" ||
       !(DRAWING_COLORS.includes(stroke.color) || LEGACY_DRAWING_COLORS.includes(stroke.color)) ||
       typeof stroke.width !== "number" ||
-      !DRAWING_WIDTHS.includes(stroke.width) ||
+      !(isEraser ? ERASER_WIDTHS : DRAWING_WIDTHS).includes(stroke.width) ||
       !Array.isArray(stroke.points) ||
       stroke.points.length === 0 ||
       stroke.points.length > MAX_POINTS_PER_STROKE
@@ -124,7 +135,12 @@ export function parseDrawingStrokes(raw: unknown): DrawingStroke[] | { error: st
       return { error: "그림이 너무 많아요. 몇 개를 지우고 다시 저장해 주세요." };
     }
 
-    strokes.push({ color: stroke.color, width: stroke.width, points });
+    strokes.push({
+      color: stroke.color,
+      width: stroke.width,
+      points,
+      ...(isEraser ? { mode: "erase" as const } : {}),
+    });
   }
 
   return strokes;

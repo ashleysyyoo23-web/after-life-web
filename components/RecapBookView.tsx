@@ -4,9 +4,10 @@ import {
   CAPTION_MAX_LENGTH,
   DRAWING_COLORS,
   DRAWING_WIDTHS,
+  ERASER_WIDTHS,
   type DrawingStroke,
 } from "@/lib/album-sections";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type BookPhoto = {
   driveFileId: string;
@@ -314,6 +315,69 @@ function strokeToPath(stroke: DrawingStroke) {
     .join(" ");
 }
 
+// 선을 순서대로 그리면서, 지우개 선이 나오면 "그 앞까지 그린 것"을 지우개 모양만큼 가림(SVG mask).
+// 지우개 뒤에 그린 선은 지워지지 않아요.
+function renderStrokes(strokes: DrawingStroke[], idPrefix: string) {
+  const masks: ReactNode[] = [];
+  let layer: ReactNode[] = [];
+
+  strokes.forEach((stroke, index) => {
+    const d = strokeToPath(stroke);
+
+    if (stroke.mode === "erase") {
+      const maskId = `${idPrefix}-erase-${index}`;
+      masks.push(
+        <mask
+          key={maskId}
+          id={maskId}
+          maskUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          width="1000"
+          height="1000"
+        >
+          <rect x="0" y="0" width="1000" height="1000" fill="white" />
+          <path
+            d={d}
+            fill="none"
+            stroke="black"
+            strokeWidth={stroke.width}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </mask>,
+      );
+      layer = [
+        <g key={`erased-${index}`} mask={`url(#${maskId})`}>
+          {layer}
+        </g>,
+      ];
+      return;
+    }
+
+    layer.push(
+      <path
+        key={`ink-${index}`}
+        d={d}
+        fill="none"
+        stroke={stroke.color}
+        strokeWidth={stroke.width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />,
+    );
+  });
+
+  return (
+    <>
+      <defs>{masks}</defs>
+      {layer}
+    </>
+  );
+}
+
 function DrawingLayer({
   strokes: savedStrokes,
   active,
@@ -328,8 +392,12 @@ function DrawingLayer({
   const [strokes, setStrokes] = useState<DrawingStroke[]>(savedStrokes);
   const [current, setCurrent] = useState<DrawingStroke | null>(null);
   const [color, setColor] = useState(DRAWING_COLORS[0]);
-  const [width, setWidth] = useState(DRAWING_WIDTHS[0]);
+  const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const [penWidth, setPenWidth] = useState(DRAWING_WIDTHS[0]);
+  const [eraserWidth, setEraserWidth] = useState(ERASER_WIDTHS[0]);
   const svgRef = useRef<SVGSVGElement>(null);
+  // mask id 는 화면 안에서 겹치지 않아야 해서 부품마다 고유 id 사용
+  const idPrefix = `drawing${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const saveTimer = useRef<number | null>(null);
   const pendingSave = useRef<(() => void) | null>(null);
 
@@ -370,7 +438,12 @@ function DrawingLayer({
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!active) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    setCurrent({ color, width, points: [toPoint(event)] });
+    const point = toPoint(event);
+    setCurrent(
+      tool === "eraser"
+        ? { color: DRAWING_COLORS[0], width: eraserWidth, points: [point], mode: "erase" }
+        : { color, width: penWidth, points: [point] },
+    );
   };
 
   const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -399,7 +472,11 @@ function DrawingLayer({
         ref={svgRef}
         viewBox="0 0 1000 1000"
         preserveAspectRatio="none"
-        className={`absolute z-10 ${active ? "cursor-crosshair touch-none" : "pointer-events-none"}`}
+        className={`absolute z-10 ${
+          active
+            ? `${tool === "eraser" ? "cursor-cell" : "cursor-crosshair"} touch-none`
+            : "pointer-events-none"
+        }`}
         style={{
           left: `${BOOK_AREA.left}%`,
           top: `${BOOK_AREA.top}%`,
@@ -413,18 +490,7 @@ function DrawingLayer({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {[...strokes, ...(current ? [current] : [])].map((stroke, index) => (
-          <path
-            key={index}
-            d={strokeToPath(stroke)}
-            fill="none"
-            stroke={stroke.color}
-            strokeWidth={stroke.width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
+        {renderStrokes([...strokes, ...(current ? [current] : [])], idPrefix)}
       </svg>
 
       {active && (
@@ -433,33 +499,66 @@ function DrawingLayer({
             <button
               key={swatch}
               type="button"
-              onClick={() => setColor(swatch)}
+              onClick={() => {
+                setColor(swatch);
+                setTool("pen");
+              }}
               aria-label={`${COLOR_NAMES[index]} 펜`}
-              aria-pressed={color === swatch}
+              aria-pressed={tool === "pen" && color === swatch}
               className={`h-6 w-6 cursor-pointer rounded-full border-2 p-0 ${
-                color === swatch ? "border-[#4A423C] scale-110" : "border-white"
+                tool === "pen" && color === swatch ? "border-[#4A423C] scale-110" : "border-white"
               }`}
               style={{ backgroundColor: swatch }}
             />
           ))}
           <span className="h-5 w-px bg-[#E9E0D3]" aria-hidden="true" />
-          {DRAWING_WIDTHS.map((size) => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => setWidth(size)}
-              aria-label={size === DRAWING_WIDTHS[0] ? "가는 펜" : "굵은 펜"}
-              aria-pressed={width === size}
-              className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 ${
-                width === size ? "bg-[#FDD9BD]" : "bg-transparent"
-              }`}
-            >
-              <span
-                className="rounded-full bg-[#4A423C]"
-                style={{ width: size * 2, height: size * 2 }}
-              />
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => setTool("eraser")}
+            aria-pressed={tool === "eraser"}
+            className={`cursor-pointer rounded-full border-0 px-3 py-1 font-mulish text-sm ${
+              tool === "eraser"
+                ? "bg-[#FDD9BD] font-semibold text-[#4A423C]"
+                : "bg-transparent text-[#4A423C]"
+            }`}
+          >
+            지우개
+          </button>
+          <span className="h-5 w-px bg-[#E9E0D3]" aria-hidden="true" />
+          {/* 굵기: 펜일 때는 펜 굵기, 지우개일 때는 지우개 크기 */}
+          {(tool === "eraser" ? ERASER_WIDTHS : DRAWING_WIDTHS).map((size, sizeIndex) => {
+            const selected = (tool === "eraser" ? eraserWidth : penWidth) === size;
+            const label =
+              tool === "eraser"
+                ? sizeIndex === 0 ? "작은 지우개" : "큰 지우개"
+                : sizeIndex === 0 ? "가는 펜" : "굵은 펜";
+            // 버튼 안 동그라미는 실제 굵기를 버튼 크기에 맞게 줄여서 보여줌
+            const dot = tool === "eraser" ? (sizeIndex === 0 ? 10 : 18) : size * 2;
+
+            return (
+              <button
+                key={size}
+                type="button"
+                onClick={() =>
+                  tool === "eraser" ? setEraserWidth(size) : setPenWidth(size)
+                }
+                aria-label={label}
+                aria-pressed={selected}
+                className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 ${
+                  selected ? "bg-[#FDD9BD]" : "bg-transparent"
+                }`}
+              >
+                <span
+                  className={
+                    tool === "eraser"
+                      ? "rounded-full border border-[#4A423C] bg-white"
+                      : "rounded-full bg-[#4A423C]"
+                  }
+                  style={{ width: dot, height: dot }}
+                />
+              </button>
+            );
+          })}
           <span className="h-5 w-px bg-[#E9E0D3]" aria-hidden="true" />
           <button
             type="button"
