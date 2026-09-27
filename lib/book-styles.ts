@@ -55,6 +55,40 @@ export const BOOK_SHAPES: BookShape[] = [
 
 export const BOOK_STROKE_COLOR = "#2A2522";
 
+export type ShelfBookData = {
+  id: string;
+  title: string;
+  color: number;
+  shape: number;
+  position: number;
+  // 제목을 세로로 쓸지(기본), 책 위쪽에 가로로 쓸지
+  titleLayout?: "vertical" | "horizontal";
+};
+
+// 새 앨범을 만들 때 순서대로 돌아가며 쓰는 모양·색.
+// 너무 얇은 책(모양 11, 13)은 제목이 안 들어가서 빼고, 이웃한 책이 비슷하지 않게 섞었어요.
+const NEW_BOOK_SHAPE_ORDER = [8, 3, 16, 9, 4, 17, 6, 15, 2, 14, 5, 7, 1, 12, 10];
+const NEW_BOOK_COLOR_ORDER = [7, 2, 5, 3, 13, 1, 8, 4, 10, 6, 12, 9, 11];
+
+export function getNewBookStyle(position: number) {
+  return {
+    shape: NEW_BOOK_SHAPE_ORDER[position % NEW_BOOK_SHAPE_ORDER.length],
+    color: NEW_BOOK_COLOR_ORDER[position % NEW_BOOK_COLOR_ORDER.length],
+  };
+}
+
+// 가운데부터 쌓기: 0 = 가운데, 1 = 오른쪽, 2 = 왼쪽, 3 = 오른쪽 …
+export function arrangeBooksFromCenter<T extends { position: number }>(books: T[]): T[] {
+  const sorted = [...books].sort((a, b) => a.position - b.position);
+  const center = sorted.filter((book) => book.position === 0);
+  const right = sorted.filter((book) => book.position % 2 === 1);
+  const left = sorted
+    .filter((book) => book.position > 0 && book.position % 2 === 0)
+    .reverse();
+
+  return [...left, ...center, ...right];
+}
+
 export function getBookColor(id: number): BookColor {
   return BOOK_COLORS.find((color) => color.id === id) ?? BOOK_COLORS[0];
 }

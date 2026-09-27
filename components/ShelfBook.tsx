@@ -4,8 +4,8 @@ import {
   BOOK_STROKE_COLOR,
   getBookColor,
   getBookShape,
+  type ShelfBookData,
 } from "@/lib/book-styles";
-import type { ShelfBookData } from "@/lib/sample-shelf-books";
 
 // 손그림처럼 테두리를 살짝 흔드는 SVG 효과. 책장 화면에 한 번만 넣어요.
 export const BOOK_SKETCH_FILTER_ID = "shelf-book-sketch";
@@ -29,20 +29,23 @@ export function BookSketchFilterDefs() {
 type ShelfBookProps = {
   book: ShelfBookData;
   onSelect: (bookId: string) => void;
+  // 제목이 비어 있는 책(아직 앨범이 없을 때)의 툴팁
+  emptyLabel?: string;
 };
 
 // 책장 무대(container-type: size) 안에서 cqw/cqh 단위로 크기를 잡아요.
-export function ShelfBook({ book, onSelect }: ShelfBookProps) {
+export function ShelfBook({ book, onSelect, emptyLabel }: ShelfBookProps) {
   const color = getBookColor(book.color);
   const shape = getBookShape(book.shape);
   const isHorizontal = book.titleLayout === "horizontal";
   const fontSize = Math.min(1.05, Math.max(0.72, shape.width * 0.36));
+  const label = book.title || emptyLabel || "";
 
   return (
     <button
       type="button"
       onClick={() => onSelect(book.id)}
-      aria-label={book.title}
+      aria-label={label}
       className="group relative shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 ease-out hover:-translate-y-[1.6cqh] focus-visible:-translate-y-[1.6cqh] focus-visible:outline-none"
       style={{
         width: `${shape.width}cqw`,
@@ -93,7 +96,7 @@ export function ShelfBook({ book, onSelect }: ShelfBookProps) {
         aria-hidden="true"
         className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-[1.5cqh] -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
       >
-        {book.title}
+        {label}
       </span>
     </button>
   );

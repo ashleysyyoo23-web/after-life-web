@@ -5,86 +5,139 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { CreateSectionModal, type CreatedSection } from "@/components/AlbumModals";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-const TRAVEL_CLICK_AREAS = [
-  {
-    title: "제주 여행",
-    bg: "recapauto",
-    left: "17.8%",
-    top: "72.8%",
-    sizeClass: "h-28 w-36",
-  },
-  {
-    title: "여름에 갔던 일본",
-    bg: "Japan",
-    left: "36.7%",
-    top: "89.9%",
-    sizeClass: "h-28 w-36",
-  },
-  {
-    title: "설레는 공항에서",
-    bg: "airport",
-    left: "32.9%",
-    top: "37.8%",
-    sizeClass: "h-32 w-40",
-  },
-  {
-    title: "서울탐방",
-    bg: "Seoul",
-    left: "48.1%",
-    top: "54.2%",
-    sizeClass: "h-32 w-40",
-  },
-  {
-    title: "이탈리아 여행",
-    bg: "Italy",
-    left: "59.8%",
-    top: "19.5%",
-    sizeClass: "h-28 w-36",
-  },
-  {
-    title: "1박 2일 경주여행",
-    bg: "Gyungju",
-    left: "68.6%",
-    top: "62.2%",
-    sizeClass: "h-28 w-36",
-  },
-  {
-    title: "파리 여행",
-    bg: "Paris",
-    left: "83.5%",
-    top: "47.0%",
-    sizeClass: "h-24 w-32",
-  },
-  {
-    title: "할머니 고향 부산에서",
-    bg: "Busan",
-    left: "91.8%",
-    top: "15.7%",
-    sizeClass: "h-24 w-32",
-  },
+// 배경 그림(archivebook-empty.jpg, 3840×2160) 속 사진 칸 위치. 점선 길을 따라가는 순서.
+// 무대(16:9) 기준 %: left·top 은 사진 칸 왼쪽 위, labelTop 은 이름 가운데.
+const SECTION_SLOTS = [
+  { left: 12.44, top: 58.22, labelTop: 78.56 },
+  { left: 32.0, top: 71.11, labelTop: 91.56 },
+  { left: 28.06, top: 32.33, labelTop: 52.78 },
+  { left: 43.19, top: 45.22, labelTop: 65.67 },
+  { left: 54.94, top: 18.67, labelTop: 39.11 },
+  { left: 63.56, top: 51.11, labelTop: 71.67 },
+  { left: 78.44, top: 39.78, labelTop: 60.22 },
+  { left: 86.75, top: 15.56, labelTop: 36.11 },
 ];
+const SLOT_SIZE_CQW = 9.8;
+
+type Book = { id: string; title: string };
 
 export default function ArchivebookPage() {
+  return (
+    <Suspense fallback={null}>
+      <ArchivebookPageContent />
+    </Suspense>
+  );
+}
+
+function ArchivebookPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const bookId = searchParams.get("book");
   const [showSettings, setShowSettings] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [book, setBook] = useState<Book | null>(null);
+  const [sections, setSections] = useState<CreatedSection[]>([]);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "not-found">(
+    "loading",
+  );
+
+  useEffect(() => {
+    if (!bookId) {
+      router.replace("/archiveshelf");
+      return;
+    }
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/album-books/${encodeURIComponent(bookId)}`, {
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          setLoadState("not-found");
+          return;
+        }
+
+        const data = (await res.json()) as { book: Book; sections: CreatedSection[] };
+        setBook(data.book);
+        setSections(data.sections);
+        setLoadState("ready");
+      } catch {
+        setLoadState("not-found");
+      }
+    })();
+  }, [bookId, router]);
+
+  const isFull = sections.length >= SECTION_SLOTS.length;
+
+  const handleCreated = (section: CreatedSection) => {
+    setSections((prev) => [...prev, section].sort((a, b) => a.slot - b.slot));
+    setShowCreateModal(false);
+  };
 
   return (
     <>
-      <div className="relative h-screen w-screen overflow-hidden">
-        <Image
-          key={Date.now()}
-          src="/archivebook.jpg"
-          alt=""
-          fill
-          priority
-          unoptimized
-          className="object-cover"
-          sizes="100vw"
-        />
+      <div className="relative h-screen w-screen overflow-hidden bg-[#FDF0E8]">
+        {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치 */}
+        <div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          style={{
+            width: "max(100vw, 177.78vh)",
+            height: "max(56.25vw, 100vh)",
+            containerType: "size",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/archivebook-empty.jpg"
+            alt=""
+            className="absolute inset-0 h-full w-full"
+          />
+
+          {sections.map((section) => {
+            const slot = SECTION_SLOTS[section.slot];
+            if (!slot) return null;
+
+            return (
+              <div key={section.id}>
+                <div
+                  className="absolute bg-white shadow-[0_1px_3px_rgba(42,37,34,0.18)]"
+                  style={{
+                    left: `${slot.left}%`,
+                    top: `${slot.top}%`,
+                    width: `${SLOT_SIZE_CQW}cqw`,
+                    height: `${SLOT_SIZE_CQW}cqw`,
+                    padding: "0.3cqw",
+                  }}
+                >
+                  {section.hasCover && (
+                    // 본인만 볼 수 있는 API 주소라 일반 img 사용
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/album-sections/${section.id}/cover`}
+                      alt={section.title}
+                      className="h-full w-full bg-[#F2EAE2] object-cover"
+                    />
+                  )}
+                </div>
+                <p
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-jeju-myeongjo text-[#2A2522]"
+                  style={{
+                    left: `${slot.left + SLOT_SIZE_CQW / 2}%`,
+                    top: `${slot.labelTop}%`,
+                    fontSize: "1.05cqw",
+                  }}
+                >
+                  {section.title}
+                </p>
+              </div>
+            );
+          })}
+        </div>
 
         <div className="absolute left-0 top-20 z-20 p-8">
           <button
@@ -94,22 +147,37 @@ export default function ArchivebookPage() {
           >
             ← 책장으로
           </button>
-          <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">
-            할머니 와 함께한 여행
-          </h1>
+          {book && (
+            <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">
+              {book.title}
+            </h1>
+          )}
         </div>
-
-        {TRAVEL_CLICK_AREAS.map((item) => (
-          <button
-            key={item.title}
-            type="button"
-            onClick={() => router.push(`/recapview?bg=${item.bg}`)}
-            aria-label={item.title}
-            className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer border-0 bg-transparent p-0 ${item.sizeClass}`}
-            style={{ left: item.left, top: item.top }}
-          />
-        ))}
       </div>
+
+      {loadState === "ready" && sections.length === 0 && (
+        <p className="pointer-events-none fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
+          + 섹션 추가를 눌러 첫 섹션을 만들어 보세요.
+        </p>
+      )}
+
+      {loadState === "not-found" && (
+        <p className="fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
+          앨범을 찾을 수 없어요. 책장으로 돌아가 다시 골라 주세요.
+        </p>
+      )}
+
+      {loadState === "ready" && (
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          disabled={isFull}
+          title={isFull ? "한 앨범에는 섹션을 8개까지 만들 수 있어요." : undefined}
+          className="fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          + 섹션 추가
+        </button>
+      )}
 
       <TopNav
         notificationCount={DEFAULT_NOTIFICATIONS.length}
@@ -121,6 +189,14 @@ export default function ArchivebookPage() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {showCreateModal && book && (
+        <CreateSectionModal
+          bookId={book.id}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
+      )}
     </>
   );
 }
