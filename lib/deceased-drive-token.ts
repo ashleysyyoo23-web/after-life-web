@@ -72,9 +72,17 @@ export async function getValidDriveAccessToken(
 export async function fetchDriveImageFiles(
   accessToken: string,
   pageSize = 50,
+  folderId?: string,
 ) {
+  const conditions = ["mimeType contains 'image/'", "trashed = false"];
+
+  // Drive 폴더 ID는 영문·숫자·-·_ 만 사용하므로, 그 외 값은 무시
+  if (folderId && /^[A-Za-z0-9_-]+$/.test(folderId)) {
+    conditions.push(`'${folderId}' in parents`);
+  }
+
   const query = new URLSearchParams({
-    q: "mimeType contains 'image/' and trashed = false",
+    q: conditions.join(" and "),
     fields:
       "files(id,name,mimeType,thumbnailLink,webViewLink,iconLink),nextPageToken",
     pageSize: String(pageSize),

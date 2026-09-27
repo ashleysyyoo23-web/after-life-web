@@ -37,6 +37,8 @@ export async function GET() {
   try {
     const { files, nextPageToken } = await fetchDriveImageFiles(
       tokenResult.accessToken,
+      50,
+      process.env.DRIVE_TEST_FOLDER_ID,
     );
 
     return NextResponse.json({
