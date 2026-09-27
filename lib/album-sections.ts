@@ -61,7 +61,10 @@ export function parseSectionInput(body: {
 
 // ───────── 그림(선 정보) ─────────
 
-export const DRAWING_COLORS = ["#2A2522", "#AF9083", "#D99B82", "#6F822B"];
+// 펜 색: 원색 (검정·빨강·파랑·노랑·초록)
+export const DRAWING_COLORS = ["#000000", "#E60012", "#0050E6", "#FFD000", "#00A03C"];
+// 예전에 쓰던 색. 이미 그려 둔 그림을 되돌리기·지우기 하며 다시 저장할 수 있게 계속 허용.
+const LEGACY_DRAWING_COLORS = ["#2A2522", "#AF9083", "#D99B82", "#6F822B"];
 export const DRAWING_WIDTHS = [2, 5];
 const MAX_STROKES = 300;
 const MAX_POINTS_PER_STROKE = 2000;
@@ -87,7 +90,7 @@ export function parseDrawingStrokes(raw: unknown): DrawingStroke[] | { error: st
 
     if (
       typeof stroke?.color !== "string" ||
-      !DRAWING_COLORS.includes(stroke.color) ||
+      !(DRAWING_COLORS.includes(stroke.color) || LEGACY_DRAWING_COLORS.includes(stroke.color)) ||
       typeof stroke.width !== "number" ||
       !DRAWING_WIDTHS.includes(stroke.width) ||
       !Array.isArray(stroke.points) ||

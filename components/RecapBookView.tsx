@@ -16,20 +16,29 @@ export type BookPhoto = {
 };
 
 // 배경 그림(recapmanual-empty.jpg, 16:9) 속 위치. 무대 기준 %.
-// 왼쪽 쪽에 사진 2장(살짝 기울임), 오른쪽 쪽에 사진마다 글 한 줄.
+// 양쪽 쪽에 사진 2장씩(왼쪽 위·아래, 오른쪽 위·아래), 사진 바로 아래에 글 한 줄.
+// centerX·top 은 사진 가운데 가로 위치와 위쪽 끝, rotate 는 기본 기울기.
 const PHOTO_SLOTS = [
-  { left: 22.9, top: 26.2, width: 22.8, height: 23.9, rotate: -1.5 },
-  { left: 23.3, top: 55.3, width: 23.0, height: 24.4, rotate: 1.5 },
+  { centerX: 34.4, top: 27.0, rotate: -2.6 },
+  { centerX: 35.0, top: 56.5, rotate: 1.8 },
+  { centerX: 66.4, top: 27.8, rotate: 1.4 },
+  { centerX: 66.0, top: 57.0, rotate: -2.1 },
 ];
-const CAPTION_SLOTS = [
-  { centerX: 66.25, centerY: 39.3 },
-  { centerX: 66.25, centerY: 68.3 },
-];
+const PHOTO_WIDTH = 20.5;
+const PHOTO_HEIGHT = 20.5;
+// 사진 아래 글까지의 간격
+const CAPTION_GAP = 3.4;
 // 그림을 그릴 수 있는 펼친 책 영역
 const BOOK_AREA = { left: 18.7, top: 23.7, width: 64.3, height: 63.3 };
-const PHOTOS_PER_SPREAD = 2;
+const PHOTOS_PER_SPREAD = 4;
 const MAX_DOTS = 20;
-const COLOR_NAMES = ["먹색", "갈색", "살구색", "초록색"];
+const COLOR_NAMES = ["검정", "빨강", "파랑", "노랑", "초록"];
+
+// 쪽마다 기울기를 조금씩 다르게 (같은 쪽은 항상 같은 모양)
+function getPhotoRotation(spreadIndex: number, slotIndex: number) {
+  const wobble = (((spreadIndex * 7 + slotIndex * 3) % 5) - 2) * 0.7;
+  return PHOTO_SLOTS[slotIndex].rotate + wobble;
+}
 
 type RecapBookViewProps = {
   sectionId: string;
@@ -132,43 +141,40 @@ export function RecapBookView({
 
         {spreadPhotos.map((photo, index) => {
           const slot = PHOTO_SLOTS[index];
+          const rotate = getPhotoRotation(spreadIndex, index);
+
           return (
-            <div
-              key={photo.driveFileId}
-              className="absolute overflow-hidden bg-[#EFE8DF] shadow-[0_1px_4px_rgba(42,37,34,0.2)]"
-              style={{
-                left: `${slot.left}%`,
-                top: `${slot.top}%`,
-                width: `${slot.width}%`,
-                height: `${slot.height}%`,
-                transform: `rotate(${slot.rotate}deg)`,
-              }}
-            >
-              {/* 본인만 볼 수 있는 API 주소라 일반 img 사용 */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photo.mediaUrl}
-                alt={photo.caption || photo.fileName || ""}
-                className="h-full w-full object-cover"
+            <div key={photo.driveFileId}>
+              <div
+                className="absolute -translate-x-1/2 overflow-hidden bg-[#EFE8DF] shadow-[0_1px_4px_rgba(42,37,34,0.2)]"
+                style={{
+                  left: `${slot.centerX}%`,
+                  top: `${slot.top}%`,
+                  width: `${PHOTO_WIDTH}%`,
+                  height: `${PHOTO_HEIGHT}%`,
+                  rotate: `${rotate}deg`,
+                }}
+              >
+                {/* 본인만 볼 수 있는 API 주소라 일반 img 사용 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.mediaUrl}
+                  alt={photo.caption || photo.fileName || ""}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <CaptionInput
+                // 쪽을 넘기면 새 입력칸으로 (적던 글이 다른 사진으로 옮겨 가지 않게)
+                key={`${spreadIndex}-${photo.driveFileId}`}
+                initialValue={photo.caption}
+                disabled={isDrawing}
+                onSave={(caption) => void saveCaption(photo, caption)}
+                style={{
+                  left: `${slot.centerX}%`,
+                  top: `${slot.top + PHOTO_HEIGHT + CAPTION_GAP}%`,
+                }}
               />
             </div>
-          );
-        })}
-
-        {spreadPhotos.map((photo, index) => {
-          const slot = CAPTION_SLOTS[index];
-          return (
-            <CaptionInput
-              // 쪽을 넘기면 새 입력칸으로 (적던 글이 다른 사진으로 옮겨 가지 않게)
-              key={`${spreadIndex}-${photo.driveFileId}`}
-              initialValue={photo.caption}
-              disabled={isDrawing}
-              onSave={(caption) => void saveCaption(photo, caption)}
-              style={{
-                left: `${slot.centerX}%`,
-                top: `${slot.centerY}%`,
-              }}
-            />
           );
         })}
 
@@ -220,7 +226,9 @@ export function RecapBookView({
       )}
 
       <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3">
+        {/* 그리는 중에는 쪽 표시를 숨겨서 그리기 도구와 헷갈리지 않게 */}
         {spreadCount > 1 &&
+          !isDrawing &&
           (spreadCount > MAX_DOTS ? (
             <p className="font-mulish text-sm text-[#AF9083]">
               {spreadIndex + 1} / {spreadCount}
@@ -292,8 +300,8 @@ function CaptionInput({
       }}
       placeholder="여기를 눌러 글을 적어 보세요"
       aria-label="사진 설명"
-      className="absolute w-[28%] -translate-x-1/2 -translate-y-1/2 rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-mulish text-[#1a1a1a] outline-none transition-colors placeholder:text-[#C8BDB3] hover:border-[#E9E0D3] focus:border-[#AF9083] focus:bg-white/70 disabled:hover:border-transparent"
-      style={{ ...style, fontSize: "1.3cqw" }}
+      className="absolute w-[21%] -translate-x-1/2 -translate-y-1/2 rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-mulish text-[#1a1a1a] outline-none transition-colors placeholder:text-[#C8BDB3] hover:border-[#E9E0D3] focus:border-[#AF9083] focus:bg-white/70 disabled:hover:border-transparent"
+      style={{ ...style, fontSize: "1.15cqw" }}
     />
   );
 }
