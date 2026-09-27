@@ -24,7 +24,7 @@ type MoodSkyBackgroundProps = {
 };
 
 // 무드체크에서 고른 기분의 하늘 위에 "하늘 뺀 그림"을 겹쳐 보여줌.
-// 기분 기록이 없으면 원래 그림(분홍 하늘) 그대로.
+// 이번 방문에서 아직 무드체크를 안 했으면 원래 그림(분홍 하늘) 그대로.
 export function MoodSkyBackground({
   scene,
   className = "absolute inset-0 h-full w-full object-cover",

@@ -43,7 +43,7 @@ export default function MoodcheckPage() {
     }
 
     setIsSaving(true);
-    // 이후 하늘이 나오는 화면들에 바로 적용 (다음 무드체크까지 유지)
+    // 이후 하늘이 나오는 화면들에 바로 적용 (이번 방문 동안 유지)
     saveMoodSky(selectedMood);
 
     try {
