@@ -1,11 +1,11 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -31,14 +31,7 @@ export default function StoragePage() {
         className="relative h-screen w-screen cursor-pointer overflow-hidden"
         onClick={() => router.push("/storageinside")}
       >
-        <Image
-          src="/storagefar.jpg"
-          alt=""
-          fill
-          priority
-          className="object-cover"
-          sizes="100vw"
-        />
+        <MoodSkyBackground scene="storagefar" />
         <h1 className="sr-only">저장소</h1>
       </div>
 

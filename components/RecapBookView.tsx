@@ -1,5 +1,6 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   CAPTION_MAX_LENGTH,
   DRAWING_COLORS,
@@ -124,10 +125,8 @@ export function RecapBookView({
           containerType: "size",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/recapmanual-empty.jpg"
-          alt=""
+        <MoodSkyBackground
+          scene="recapmanual-empty"
           className="absolute inset-0 h-full w-full"
         />
 
@@ -315,8 +314,8 @@ function strokeToPath(stroke: DrawingStroke) {
     .join(" ");
 }
 
-// 선을 순서대로 그리면서, 지우개 선이 나오면 "그 앞까지 그린 것"을 지우개 모양만큼 가림(SVG mask).
-// 지우개 뒤에 그린 선은 지워지지 않아요.
+// 선을 순서대로 그려요. 예전 방식의 지우개 선(mode: "erase")이 저장돼 있으면
+// "그 앞까지 그린 것"을 지우개 모양만큼 가려서(SVG mask) 예전 그림도 그대로 보이게 해요.
 function renderStrokes(strokes: DrawingStroke[], idPrefix: string) {
   const masks: ReactNode[] = [];
   let layer: ReactNode[] = [];
@@ -400,10 +399,13 @@ function DrawingLayer({
   const idPrefix = `drawing${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const saveTimer = useRef<number | null>(null);
   const pendingSave = useRef<(() => void) | null>(null);
+  // 되돌리기용: 바뀌기 전 그림들
+  const [history, setHistory] = useState<DrawingStroke[][]>([]);
+  // 지우개로 문지르기 시작할 때의 그림 (한 번 문지른 것을 되돌리기 한 번으로)
+  const eraseStart = useRef<DrawingStroke[] | null>(null);
 
   // 선을 긋거나 지울 때마다 잠깐 기다렸다가 저장 (연달아 그리면 한 번만)
-  const commit = (next: DrawingStroke[]) => {
-    setStrokes(next);
+  const save = (next: DrawingStroke[]) => {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     pendingSave.current = () => onChange(next);
     saveTimer.current = window.setTimeout(() => {
@@ -411,6 +413,21 @@ function DrawingLayer({
       pendingSave.current = null;
       onChange(next);
     }, 600);
+  };
+
+  // 그림을 바꾸고, 바뀌기 전 모습을 되돌리기 목록에 남기고, 저장
+  const commit = (next: DrawingStroke[], previous: DrawingStroke[] = strokes) => {
+    setHistory((prev) => [...prev, previous].slice(-50));
+    setStrokes(next);
+    save(next);
+  };
+
+  const undo = () => {
+    const previous = history[history.length - 1];
+    if (!previous) return;
+    setHistory((prev) => prev.slice(0, -1));
+    setStrokes(previous);
+    save(previous);
   };
 
   const flushSave = () => {
@@ -435,18 +452,60 @@ function DrawingLayer({
     return [x, y];
   };
 
+  // 지우개가 닿은 선을 통째로 지움 (화면 픽셀 기준으로 거리 계산)
+  const eraseAt = (event: React.PointerEvent) => {
+    const rect = svgRef.current!.getBoundingClientRect();
+    const px = event.clientX - rect.left;
+    const py = event.clientY - rect.top;
+    const radius = eraserWidth / 2;
+
+    const touches = (stroke: DrawingStroke) => {
+      if (stroke.mode === "erase") return false;
+      const reach = radius + stroke.width / 2 + 2;
+
+      for (let index = 0; index < stroke.points.length; index += 1) {
+        const [ax, ay] = stroke.points[index];
+        const [bx, by] = stroke.points[Math.min(index + 1, stroke.points.length - 1)];
+        const x1 = ax * rect.width;
+        const y1 = ay * rect.height;
+        const x2 = bx * rect.width;
+        const y2 = by * rect.height;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lengthSquared = dx * dx + dy * dy;
+        const t =
+          lengthSquared === 0
+            ? 0
+            : Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSquared));
+        if (Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy)) <= reach) return true;
+      }
+      return false;
+    };
+
+    setStrokes((prev) => {
+      const next = prev.filter((stroke) => !touches(stroke));
+      return next.length === prev.length ? prev : next;
+    });
+  };
+
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!active) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    const point = toPoint(event);
-    setCurrent(
-      tool === "eraser"
-        ? { color: DRAWING_COLORS[0], width: eraserWidth, points: [point], mode: "erase" }
-        : { color, width: penWidth, points: [point] },
-    );
+
+    if (tool === "eraser") {
+      eraseStart.current = strokes;
+      eraseAt(event);
+      return;
+    }
+
+    setCurrent({ color, width: penWidth, points: [toPoint(event)] });
   };
 
   const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (eraseStart.current) {
+      eraseAt(event);
+      return;
+    }
     if (!current) return;
     const point = toPoint(event);
     const last = current.points[current.points.length - 1];
@@ -456,6 +515,13 @@ function DrawingLayer({
   };
 
   const handlePointerUp = () => {
+    if (eraseStart.current) {
+      const before = eraseStart.current;
+      eraseStart.current = null;
+      // 실제로 지운 선이 있을 때만 되돌리기 목록에 남기고 저장
+      if (strokes.length !== before.length) commit(strokes, before);
+      return;
+    }
     if (!current) return;
     // 점 하나만 찍어도 보이도록 같은 자리에 점을 하나 더
     const finished =
@@ -530,7 +596,7 @@ function DrawingLayer({
             const selected = (tool === "eraser" ? eraserWidth : penWidth) === size;
             const label =
               tool === "eraser"
-                ? sizeIndex === 0 ? "작은 지우개" : "큰 지우개"
+                ? sizeIndex === 0 ? "작은 지우개 (선 하나씩)" : "큰 지우개 (넓게)"
                 : sizeIndex === 0 ? "가는 펜" : "굵은 펜";
             // 버튼 안 동그라미는 실제 굵기를 버튼 크기에 맞게 줄여서 보여줌
             const dot = tool === "eraser" ? (sizeIndex === 0 ? 10 : 18) : size * 2;
@@ -562,8 +628,8 @@ function DrawingLayer({
           <span className="h-5 w-px bg-[#E9E0D3]" aria-hidden="true" />
           <button
             type="button"
-            onClick={() => commit(strokes.slice(0, -1))}
-            disabled={strokes.length === 0}
+            onClick={undo}
+            disabled={history.length === 0}
             className="cursor-pointer rounded-full border-0 bg-transparent px-2 py-1 font-mulish text-sm text-[#4A423C] disabled:cursor-not-allowed disabled:opacity-40"
           >
             되돌리기

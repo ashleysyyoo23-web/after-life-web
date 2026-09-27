@@ -1,5 +1,6 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
@@ -547,14 +548,7 @@ function MylandPageContent() {
         className="relative h-screen w-screen overflow-hidden"
         onDoubleClick={() => setShowAnniversaryModal(true)}
       >
-        <Image
-          src="/myland.jpg"
-          alt=""
-          fill
-          priority
-          className="object-cover"
-          sizes="100vw"
-        />
+        <MoodSkyBackground scene="myland" />
         <h1 className="sr-only">메인 랜드</h1>
         <button
           type="button"

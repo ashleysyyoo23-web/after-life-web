@@ -1,5 +1,6 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
@@ -309,9 +310,8 @@ function RecapviewPageContent() {
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <img
-          src="/recapauto.jpg"
-          alt=""
+        <MoodSkyBackground
+          scene="recapauto"
           className="absolute inset-0 z-[1] h-full w-full object-cover"
         />
         </>

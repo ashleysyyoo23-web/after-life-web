@@ -5,6 +5,7 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { saveMoodSky } from "@/lib/mood-sky";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -42,6 +43,8 @@ export default function MoodcheckPage() {
     }
 
     setIsSaving(true);
+    // 이후 하늘이 나오는 화면들에 바로 적용 (다음 무드체크까지 유지)
+    saveMoodSky(selectedMood);
 
     try {
       const res = await fetch("/api/emotion-logs", {

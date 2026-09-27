@@ -1,10 +1,12 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { useMoodSky } from "@/lib/mood-sky";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -29,13 +31,22 @@ export default function RecapfeedbackPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [selectedMood, setSelectedMood] = useState("");
   const [bgImage, setBgImage] = useState("/recapfeedback.jpg");
-  const textColor =
-    bgImage === "/moodcheckfour.jpg" ? "text-white" : "text-[#1a1a1a]";
+  const moodSky = useMoodSky();
+  // 밤하늘(그리움)일 때는 글자를 흰색으로
+  const isNightSky =
+    bgImage === "/moodcheckfour.jpg" ||
+    (bgImage === "/recapfeedback.jpg" && moodSky === "longing");
+  const textColor = isNightSky ? "text-white" : "text-[#1a1a1a]";
 
   return (
     <>
       <div className="relative h-screen w-screen overflow-hidden">
-        {BACKGROUND_IMAGES.map((src) => (
+        {/* 기본 배경은 오늘의 기분 하늘, 여기서 기분을 고르면 그 기분 그림으로 바뀜 */}
+        <MoodSkyBackground
+          scene="recapfeedback"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        {BACKGROUND_IMAGES.filter((src) => src !== "/recapfeedback.jpg").map((src) => (
           <Image
             key={src}
             src={src}

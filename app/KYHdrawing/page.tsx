@@ -266,6 +266,7 @@ export default function KYHdrawingPage() {
     <>
       <BackgroundPageLayout
         backgroundSrc="/KYHdrawing.jpg"
+        skyScene="KYHdrawing"
         title="김영희 님의 섬"
       />
 

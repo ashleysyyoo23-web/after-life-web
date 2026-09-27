@@ -1,11 +1,11 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -16,14 +16,7 @@ export default function StorageInsidePage() {
   return (
     <>
       <div className="relative h-screen w-screen overflow-hidden">
-        <Image
-          src="/storageinside.jpg"
-          alt=""
-          fill
-          priority
-          className="object-cover"
-          sizes="100vw"
-        />
+        <MoodSkyBackground scene="storageinside" />
         <h1 className="sr-only">저장소</h1>
 
         <button

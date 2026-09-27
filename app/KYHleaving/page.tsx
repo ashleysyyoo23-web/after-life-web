@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -17,13 +17,7 @@ export default function KYHLeavingPage() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      <Image
-        src="/KYHleavingconfirm.jpg"
-        alt=""
-        fill
-        priority
-        className="object-cover"
-      />
+      <MoodSkyBackground scene="KYHleavingconfirm" />
     </div>
   );
 }

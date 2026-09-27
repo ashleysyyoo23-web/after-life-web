@@ -1,5 +1,6 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -23,11 +24,7 @@ export default function OnboardingPage() {
         isFadingOut ? "opacity-0" : "opacity-100"
       }`}
     >
-      <img
-        src="/onboarding.jpg"
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      <MoodSkyBackground scene="onboarding" />
 
       <img
         src="/icons/onboarding-logo.svg"

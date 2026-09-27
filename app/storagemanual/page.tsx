@@ -1,5 +1,6 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
@@ -139,15 +140,19 @@ export default function StorageManualPage() {
   return (
     <>
       <div className="relative h-screen w-screen overflow-hidden">
-        <Image
-          src={bgImage}
-          alt=""
-          fill
-          priority
-          unoptimized
-          className="object-cover"
-          sizes="100vw"
-        />
+        {bgImage === "/storagemanual.jpg" ? (
+          <MoodSkyBackground scene="storagemanual" />
+        ) : (
+          <Image
+            src={bgImage}
+            alt=""
+            fill
+            priority
+            unoptimized
+            className="object-cover"
+            sizes="100vw"
+          />
+        )}
         <h1 className="sr-only">저장소</h1>
       </div>
 

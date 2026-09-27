@@ -1,5 +1,6 @@
 "use client";
 
+import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
@@ -82,11 +83,7 @@ function MainlandPageContent() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
-      <img
-        src="/mainland.jpg"
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      <MoodSkyBackground scene="mainland" />
 
       <div className="absolute inset-0 z-[1]">
         {mainlandIslands.map((island) => {
