@@ -1,40 +1,60 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { refreshDriveAccessToken } from "@/lib/deceased-drive-oauth";
 
-type DriveTokenRow = {
-  user_email: string;
-  drive_email: string;
+export type DriveConnectionRow = {
+  id: string;
+  owner_email: string;
+  google_email: string;
   access_token: string;
   refresh_token: string | null;
+  needs_reconnect: boolean;
 };
 
-export async function getDriveTokenRow(
+const DRIVE_CONNECTION_COLUMNS =
+  "id, owner_email, google_email, access_token, refresh_token, needs_reconnect";
+
+// updated_at = 마지막으로 연결(OAuth)한 시각. 토큰 갱신 때는 바꾸지 않아서
+// "가장 최근에 연결한 계정"이 갱신 때문에 뒤바뀌지 않음.
+export async function getLatestDriveConnection(
   supabase: SupabaseClient,
-  userEmail: string,
-): Promise<DriveTokenRow | null> {
+  ownerEmail: string,
+): Promise<DriveConnectionRow | null> {
   const { data, error } = await supabase
-    .from("deceased_drive_tokens")
-    .select("user_email, drive_email, access_token, refresh_token")
-    .eq("user_email", userEmail)
+    .from("drive_connections")
+    .select(DRIVE_CONNECTION_COLUMNS)
+    .eq("owner_email", ownerEmail)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error || !data) {
     return null;
   }
 
-  return data as DriveTokenRow;
+  return data as DriveConnectionRow;
 }
 
-export async function getValidDriveAccessToken(
+export async function getDriveConnectionById(
   supabase: SupabaseClient,
-  userEmail: string,
-): Promise<{ accessToken: string; driveEmail: string } | null> {
-  const row = await getDriveTokenRow(supabase, userEmail);
+  connectionId: string,
+): Promise<DriveConnectionRow | null> {
+  const { data, error } = await supabase
+    .from("drive_connections")
+    .select(DRIVE_CONNECTION_COLUMNS)
+    .eq("id", connectionId)
+    .maybeSingle();
 
-  if (!row) {
+  if (error || !data) {
     return null;
   }
 
+  return data as DriveConnectionRow;
+}
+
+export async function getValidAccessTokenForConnection(
+  supabase: SupabaseClient,
+  row: DriveConnectionRow,
+): Promise<{ accessToken: string; driveEmail: string; connectionId: string } | null> {
   const tryToken = async (accessToken: string) => {
     const probe = await fetch(
       "https://www.googleapis.com/drive/v3/about?fields=user",
@@ -47,26 +67,66 @@ export async function getValidDriveAccessToken(
     return probe.ok;
   };
 
+  const markNeedsReconnect = async () => {
+    await supabase
+      .from("drive_connections")
+      .update({ needs_reconnect: true })
+      .eq("id", row.id);
+  };
+
   if (await tryToken(row.access_token)) {
-    return { accessToken: row.access_token, driveEmail: row.drive_email };
+    return {
+      accessToken: row.access_token,
+      driveEmail: row.google_email,
+      connectionId: row.id,
+    };
   }
 
   if (!row.refresh_token) {
+    await markNeedsReconnect();
     return null;
   }
 
-  const refreshed = await refreshDriveAccessToken(row.refresh_token);
+  let refreshed;
+
+  try {
+    refreshed = await refreshDriveAccessToken(row.refresh_token);
+  } catch (refreshError) {
+    // 테스트 모드에서는 refresh token 이 약 7일 뒤 만료될 수 있음 → 다시 연결 안내
+    console.error("[drive-token] refresh failed", refreshError);
+    await markNeedsReconnect();
+    return null;
+  }
 
   await supabase
-    .from("deceased_drive_tokens")
+    .from("drive_connections")
     .update({
       access_token: refreshed.access_token,
       refresh_token: refreshed.refresh_token ?? row.refresh_token,
-      updated_at: new Date().toISOString(),
+      needs_reconnect: false,
     })
-    .eq("user_email", userEmail);
+    .eq("id", row.id);
 
-  return { accessToken: refreshed.access_token, driveEmail: row.drive_email };
+  return {
+    accessToken: refreshed.access_token,
+    driveEmail: row.google_email,
+    connectionId: row.id,
+  };
+}
+
+// 화면이 아직 "연결 1개" 기준이라, 사용자의 가장 최근 연결을 사용.
+// 1-B 에서 캐릭터별 연결(getDriveConnectionById)로 바뀜.
+export async function getValidDriveAccessToken(
+  supabase: SupabaseClient,
+  userEmail: string,
+): Promise<{ accessToken: string; driveEmail: string; connectionId: string } | null> {
+  const row = await getLatestDriveConnection(supabase, userEmail);
+
+  if (!row) {
+    return null;
+  }
+
+  return getValidAccessTokenForConnection(supabase, row);
 }
 
 export async function fetchDriveImageFiles(
