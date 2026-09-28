@@ -160,6 +160,14 @@ export function SettingsModal({
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveUserEmail, setDriveUserEmail] = useState("");
+  const [driveMessage, setDriveMessage] = useState<string | null>(null);
+  // 연결 해제 확인 창 (이 계정을 쓰는 인물 이름들)
+  const [disconnectConfirm, setDisconnectConfirm] = useState<{
+    connectionId: string;
+    driveEmail: string;
+    usedBy: string[];
+  } | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [selectedLegacyRecordTypes, setSelectedLegacyRecordTypes] = useState<
     LegacyRecordType[]
   >([]);
@@ -306,15 +314,70 @@ export function SettingsModal({
     window.location.href = "/api/deceased-drive/auth?returnTo=legacy";
   };
 
+  // 연결 해제 전에 확인: 이 계정을 쓰는 인물들의 사진이 보이지 않게 되므로
+  const handleAskDisconnectDrive = async () => {
+    setDriveMessage(null);
+
+    try {
+      const res = await fetch("/api/deceased-drive/connection", { cache: "no-store" });
+      const data = (await res.json()) as {
+        connected?: boolean;
+        driveEmail?: string | null;
+        connectionId?: string;
+        usedBy?: string[];
+      };
+
+      if (!res.ok || !data.connected || !data.connectionId) {
+        setDriveConnected(false);
+        setDriveUserEmail("");
+        return;
+      }
+
+      setDisconnectConfirm({
+        connectionId: data.connectionId,
+        driveEmail: data.driveEmail ?? "",
+        usedBy: data.usedBy ?? [],
+      });
+    } catch {
+      setDriveMessage("연결 상태를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+    }
+  };
+
   const handleDisconnectDrive = async () => {
-    await fetch("/api/deceased-drive/connection", { method: "DELETE" });
-    setDriveConnected(false);
-    setDriveUserEmail("");
+    if (!disconnectConfirm) return;
+    setDisconnecting(true);
+
+    try {
+      const res = await fetch(
+        `/api/deceased-drive/connection?connectionId=${encodeURIComponent(disconnectConfirm.connectionId)}`,
+        { method: "DELETE" },
+      );
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        keptForCharacters?: boolean;
+      } | null;
+      if (!res.ok) throw new Error(data?.error ?? "연결을 해제하지 못했어요.");
+
+      setDriveConnected(false);
+      setDriveUserEmail("");
+      setDriveMessage(
+        data?.keptForCharacters
+          ? "내가 남길 기록에서 해제했어요. 인물과의 연결은 그대로예요."
+          : "연결을 해제했어요.",
+      );
+    } catch (disconnectError) {
+      setDriveMessage(
+        disconnectError instanceof Error ? disconnectError.message : "연결을 해제하지 못했어요.",
+      );
+    } finally {
+      setDisconnecting(false);
+      setDisconnectConfirm(null);
+    }
   };
 
   const handleDriveAction = () => {
     if (driveConnected) {
-      handleDisconnectDrive();
+      void handleAskDisconnectDrive();
       return;
     }
 
@@ -489,6 +552,59 @@ export function SettingsModal({
 
   return (
     <>
+      {disconnectConfirm && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/30"
+          onMouseDown={(event) => {
+            event.stopPropagation();
+            if (event.target === event.currentTarget && !disconnecting) setDisconnectConfirm(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="disconnect-title"
+            className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-7 shadow-lg"
+          >
+            <h3 id="disconnect-title" className="font-newsreader text-2xl text-black">
+              내가 남길 기록에서 Drive 연결을 해제할까요?
+            </h3>
+            <p className="font-mulish text-sm text-[#4A423C]">{disconnectConfirm.driveEmail}</p>
+            {disconnectConfirm.usedBy.length > 0 ? (
+              <div className="flex flex-col gap-2 rounded-xl bg-[#FAF6F0] p-4 font-mulish text-sm text-[#4A423C]">
+                <p>
+                  이 계정을 쓰는 인물 <b>{disconnectConfirm.usedBy.length}명</b>과의 연결은 그대로 유지돼요.
+                </p>
+                <p className="text-[#AF9083]">{disconnectConfirm.usedBy.join(", ")}</p>
+                <p className="text-xs text-[#898787]">
+                  내가 남길 기록에서만 이 계정이 빠지고, 인물의 책장·섹션 사진은 계속 볼 수 있어요.
+                </p>
+              </div>
+            ) : (
+              <p className="font-mulish text-sm text-[#898787]">이 계정을 쓰는 인물은 없어요.</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setDisconnectConfirm(null)}
+                disabled={disconnecting}
+                className="cursor-pointer rounded-full border border-[#C0BDBD] bg-white px-5 py-2 font-mulish text-sm text-[#666] hover:bg-[#FAF6F0]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDisconnectDrive()}
+                disabled={disconnecting}
+                className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-5 py-2 font-mulish text-sm text-white hover:bg-[#9a7d71] disabled:opacity-60"
+              >
+                {disconnecting ? "해제하는 중..." : "연결 해제하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {viewerContextMenu && (
         <div
           className={legacyViewerContextMenuClass}
@@ -857,6 +973,9 @@ export function SettingsModal({
                                 {driveConnected ? "연결 해제" : "연결하기"}
                               </button>
                             </div>
+                            {driveMessage && (
+                              <p className="font-mulish text-xs text-[#4A423C]">{driveMessage}</p>
+                            )}
                           </div>
 
                           <div className="border-t border-[#E9E0D3]" />

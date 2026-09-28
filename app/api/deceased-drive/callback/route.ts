@@ -80,6 +80,18 @@ export async function GET(request: NextRequest) {
         { onConflict: "owner_email,google_email" },
       );
 
+    // 내가 남길 기록에서 다시 연결했으면 "여기서 해제됨" 표시를 지움 (칸이 아직 없으면 넘어감)
+    if (!upsertError && returnTo === "legacy") {
+      const { error: clearError } = await supabase
+        .from("drive_connections")
+        .update({ legacy_disconnected_at: null })
+        .eq("owner_email", userEmail)
+        .eq("google_email", driveEmail);
+      if (clearError) {
+        console.warn("[deceased-drive/callback] legacy flag clear skipped", clearError.message);
+      }
+    }
+
     if (upsertError) {
       console.error("[deceased-drive/callback] Supabase upsert failed", upsertError);
       return NextResponse.redirect(

@@ -34,6 +34,28 @@ export async function getLatestDriveConnection(
   return data as DriveConnectionRow;
 }
 
+// "내가 남길 기록"에 보이는 연결: 거기서 해제하지 않은 것 중 가장 최근.
+// (legacy_disconnected_at 칸이 아직 없으면 예전처럼 가장 최근 연결)
+export async function getLegacyDriveConnection(
+  supabase: SupabaseClient,
+  ownerEmail: string,
+): Promise<DriveConnectionRow | null> {
+  const { data, error } = await supabase
+    .from("drive_connections")
+    .select(DRIVE_CONNECTION_COLUMNS)
+    .eq("owner_email", ownerEmail)
+    .is("legacy_disconnected_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return getLatestDriveConnection(supabase, ownerEmail);
+  }
+
+  return (data as DriveConnectionRow | null) ?? null;
+}
+
 export async function getDriveConnectionById(
   supabase: SupabaseClient,
   connectionId: string,

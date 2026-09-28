@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getDriveConnectionById,
-  getLatestDriveConnection,
+  getLegacyDriveConnection,
 } from "@/lib/deceased-drive-token";
 
 export async function GET() {
@@ -25,18 +25,28 @@ export async function GET() {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  // 화면이 아직 "연결 1개" 기준이라 가장 최근 연결을 보여줌
-  const row = await getLatestDriveConnection(supabase, userEmail);
+  // "내가 남길 기록"에서 해제하지 않은 연결 중 가장 최근 것
+  const row = await getLegacyDriveConnection(supabase, userEmail);
 
   if (!row) {
     return NextResponse.json({ connected: false });
   }
+
+  // 연결 해제 전에 알려 주려고: 이 연결을 쓰는 내 캐릭터들
+  const { data: characters } = await supabase
+    .from("user_characters")
+    .select("nickname")
+    .eq("owner_email", userEmail)
+    .eq("drive_connection_id", row.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
 
   return NextResponse.json({
     connected: true,
     driveEmail: row.google_email,
     connectionId: row.id,
     needsReconnect: row.needs_reconnect,
+    usedBy: (characters ?? []).map((character) => character.nickname as string),
   });
 }
 
@@ -74,34 +84,49 @@ export async function DELETE(request: NextRequest) {
   const connectionId = request.nextUrl.searchParams.get("connectionId");
   const row = connectionId
     ? await getDriveConnectionById(supabase, connectionId)
-    : await getLatestDriveConnection(supabase, userEmail);
+    : await getLegacyDriveConnection(supabase, userEmail);
 
   // 남의 연결은 없는 것처럼 처리
   if (!row || row.owner_email !== userEmail) {
     return NextResponse.json({ ok: true });
   }
 
-  // 준비된 고인이 쓰는 관리자 연결을 끊으면 그 고인의 사진이 모두 안 보이게 됨
-  const { count: presetCount, error: presetError } = await supabase
-    .from("deceased")
-    .select("id", { count: "exact", head: true })
-    .eq("drive_connection_id", row.id)
-    .eq("kind", "preset");
+  // 이 연결을 쓰는 곳: 내 인물, 앨범(대표 이미지), 고인(준비된 고인의 관리자 연결 포함)
+  const [characterUse, bookUse, deceasedUse] = await Promise.all([
+    supabase.from("user_characters").select("id", { count: "exact", head: true }).eq("drive_connection_id", row.id).is("deleted_at", null),
+    supabase.from("album_books").select("id", { count: "exact", head: true }).eq("drive_connection_id", row.id),
+    supabase.from("deceased").select("id", { count: "exact", head: true }).eq("drive_connection_id", row.id),
+  ]);
+  const useError = characterUse.error ?? bookUse.error ?? deceasedUse.error;
 
-  if (presetError) {
-    return NextResponse.json({ error: presetError.message }, { status: 500 });
+  if (useError) {
+    return NextResponse.json({ error: useError.message }, { status: 500 });
   }
 
-  if ((presetCount ?? 0) > 0) {
-    return NextResponse.json(
-      {
-        error: "준비된 고인이 사용 중인 연결이라 해제할 수 없어요.",
-        code: "used_by_preset",
-      },
-      { status: 409 },
-    );
+  const inUse = (characterUse.count ?? 0) + (bookUse.count ?? 0) + (deceasedUse.count ?? 0) > 0;
+
+  // 쓰는 곳이 있으면 지우지 않고 "내가 남길 기록에서만 해제"로 표시 → 인물 사진은 계속 보임
+  if (inUse) {
+    const { error: markError } = await supabase
+      .from("drive_connections")
+      .update({ legacy_disconnected_at: new Date().toISOString() })
+      .eq("id", row.id);
+
+    if (markError) {
+      console.error("[deceased-drive/connection] legacy disconnect failed", markError.message);
+      return NextResponse.json(
+        {
+          error: "인물과 연결된 계정이라 지금은 해제할 수 없어요. (supabase/step_legacy_drive_disconnect.sql 실행이 필요해요)",
+          code: "needs_migration",
+        },
+        { status: 409 },
+      );
+    }
+
+    return NextResponse.json({ ok: true, keptForCharacters: true });
   }
 
+  // 아무도 안 쓰는 연결은 예전처럼 완전히 지움.
   // Google 은 같은 계정의 권한을 한꺼번에 취소하므로,
   // 다른 사용자가 같은 Google 계정을 연결해 두었다면 Google 쪽 취소는 하지 않음
   const { count: sharedCount, error: sharedError } = await supabase
