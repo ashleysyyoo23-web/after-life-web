@@ -59,6 +59,11 @@ function RecapviewPageContent() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [activeView, setActiveView] = useState<"book" | "share">("book");
   const [showMemoModal, setShowMemoModal] = useState(false);
+  // ✎ 감정 기록 메모
+  const [memoText, setMemoText] = useState("");
+  const [memoSaving, setMemoSaving] = useState(false);
+  const [memoError, setMemoError] = useState<string | null>(null);
+  const [characterNickname, setCharacterNickname] = useState<string | null>(null);
   const [pensActive, setPenActive] = useState(false);
   const [shareActive, setShareActive] = useState(false);
   const [bookmarkActive, setBookmarkActive] = useState(false);
@@ -134,6 +139,7 @@ function RecapviewPageContent() {
           book: { id: string; title: string } | null;
           photos: AlbumPhoto[];
           drawings?: Record<number, DrawingStroke[]>;
+          characterNickname?: string | null;
         };
 
         setAlbumTitle(data.section.title);
@@ -141,6 +147,7 @@ function RecapviewPageContent() {
         setSectionBookId(data.book?.id ?? null);
         setAlbumPhotos(data.photos);
         setDrawings(data.drawings ?? {});
+        setCharacterNickname(data.characterNickname ?? null);
       } catch {
         setSectionError(true);
         setAlbumPhotos([]);
@@ -288,6 +295,47 @@ function RecapviewPageContent() {
   // 섹션에서는 탭이 보기 방식을 바꾸고, 예전 여행 앨범에서는 기존처럼 이동
   const bookTabActive = isSectionMode ? viewMode === "book" : activeView === "book";
   const shareTabActive = isSectionMode ? viewMode === "auto" : activeView === "share";
+
+  const closeMemoModal = () => {
+    setShowMemoModal(false);
+    setPenActive(false);
+    setMemoError(null);
+  };
+
+  const handleSaveMemo = async () => {
+    const memo = memoText.trim();
+    if (!memo || memoSaving) return;
+
+    setMemoSaving(true);
+    setMemoError(null);
+
+    // 슬라이드쇼면 지금 보고 있던 사진도 함께 (책 화면은 섹션만)
+    const currentPhoto = !isBookMode ? albumPhotos[currentIndex] : undefined;
+
+    try {
+      const res = await fetch("/api/recap-memos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memo,
+          sectionId: sectionId ?? undefined,
+          travelSlug: sectionId ? undefined : bg,
+          driveFileId: currentPhoto?.driveFileId,
+          photoIndex: currentPhoto ? currentIndex : undefined,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(data?.error ?? "감정 기록을 남기지 못했어요.");
+
+      setMemoText("");
+      closeMemoModal();
+      setShowConfirm(true);
+    } catch (saveError) {
+      setMemoError(saveError instanceof Error ? saveError.message : "감정 기록을 남기지 못했어요.");
+    } finally {
+      setMemoSaving(false);
+    }
+  };
 
   const handleStop = () => {
     router.push(
@@ -653,10 +701,7 @@ function RecapviewPageContent() {
           <div className="relative flex w-full max-w-[480px] flex-col items-center rounded-2xl bg-white p-8">
             <button
               type="button"
-              onClick={() => {
-                setShowMemoModal(false);
-                setPenActive(false);
-              }}
+              onClick={closeMemoModal}
               className="absolute right-4 top-4 cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#4A423C]"
               aria-label="닫기"
             >
@@ -665,27 +710,31 @@ function RecapviewPageContent() {
 
             <div className="flex items-center justify-center gap-3 text-center font-mulish text-base text-[#1a1a1a]">
               <div className="h-6 w-6 shrink-0 rounded-full bg-gray-300" />
-              <span>할머니</span>
+              <span>{isSectionMode ? (characterNickname ?? "") : "할머니"}</span>
               <span>|</span>
               <span>{albumSubtitle || albumTitle}</span>
             </div>
 
             <textarea
+              value={memoText}
+              onChange={(event) => setMemoText(event.target.value)}
               placeholder="(최대 20자)"
               maxLength={20}
+              autoFocus
               className="mt-6 h-[100px] w-full resize-none rounded-xl border border-[#C0BDBD] p-4 font-mulish text-base text-[#1a1a1a] outline-none"
             />
+            <div className="mt-2 flex w-full justify-between font-mulish text-xs">
+              <span className="text-[#9E2121]">{memoError}</span>
+              <span className="text-[#898787]">{memoText.length}/20</span>
+            </div>
 
             <button
               type="button"
-              onClick={() => {
-                setShowMemoModal(false);
-                setPenActive(false);
-                setShowConfirm(true);
-              }}
-              className="mt-6 w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a]"
+              onClick={() => void handleSaveMemo()}
+              disabled={!memoText.trim() || memoSaving}
+              className="mt-4 w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              감정 기록 남기기
+              {memoSaving ? "남기는 중..." : "감정 기록 남기기"}
             </button>
           </div>
         </div>

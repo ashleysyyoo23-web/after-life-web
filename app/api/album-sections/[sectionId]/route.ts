@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: section, error: sectionError } = await supabase
     .from("album_sections")
-    .select("id, title, cover_drive_file_id, book_id, album_books(id, title)")
+    .select("id, title, cover_drive_file_id, book_id, album_books(id, title, user_characters(nickname))")
     .eq("id", sectionId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -44,9 +44,18 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: drawingsResult.error.message }, { status: 500 });
   }
 
-  const book = Array.isArray(section.album_books)
+  const book = (Array.isArray(section.album_books)
     ? section.album_books[0]
-    : section.album_books;
+    : section.album_books) as
+    | {
+        id: string;
+        title: string;
+        user_characters: { nickname: string } | Array<{ nickname: string }> | null;
+      }
+    | null;
+  const character = Array.isArray(book?.user_characters)
+    ? book?.user_characters[0]
+    : book?.user_characters;
 
   return NextResponse.json({
     section: {
@@ -55,6 +64,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       coverDriveFileId: section.cover_drive_file_id,
     },
     book: book ? { id: book.id, title: book.title } : null,
+    // 이 섹션이 있는 책장의 인물 (메모 창 머리글용)
+    characterNickname: character?.nickname ?? null,
     photos: (photosResult.data ?? []).map((photo) => ({
       driveFileId: photo.drive_file_id,
       fileName: photo.file_name,
