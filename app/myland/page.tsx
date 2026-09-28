@@ -2,6 +2,7 @@
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
+import { clampToSand } from "@/lib/myland-area";
 import type { CharacterAppearance } from "@/lib/character-parts";
 import {
   CharacterCreateModal,
@@ -53,6 +54,22 @@ const EMOTION_BARS = [
     bottom: 0,
   },
 ] as const;
+
+// 캐릭터를 끌어서 옮기기: 이만큼(px) 이상 움직여야 "끌기"로 봄 (그보다 적으면 그냥 클릭)
+const DRAG_THRESHOLD_PX = 5;
+
+type DragState = {
+  key: string;
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  // 누른 곳과 발끝 사이 거리(%) → 끄는 동안 캐릭터가 손가락 아래에서 튀지 않게
+  offsetX: number;
+  offsetY: number;
+  originX: number;
+  originY: number;
+  moved: boolean;
+};
 
 // 다시 연결하러 갈 때 어느 인물이었는지 기억 (돌아와서 그 인물에게 계정을 이어 줌)
 const RECONNECT_CHARACTER_KEY = "afterlife:reconnect-character";
@@ -419,6 +436,11 @@ function MylandPageContent() {
   const [endInput, setEndInput] = useState("2026.04.30");
   const [selectedRecordTypes, setSelectedRecordTypes] = useState<string[]>([]);
   const hintRef = useRef<HTMLParagraphElement>(null);
+  // 캐릭터 끌어서 옮기기
+  const stageRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const suppressClickRef = useRef(false);
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const emotionDateRangeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -582,6 +604,95 @@ function MylandPageContent() {
     window.location.href = `/api/deceased-drive/auth?${params.toString()}`;
   };
 
+  // 캐릭터 자리 바꾸기 (key "me" = 나의 캐릭터)
+  const setFigurePosition = (key: string, x: number, y: number) => {
+    if (key === "me") {
+      setMyCharacter((prev) => (prev ? { ...prev, positionX: x, positionY: y } : prev));
+    } else {
+      setCharacters((prev) => prev.map((item) => (item.id === key ? { ...item, positionX: x, positionY: y } : item)));
+    }
+  };
+
+  const stagePercent = (clientX: number, clientY: number) => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return { x: ((clientX - rect.left) / rect.width) * 100, y: ((clientY - rect.top) / rect.height) * 100 };
+  };
+
+  const handleFigurePointerDown = (event: React.PointerEvent, key: string, x: number, y: number) => {
+    if (event.button !== 0) return;
+    const point = stagePercent(event.clientX, event.clientY);
+    if (!point) return;
+    dragRef.current = {
+      key,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      offsetX: point.x - x,
+      offsetY: point.y - y,
+      originX: x,
+      originY: y,
+      moved: false,
+    };
+  };
+
+  const handleFigurePointerMove = (event: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    if (!drag.moved) {
+      const distance = Math.hypot(event.clientX - drag.startClientX, event.clientY - drag.startClientY);
+      if (distance < DRAG_THRESHOLD_PX) return;
+      drag.moved = true;
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+      setDraggingKey(drag.key);
+    }
+
+    const point = stagePercent(event.clientX, event.clientY);
+    if (!point) return;
+    const next = clampToSand(point.x - drag.offsetX, point.y - drag.offsetY);
+    setFigurePosition(drag.key, next.x, next.y);
+  };
+
+  const handleFigurePointerUp = async (event: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    if (!drag.moved) return;
+
+    // 끌기였으면 이어서 오는 클릭(책장 열기)은 무시
+    suppressClickRef.current = true;
+    setDraggingKey(null);
+
+    const point = stagePercent(event.clientX, event.clientY);
+    const next = point ? clampToSand(point.x - drag.offsetX, point.y - drag.offsetY) : { x: drag.originX, y: drag.originY };
+    setFigurePosition(drag.key, next.x, next.y);
+
+    try {
+      const res = await fetch(
+        drag.key === "me" ? "/api/me/position" : `/api/characters/${encodeURIComponent(drag.key)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ positionX: next.x, positionY: next.y }),
+        },
+      );
+      if (!res.ok) throw new Error();
+    } catch {
+      setFigurePosition(drag.key, drag.originX, drag.originY);
+      setDriveNotice("자리를 저장하지 못했어요. 잠시 뒤 다시 옮겨 주세요.");
+    }
+  };
+
+  const handleFigurePointerCancel = () => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (drag?.moved) {
+      setFigurePosition(drag.key, drag.originX, drag.originY);
+      setDraggingKey(null);
+    }
+  };
+
   // 나의 캐릭터: 처음에 한 번, 그리고 설정 창에서 저장할 때마다 다시 불러옴
   useEffect(() => {
     const loadMyCharacter = async () => {
@@ -652,6 +763,7 @@ function MylandPageContent() {
         <h1 className="sr-only">메인 랜드</h1>
         {/* 배경(16:9)과 같은 크기의 무대 위에 캐릭터를 % 위치로 세움 */}
         <div
+          ref={stageRef}
           className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
           style={{
             width: "max(100vw, 177.78vh)",
@@ -695,11 +807,27 @@ function MylandPageContent() {
               <button
                 key={character.key}
                 type="button"
-                onClick={character.onOpen}
+                onClick={() => {
+                  if (suppressClickRef.current) {
+                    suppressClickRef.current = false;
+                    return;
+                  }
+                  character.onOpen();
+                }}
+                onPointerDown={(event) =>
+                  handleFigurePointerDown(event, character.key, character.positionX ?? 50, character.positionY ?? 76)
+                }
+                onPointerMove={handleFigurePointerMove}
+                onPointerUp={(event) => void handleFigurePointerUp(event)}
+                onPointerCancel={handleFigurePointerCancel}
                 onContextMenu={character.onContextMenu}
                 onDoubleClick={(event) => event.stopPropagation()}
-                aria-label={character.label}
-                className="group pointer-events-auto absolute -translate-x-1/2 -translate-y-full cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 hover:-translate-y-[102%]"
+                aria-label={`${character.label} (끌어서 자리 옮기기)`}
+                className={`group pointer-events-auto absolute -translate-x-1/2 -translate-y-full touch-none border-0 bg-transparent p-0 select-none ${
+                  draggingKey === character.key
+                    ? "z-10 cursor-grabbing"
+                    : "cursor-pointer transition-transform duration-300 hover:-translate-y-[102%]"
+                }`}
                 style={{
                   left: `${character.positionX ?? 50}%`,
                   top: `${character.positionY ?? 76}%`,
@@ -707,7 +835,7 @@ function MylandPageContent() {
                   aspectRatio: "220 / 300",
                 }}
               >
-                <CharacterAvatar appearance={character.appearance} className="h-full w-full" />
+                <CharacterAvatar appearance={character.appearance} className="pointer-events-none h-full w-full" />
                 <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   {character.name}
                   {character.disconnected && (
@@ -784,6 +912,8 @@ function MylandPageContent() {
           className="fixed top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a] opacity-100 transition-opacity duration-1000"
         >
           고인의 캐릭터를 클릭하여 기록을 열람해보세요.
+          <br />
+          캐릭터를 끌면 섬 위 자리를 옮길 수 있어요.
         </p>
       )}
       <TopNav
