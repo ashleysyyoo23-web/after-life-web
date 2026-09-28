@@ -449,3 +449,22 @@ export async function isFolderInside(accessToken: string, folderId: string, root
   }
   return false;
 }
+
+// ───────── 내가 남길 기록: "afterlife_my data" 안의 주인공 폴더 ─────────
+export const LEGACY_OWNER_FOLDER_NAME = "주인공(민경)";
+
+// root 바로 안에서 주인공 폴더 찾기 (이름이 정확히 같은 것 → 없으면 "주인공"으로 시작하는 것)
+export async function findLegacyOwnerFolder(accessToken: string, rootId: string): Promise<DriveFolder | null> {
+  if (!/^[A-Za-z0-9_-]+$/.test(rootId)) return null;
+  const json = await driveList(
+    accessToken,
+    `'${rootId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    "id,name",
+  );
+  const folders = (json.files ?? []) as DriveFolder[];
+  return (
+    folders.find((folder) => folder.name === LEGACY_OWNER_FOLDER_NAME) ??
+    folders.find((folder) => folder.name.startsWith("주인공")) ??
+    null
+  );
+}

@@ -8,6 +8,7 @@ import Image from "next/image";
 import { BookOpen, Play, type LucideIcon } from "lucide-react";
 import { getSession, signIn } from "next-auth/react";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
+import { LegacyMyPhotos } from "@/components/LegacyMyPhotos";
 import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
 import {
   DEFAULT_RECAP_VIEW,
@@ -1187,6 +1188,14 @@ export function SettingsModal({
                               className="h-[154px] w-full max-w-[743px] resize-none rounded-[7px] border border-[#C0BDBD] bg-white p-6 font-newsreader text-base text-[#898787] placeholder:text-[#898787]"
                             />
                           </div>
+
+                          {driveConnected && (
+                            <>
+                              <div className="border-t border-[#E9E0D3]" />
+                              {/* 계정을 바꾸면 사진 목록을 새로 불러옴 */}
+                              <LegacyMyPhotos key={driveUserEmail} />
+                            </>
+                          )}
 
                         </div>
 
