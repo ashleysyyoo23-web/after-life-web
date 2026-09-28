@@ -7,6 +7,8 @@ import {
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { SectionPhotosModal, type CreatedSection } from "@/components/AlbumModals";
 import { BookTitleForm } from "@/components/BookTitleForm";
+import { QuickExitButton } from "@/components/safety/QuickExitButton";
+import { exposureBlurPx } from "@/lib/exposure";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -24,7 +26,13 @@ const SECTION_SLOTS = [
 ];
 const SLOT_SIZE_CQW = 9.8;
 
-type Book = { id: string; title: string; characterId: string | null };
+type Book = {
+  id: string;
+  title: string;
+  characterId: string | null;
+  // 노출 강도 → 섹션 대표 사진 흐림
+  emotionLevel?: number | null;
+};
 
 export default function ArchivebookPage() {
   return (
@@ -129,7 +137,7 @@ function ArchivebookPageContent() {
                       router.push(`/recapview?section=${encodeURIComponent(section.id)}`)
                     }
                     aria-label={`${section.title} 리캡 보기`}
-                    className="block h-full w-full cursor-pointer border-0 bg-white shadow-[0_1px_3px_rgba(42,37,34,0.18)] transition-shadow group-hover:shadow-[0_6px_14px_rgba(42,37,34,0.22)]"
+                    className="block h-full w-full cursor-pointer overflow-hidden border-0 bg-white shadow-[0_1px_3px_rgba(42,37,34,0.18)] transition-shadow group-hover:shadow-[0_6px_14px_rgba(42,37,34,0.22)]"
                     style={{ padding: "0.3cqw" }}
                   >
                     {section.hasCover && (
@@ -141,6 +149,12 @@ function ArchivebookPageContent() {
                         )}`}
                         alt=""
                         className="h-full w-full bg-[#F2EAE2] object-cover"
+                        // 기록 사진은 기본으로 흐리게 (노출 강도만큼, 작은 사진이라 절반 세기). 누르면 리캡이 열려요.
+                        style={{
+                          filter: section.coverRevealed
+                            ? "none"
+                            : `blur(${exposureBlurPx(book?.emotionLevel, 0.5)}px)`,
+                        }}
                       />
                     )}
                   </button>
@@ -234,6 +248,9 @@ function ArchivebookPageContent() {
           + 섹션 추가
         </button>
       )}
+
+      {/* 중단하기: "+ 섹션 추가" 바로 아래, 기록 화면마다 같은 오른쪽 위 자리 */}
+      <QuickExitButton className="fixed top-[200px] right-12 z-40" />
 
       <TopNav
         notificationCount={DEFAULT_NOTIFICATIONS.length}

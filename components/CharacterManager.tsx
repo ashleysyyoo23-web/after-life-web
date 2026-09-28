@@ -2,6 +2,8 @@
 
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
+import { ExposureControl } from "@/components/safety/ExposureControl";
+import { DEFAULT_EXPOSURE } from "@/lib/exposure";
 import type { CreatedCharacter } from "@/components/CharacterCreateModal";
 import {
   CHARACTER_DESCRIPTION_MAX,
@@ -22,6 +24,8 @@ type Detail = {
   appearance: CharacterAppearance;
   folderName: string | null;
   bookCount: number;
+  // 노출 강도 (기록 사진을 얼마나 흐리게 볼지)
+  emotionLevel: number | null;
 };
 
 const chip = (selected: boolean) =>
@@ -110,6 +114,7 @@ export function CharacterManager() {
           relation: editing.relation,
           description: editing.description,
           appearance: editing.appearance,
+          emotionLevel: editing.emotionLevel ?? DEFAULT_EXPOSURE,
         }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -255,6 +260,17 @@ export function CharacterManager() {
             onChange={(event) => setEditing({ ...editing, description: event.target.value })}
             className={`${inputClass} h-28 resize-none`}
             aria-label="소개"
+          />
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <span className="font-mulish text-sm text-[#898787]">
+            노출 강도 — 이 분의 기록 사진을 얼마나 흐리게 볼까요? (리캡을 보는 중에도 바꿀 수 있어요)
+          </span>
+          <ExposureControl
+            className="self-start"
+            value={editing.emotionLevel ?? DEFAULT_EXPOSURE}
+            onChange={(emotionLevel) => setEditing({ ...editing, emotionLevel })}
           />
         </section>
 

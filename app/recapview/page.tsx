@@ -7,6 +7,10 @@ import {
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { RecapBookView } from "@/components/RecapBookView";
+import { ExposureControl } from "@/components/safety/ExposureControl";
+import { QuickExitButton } from "@/components/safety/QuickExitButton";
+import { RevealOverlay } from "@/components/safety/RevealOverlay";
+import { DEFAULT_EXPOSURE, exposureBlurPx, exposureBlurStyle } from "@/lib/exposure";
 import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
@@ -40,6 +44,8 @@ type AlbumPhoto = {
   fileName: string | null;
   mediaUrl: string;
   caption?: string;
+  // 전에 "눌러서 보기"로 본 사진 (계속 선명하게)
+  revealed?: boolean;
 };
 
 export default function RecapviewPage() {
@@ -79,6 +85,13 @@ function RecapviewPageContent() {
   const [drawings, setDrawings] = useState<Record<number, DrawingStroke[]>>({});
   // 사진마다 원래 크기 → 액자를 지금 사진 모양에 딱 맞춤
   const [photoSizes, setPhotoSizes] = useState<Record<string, { w: number; h: number }>>({});
+  // 안전장치: 사진은 처음엔 흐리게(노출 강도만큼), 눌러야 선명. 노출 강도는 이 섹션의 캐릭터에 저장
+  const [exposure, setExposure] = useState(DEFAULT_EXPOSURE);
+  const [characterId, setCharacterId] = useState<string | null>(null);
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  const exposureSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 아직 저장 안 된 노출 강도 (바꾸자마자 화면을 떠나도 잃지 않게)
+  const pendingExposureRef = useRef<{ characterId: string; value: number } | null>(null);
   // 설정을 불러오기 전에 이미 손으로 바꿨으면 덮어쓰지 않음
   const viewTouchedRef = useRef(false);
 
@@ -133,6 +146,8 @@ function RecapviewPageContent() {
           photos: AlbumPhoto[];
           drawings?: Record<number, DrawingStroke[]>;
           characterNickname?: string | null;
+          characterId?: string | null;
+          emotionLevel?: number | null;
         };
 
         setAlbumTitle(data.section.title);
@@ -141,6 +156,10 @@ function RecapviewPageContent() {
         setAlbumPhotos(data.photos);
         setDrawings(data.drawings ?? {});
         setCharacterNickname(data.characterNickname ?? null);
+        setCharacterId(data.characterId ?? null);
+        setExposure(data.emotionLevel ?? DEFAULT_EXPOSURE);
+        // 전에 본 사진은 선명하게, 나머지는 흐리게
+        setRevealedIds(new Set(data.photos.filter((photo) => photo.revealed).map((photo) => photo.driveFileId)));
       } catch {
         setSectionError(true);
         setAlbumPhotos([]);
@@ -339,6 +358,60 @@ function RecapviewPageContent() {
     }
   };
 
+  const blurPx = exposureBlurPx(exposure);
+  // 눌러서 본 사진은 서버에 기억 → 나갔다 와도 계속 선명하게
+  const revealPhoto = (driveFileId: string) => {
+    if (revealedIds.has(driveFileId)) return;
+    setRevealedIds((prev) => new Set(prev).add(driveFileId));
+    if (sectionId) {
+      void fetch(
+        `/api/album-sections/${encodeURIComponent(sectionId)}/photos/${encodeURIComponent(driveFileId)}/reveal`,
+        { method: "POST", keepalive: true },
+      );
+    }
+  };
+
+  // 저장 안 된 노출 강도를 지금 바로 저장. keepalive → 화면을 떠나는 중에도 요청이 끝까지 감
+  const flushExposure = () => {
+    if (exposureSaveTimerRef.current) {
+      clearTimeout(exposureSaveTimerRef.current);
+      exposureSaveTimerRef.current = null;
+    }
+    const pending = pendingExposureRef.current;
+    if (!pending) return;
+    pendingExposureRef.current = null;
+    void fetch(`/api/characters/${encodeURIComponent(pending.characterId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emotionLevel: pending.value }),
+      keepalive: true,
+    });
+  };
+
+  // 보는 중에 노출 강도를 바꾸면 바로 반영하고, 잠깐 뒤 캐릭터에 저장 (여러 번 눌러도 한 번만)
+  const handleExposureChange = (value: number) => {
+    setExposure(value);
+    if (!characterId) return;
+    pendingExposureRef.current = { characterId, value };
+    if (exposureSaveTimerRef.current) clearTimeout(exposureSaveTimerRef.current);
+    exposureSaveTimerRef.current = setTimeout(flushExposure, 300);
+  };
+
+  // 화면을 떠날 때(다른 화면으로 이동·새로고침·탭 닫기) 남은 값 저장
+  const flushExposureRef = useRef(flushExposure);
+  useEffect(() => {
+    flushExposureRef.current = flushExposure;
+  });
+  useEffect(() => {
+    const handlePageHide = () => flushExposureRef.current();
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      flushExposureRef.current();
+    };
+  }, []);
+
+  // 감상 마치기: 끝까지 본 뒤 마음 기록 화면으로 (언제든 빠져나오는 건 "중단하기")
   const handleStop = () => {
     router.push(
       sectionBookId
@@ -377,6 +450,10 @@ function RecapviewPageContent() {
             onDrawingSaved={(spreadIndex, strokes) =>
               setDrawings((prev) => ({ ...prev, [spreadIndex]: strokes }))
             }
+            blurPx={blurPx}
+            revealedIds={revealedIds}
+            onReveal={revealPhoto}
+            onFinish={handleStop}
           />
         )}
         {!isBookMode && (
@@ -400,6 +477,7 @@ function RecapviewPageContent() {
         >
           <div className="relative px-8 pt-24">
             <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
               <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
                   <button
                     type="button"
@@ -470,6 +548,11 @@ function RecapviewPageContent() {
                   </button>
                 </div>
 
+                {albumPhotos.length > 0 && (
+                  <ExposureControl value={exposure} onChange={handleExposureChange} />
+                )}
+              </div>
+
               <div className="pointer-events-auto fixed right-8 top-24 z-20 flex flex-col items-end gap-2">
                 <div className="flex h-14 items-center gap-7 rounded-[42px] bg-[#FDD9BD] px-5 py-3 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]">
                   <button
@@ -536,13 +619,14 @@ function RecapviewPageContent() {
                     />
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleStop}
-                  className="mt-10 cursor-pointer rounded-full border-0 bg-[#FDD9BD] px-4 py-2 font-mulish font-semibold text-[#AF9083]"
-                >
-                  그만보기
-                </button>
+                {/* 중단하기: 언제든 한 번에 빠져나오기 (Esc) */}
+                <QuickExitButton
+                  className="mt-8"
+                  onExit={() => {
+                    setIsPlaying(false);
+                    flushExposure();
+                  }}
+                />
               </div>
             </div>
 
@@ -607,7 +691,11 @@ function RecapviewPageContent() {
                                   }
                                 }}
                                 className="relative max-h-full max-w-full object-contain"
+                                style={exposureBlurStyle(blurPx, revealedIds.has(photo.driveFileId))}
                               />
+                              {!revealedIds.has(photo.driveFileId) && (
+                                <RevealOverlay onReveal={() => revealPhoto(photo.driveFileId)} />
+                              )}
                             </>
                           )}
                         </div>
@@ -669,6 +757,16 @@ function RecapviewPageContent() {
                   />
                 ))}
               </div>
+              )}
+
+              {slideCount > 0 && currentIndex === slideCount - 1 && (
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className="mt-4 cursor-pointer rounded-full border-0 bg-[#FDD9BD] px-5 py-2 font-mulish text-sm font-semibold text-[#AF9083] shadow-[0px_2px_4px_rgba(0,0,0,0.12)] hover:bg-[#FBCAA8]"
+                >
+                  감상 마치기
+                </button>
               )}
             </div>
           </div>

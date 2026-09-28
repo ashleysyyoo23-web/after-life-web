@@ -8,6 +8,7 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { CreateAlbumModal, type CreatedBook } from "@/components/AlbumModals";
 import { BookSketchFilterDefs, ShelfBook } from "@/components/ShelfBook";
 import { BookTitleForm } from "@/components/BookTitleForm";
+import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { arrangeBooksFromCenter, type ShelfBookData } from "@/lib/book-styles";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -196,6 +197,9 @@ function ArchiveshelfPageContent() {
       >
         + 앨범 만들기
       </button>
+
+      {/* 중단하기: "+ 앨범 만들기" 바로 아래, 기록 화면마다 같은 오른쪽 위 자리 */}
+      <QuickExitButton className="fixed top-[200px] right-12 z-40" />
 
       <TopNav
         notificationCount={DEFAULT_NOTIFICATIONS.length}

@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSessionContext } from "@/lib/api-session";
 import { parseSectionInput } from "@/lib/album-sections";
+
+type SectionPhotoRow = {
+  drive_file_id: string;
+  file_name: string | null;
+  caption: string | null;
+  revealed_at?: string | null;
+};
+
+// 섹션 사진 목록. revealed_at 칸이 아직 없으면(SQL 실행 전) 그 칸 없이 다시 읽음
+async function loadSectionPhotos(supabase: SupabaseClient, sectionId: string) {
+  const withRevealed = await supabase
+    .from("album_section_photos")
+    .select("drive_file_id, file_name, caption, revealed_at")
+    .eq("section_id", sectionId)
+    .order("sort_order", { ascending: true });
+
+  if (!withRevealed.error) {
+    return { data: withRevealed.data as SectionPhotoRow[], error: null };
+  }
+
+  const plain = await supabase
+    .from("album_section_photos")
+    .select("drive_file_id, file_name, caption")
+    .eq("section_id", sectionId)
+    .order("sort_order", { ascending: true });
+  return { data: plain.data as SectionPhotoRow[] | null, error: plain.error };
+}
 
 type RouteParams = {
   params: Promise<{ sectionId: string }>;
@@ -15,7 +43,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: section, error: sectionError } = await supabase
     .from("album_sections")
-    .select("id, title, cover_drive_file_id, book_id, album_books(id, title, user_characters(nickname))")
+    .select("id, title, cover_drive_file_id, book_id, album_books(id, title, user_character_id, user_characters(nickname, emotion_level))")
     .eq("id", sectionId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -25,11 +53,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   }
 
   const [photosResult, drawingsResult] = await Promise.all([
-    supabase
-      .from("album_section_photos")
-      .select("drive_file_id, file_name, caption")
-      .eq("section_id", section.id)
-      .order("sort_order", { ascending: true }),
+    loadSectionPhotos(supabase, section.id),
     supabase
       .from("album_section_drawings")
       .select("spread_index, strokes")
@@ -50,7 +74,11 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     | {
         id: string;
         title: string;
-        user_characters: { nickname: string } | Array<{ nickname: string }> | null;
+        user_character_id: string | null;
+        user_characters:
+          | { nickname: string; emotion_level: number | null }
+          | Array<{ nickname: string; emotion_level: number | null }>
+          | null;
       }
     | null;
   const character = Array.isArray(book?.user_characters)
@@ -66,10 +94,15 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     book: book ? { id: book.id, title: book.title } : null,
     // 이 섹션이 있는 책장의 인물 (메모 창 머리글용)
     characterNickname: character?.nickname ?? null,
+    // 노출 강도(사진 흐림)를 보는 중에 바꾸면 이 캐릭터에 저장
+    characterId: book?.user_character_id ?? null,
+    emotionLevel: character?.emotion_level ?? null,
     photos: (photosResult.data ?? []).map((photo) => ({
       driveFileId: photo.drive_file_id,
       fileName: photo.file_name,
       caption: photo.caption ?? "",
+      // 한 번 "눌러서 보기"로 본 사진은 계속 선명하게
+      revealed: Boolean(photo.revealed_at),
       mediaUrl: `/api/album-sections/${section.id}/photos/${encodeURIComponent(
         photo.drive_file_id,
       )}`,

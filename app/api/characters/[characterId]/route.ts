@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: row } = await supabase
     .from("user_characters")
-    .select("id, nickname, relation, description, appearance, deceased(drive_folder_name)")
+    .select("id, nickname, relation, description, appearance, emotion_level, deceased(drive_folder_name)")
     .eq("id", characterId)
     .eq("owner_email", userEmail)
     .is("deleted_at", null)
@@ -49,12 +49,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       appearance: sanitizeAppearance(row.appearance),
       folderName: deceased?.drive_folder_name ?? null,
       bookCount: bookCount ?? 0,
+      // 노출 강도 (0 = 아주 흐리게 … 100 = 거의 선명하게)
+      emotionLevel: row.emotion_level,
     },
   });
 }
 
 // 인물 고치기. 보낸 것만 바꿈.
-// body: { nickname?, relation?, description?, appearance?, positionX?, positionY? }
+// body: { nickname?, relation?, description?, appearance?, emotionLevel?, positionX?, positionY? }
 // (positionX/Y 는 메인 랜드에서 끌어서 옮긴 발끝 위치 %, 모래밭 안으로 맞춤)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const context = await getSessionContext();
@@ -96,6 +98,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     changes.appearance = sanitizeAppearance(body.appearance);
   }
 
+  // 노출 강도: 기록 사진을 얼마나 흐리게 볼지 (리캡을 보는 중에도 바꿔요)
+  if ("emotionLevel" in body) {
+    if (typeof body.emotionLevel !== "number" || !Number.isFinite(body.emotionLevel)) {
+      return NextResponse.json({ error: "Invalid emotionLevel" }, { status: 400 });
+    }
+    changes.emotion_level = Math.max(0, Math.min(100, Math.round(body.emotionLevel)));
+  }
+
   if ("positionX" in body || "positionY" in body) {
     if (typeof body.positionX !== "number" || typeof body.positionY !== "number") {
       return NextResponse.json({ error: "Invalid position" }, { status: 400 });
@@ -115,7 +125,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .eq("id", characterId)
     .eq("owner_email", userEmail)
     .is("deleted_at", null)
-    .select("id, nickname, relation, description, appearance, position_x, position_y")
+    .select("id, nickname, relation, description, appearance, emotion_level, position_x, position_y")
     .maybeSingle();
 
   if (error) {
@@ -132,6 +142,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       relation: data.relation,
       description: data.description ?? "",
       appearance: sanitizeAppearance(data.appearance),
+      emotionLevel: data.emotion_level,
     },
     positionX: data.position_x,
     positionY: data.position_y,

@@ -195,6 +195,8 @@ export type CreatedSection = {
   hasCover: boolean;
   coverFileId?: string | null;
   photoCount?: number;
+  // 대표 사진을 이미 "눌러서 보기"로 봤으면 흐리지 않음
+  coverRevealed?: boolean;
 };
 
 const MAX_PHOTOS_PER_SECTION = 200;

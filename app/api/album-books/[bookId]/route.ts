@@ -14,7 +14,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: book, error: bookError } = await supabase
     .from("album_books")
-    .select("id, title, color, shape, position, user_character_id, user_characters(nickname)")
+    .select("id, title, color, shape, position, user_character_id, user_characters(nickname, emotion_level)")
     .eq("id", bookId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -33,6 +33,19 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: sectionsError.message }, { status: 500 });
   }
 
+  // 대표 사진이 이미 "눌러서 보기"로 본 사진이면 책 화면에서도 선명하게
+  // (revealed_at 칸이 아직 없으면 오류가 나므로 그땐 모두 흐리게)
+  const sectionIds = (sections ?? []).map((section) => section.id);
+  const revealedKeys = new Set<string>();
+  if (sectionIds.length > 0) {
+    const { data: revealedRows } = await supabase
+      .from("album_section_photos")
+      .select("section_id, drive_file_id")
+      .in("section_id", sectionIds)
+      .not("revealed_at", "is", null);
+    for (const row of revealedRows ?? []) revealedKeys.add(`${row.section_id}:${row.drive_file_id}`);
+  }
+
   return NextResponse.json({
     book: {
       id: book.id,
@@ -44,6 +57,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       // 책장 인물 이름 (리캡 마무리 화면 문구용)
       characterNickname:
         (Array.isArray(book.user_characters) ? book.user_characters[0] : book.user_characters)?.nickname ?? null,
+      // 노출 강도 → 섹션 대표 사진 흐림
+      emotionLevel:
+        (Array.isArray(book.user_characters) ? book.user_characters[0] : book.user_characters)?.emotion_level ?? null,
     },
     sections: (sections ?? []).map((section) => ({
       id: section.id,
@@ -52,6 +68,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       hasCover: Boolean(section.cover_drive_file_id),
       // 대표 이미지가 바뀌면 주소도 바뀌게 (브라우저에 남은 옛 이미지 방지)
       coverFileId: section.cover_drive_file_id,
+      coverRevealed: revealedKeys.has(`${section.id}:${section.cover_drive_file_id}`),
     })),
   });
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
+import { RevealOverlay } from "@/components/safety/RevealOverlay";
+import { exposureBlurStyle } from "@/lib/exposure";
 import {
   CAPTION_MAX_LENGTH,
   DRAWING_COLORS,
@@ -56,6 +58,12 @@ type RecapBookViewProps = {
   drawings: Record<number, DrawingStroke[]>;
   onCaptionSaved: (driveFileId: string, caption: string) => void;
   onDrawingSaved: (spreadIndex: number, strokes: DrawingStroke[]) => void;
+  // 안전장치: 사진 흐림 정도(노출 강도), 눌러서 선명하게 본 사진들
+  blurPx: number;
+  revealedIds: Set<string>;
+  onReveal: (driveFileId: string) => void;
+  // 마지막 쪽의 "감상 마치기"
+  onFinish: () => void;
 };
 
 export function RecapBookView({
@@ -64,6 +72,10 @@ export function RecapBookView({
   drawings,
   onCaptionSaved,
   onDrawingSaved,
+  blurPx,
+  revealedIds,
+  onReveal,
+  onFinish,
 }: RecapBookViewProps) {
   const [spreadIndex, setSpreadIndex] = useState(0);
   // 사진마다 가로÷세로 비율 (불러온 뒤 알게 됨) → 세로 사진이면 글을 오른쪽에
@@ -160,15 +172,23 @@ export function RecapBookView({
               setPhotoRatios((prev) => ({ ...prev, [photo.driveFileId]: w / h }));
             }
           };
+          const revealed = revealedIds.has(photo.driveFileId);
           const image = (
-            // 본인만 볼 수 있는 API 주소라 일반 img 사용
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photo.mediaUrl}
-              alt={photo.caption || photo.fileName || ""}
-              onLoad={rememberRatio}
-              className="block h-auto max-h-full w-auto max-w-full bg-[#EFE8DF] object-contain shadow-[0_1px_4px_rgba(42,37,34,0.2)]"
-            />
+            <>
+              {/* 본인만 볼 수 있는 API 주소라 일반 img 사용 */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.mediaUrl}
+                alt={photo.caption || photo.fileName || ""}
+                onLoad={rememberRatio}
+                className="block h-auto max-h-full w-auto max-w-full bg-[#EFE8DF] object-contain shadow-[0_1px_4px_rgba(42,37,34,0.2)]"
+                style={exposureBlurStyle(blurPx, revealed)}
+              />
+              {/* 처음엔 흐리게, 눌러야 선명 (그리는 중에는 펜과 헷갈리지 않게 막음) */}
+              {!revealed && (
+                <RevealOverlay size="sm" disabled={isDrawing} onReveal={() => onReveal(photo.driveFileId)} />
+              )}
+            </>
           );
           const caption = (props: { style: React.CSSProperties; side?: boolean }) => (
             <CaptionInput
@@ -313,6 +333,17 @@ export function RecapBookView({
               ))}
             </div>
           ))}
+
+        {/* 마지막 쪽에서만: 끝까지 본 뒤 마음 기록으로 (언제든 빠져나오는 건 오른쪽 위 "중단하기") */}
+        {photos.length > 0 && !isDrawing && spreadIndex === spreadCount - 1 && (
+          <button
+            type="button"
+            onClick={onFinish}
+            className="cursor-pointer rounded-full border-0 bg-[#FDD9BD] px-5 py-2 font-mulish text-sm font-semibold text-[#AF9083] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.15)] transition-colors hover:bg-[#FBCAA8]"
+          >
+            감상 마치기
+          </button>
+        )}
 
         {photos.length > 0 && !isDrawing && (
           <button
