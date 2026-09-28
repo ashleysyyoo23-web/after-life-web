@@ -93,6 +93,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (returnTo === "myland-reconnect") {
+      return NextResponse.redirect(
+        buildMylandRedirect(request, { drive_reconnected: "true", drive_email: driveEmail }),
+      );
+    }
+
     return NextResponse.redirect(
       buildMylandRedirect(request, {
         drive_connected: "true",

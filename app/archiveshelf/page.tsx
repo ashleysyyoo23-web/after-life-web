@@ -7,6 +7,7 @@ import {
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { CreateAlbumModal, type CreatedBook } from "@/components/AlbumModals";
 import { BookSketchFilterDefs, ShelfBook } from "@/components/ShelfBook";
+import { BookTitleForm } from "@/components/BookTitleForm";
 import { arrangeBooksFromCenter, type ShelfBookData } from "@/lib/book-styles";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -43,6 +44,8 @@ function ArchiveshelfPageContent() {
   const [books, setBooks] = useState<ShelfBookData[]>([]);
   const [nickname, setNickname] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  // 책 우클릭 → 이름 바꾸기 (누른 자리 근처에 작은 창)
+  const [renaming, setRenaming] = useState<{ bookId: string; title: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
     // 어느 캐릭터의 책장인지 모르면 메인 랜드에서 캐릭터를 고르도록
@@ -78,6 +81,13 @@ function ArchiveshelfPageContent() {
     }
 
     router.push(`/archivebook?book=${encodeURIComponent(bookId)}`);
+  };
+
+  const handleBookContextMenu = (bookId: string, event: React.MouseEvent) => {
+    const target = books.find((book) => book.id === bookId);
+    if (!target) return;
+    event.preventDefault();
+    setRenaming({ bookId, title: target.title, x: event.clientX, y: event.clientY });
   };
 
   const handleCreated = (book: CreatedBook) => {
@@ -119,6 +129,7 @@ function ArchiveshelfPageContent() {
                   key={book.id}
                   book={book}
                   onSelect={handleSelectBook}
+                  onContextMenu={isEmpty ? undefined : handleBookContextMenu}
                   emptyLabel="눌러서 앨범 만들기"
                 />
               ))}
@@ -139,6 +150,38 @@ function ArchiveshelfPageContent() {
           <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">{nickname}의 책장</h1>
         )}
       </div>
+
+      {renaming && (
+        <>
+          <div className="fixed inset-0 z-40" onMouseDown={() => setRenaming(null)} aria-hidden="true" />
+          <div
+            role="dialog"
+            aria-label="앨범 이름 바꾸기"
+            className="fixed z-50 w-80 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
+            style={{
+              left: `min(${renaming.x}px, calc(100vw - 21rem))`,
+              top: `max(1rem, calc(${renaming.y}px - 9rem))`,
+            }}
+          >
+            <p className="mb-3 font-mulish text-xs text-[#AF9083]">앨범 이름 바꾸기</p>
+            <BookTitleForm
+              bookId={renaming.bookId}
+              initialTitle={renaming.title}
+              onCancel={() => setRenaming(null)}
+              onSaved={(title) => {
+                setBooks((prev) => prev.map((book) => (book.id === renaming.bookId ? { ...book, title } : book)));
+                setRenaming(null);
+              }}
+            />
+          </div>
+        </>
+      )}
+
+      {!isEmpty && loaded && (
+        <p className="pointer-events-none fixed bottom-6 left-1/2 z-20 -translate-x-1/2 font-mulish text-xs text-[#AF9083]">
+          책을 우클릭하면 이름을 바꿀 수 있어요.
+        </p>
+      )}
 
       {isEmpty && (
         <p className="pointer-events-none fixed left-1/2 top-[30%] z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">

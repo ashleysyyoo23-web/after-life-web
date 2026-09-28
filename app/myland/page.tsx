@@ -54,6 +54,19 @@ const EMOTION_BARS = [
   },
 ] as const;
 
+// 다시 연결하러 갈 때 어느 인물이었는지 기억 (돌아와서 그 인물에게 계정을 이어 줌)
+const RECONNECT_CHARACTER_KEY = "afterlife:reconnect-character";
+
+type DriveMenu = {
+  characterId: string;
+  nickname: string;
+  x: number;
+  y: number;
+  status: "checking" | "ok" | "needs_reconnect" | "not_connected" | "error";
+  googleEmail: string | null;
+  folderName: string | null;
+};
+
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 function formatDateDot(date: Date) {
@@ -392,6 +405,9 @@ function MylandPageContent() {
   const [characters, setCharacters] = useState<CreatedCharacter[]>([]);
   const [charactersLoaded, setCharactersLoaded] = useState(false);
   const [showHint, setShowHint] = useState(true);
+  // 캐릭터 우클릭 메뉴 (Drive 연결 상태 · 다시 연결하기)
+  const [driveMenu, setDriveMenu] = useState<DriveMenu | null>(null);
+  const [driveNotice, setDriveNotice] = useState<string | null>(null);
   const [showAnniversaryModal, setShowAnniversaryModal] = useState(false);
   const [showRecordTypeModal, setShowRecordTypeModal] = useState(false);
   const [showEmotionModal, setShowEmotionModal] = useState(false);
@@ -449,6 +465,122 @@ function MylandPageContent() {
 
     router.replace("/myland?from=moodcheck");
   }, [router, searchParams]);
+
+  // 캐릭터 우클릭 → 다시 연결하고 돌아왔을 때
+  useEffect(() => {
+    if (searchParams.get("drive_reconnected") !== "true") {
+      return;
+    }
+
+    const connectedEmail = searchParams.get("drive_email");
+    let characterId: string | null = null;
+    try {
+      characterId = sessionStorage.getItem(RECONNECT_CHARACTER_KEY);
+      sessionStorage.removeItem(RECONNECT_CHARACTER_KEY);
+    } catch {
+      // 저장소를 못 쓰면 계정 연결만 된 상태로 둠
+    }
+
+    void (async () => {
+      if (!characterId || !connectedEmail) {
+        setDriveNotice("Drive를 다시 연결했어요.");
+        return;
+      }
+
+      const res = await fetch(`/api/characters/${encodeURIComponent(characterId)}/drive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ googleEmail: connectedEmail }),
+      });
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+
+      if (!res.ok) {
+        setDriveNotice(data?.error ?? "인물에게 계정을 이어 주지 못했어요.");
+        return;
+      }
+
+      setDriveNotice(`${connectedEmail} 계정으로 다시 연결했어요.`);
+      setCharacters((prev) =>
+        prev.map((item) =>
+          item.id === characterId ? { ...item, drive: { googleEmail: connectedEmail, needsReconnect: false } } : item,
+        ),
+      );
+    })();
+    router.replace("/myland?from=moodcheck");
+  }, [router, searchParams]);
+
+  useEffect(() => {
+    if (!driveNotice) return;
+    const timer = setTimeout(() => setDriveNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [driveNotice]);
+
+  // 우클릭 메뉴 바깥을 누르면 닫기
+  useEffect(() => {
+    if (!driveMenu) return;
+    const close = () => setDriveMenu(null);
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [driveMenu]);
+
+  const openDriveMenu = async (event: React.MouseEvent, character: CreatedCharacter) => {
+    event.preventDefault();
+    const menu: DriveMenu = {
+      characterId: character.id,
+      nickname: character.nickname,
+      x: event.clientX,
+      y: event.clientY,
+      status: "checking",
+      googleEmail: character.drive?.googleEmail ?? null,
+      folderName: character.folderName,
+    };
+    setDriveMenu(menu);
+
+    // 목록의 표시는 오래됐을 수 있어서, 메뉴를 열 때 실제로 확인
+    try {
+      const res = await fetch(`/api/characters/${encodeURIComponent(character.id)}/drive`, { cache: "no-store" });
+      const data = (await res.json()) as {
+        status?: DriveMenu["status"];
+        googleEmail?: string | null;
+        folderName?: string | null;
+      };
+      const status = res.ok && data.status ? data.status : "error";
+
+      setDriveMenu((current) =>
+        current?.characterId === character.id
+          ? {
+              ...current,
+              status,
+              googleEmail: data.googleEmail ?? current.googleEmail,
+              folderName: data.folderName ?? current.folderName,
+            }
+          : current,
+      );
+      // 호버 표시("연결 끊김")도 맞춰 둠
+      if (status === "ok" || status === "needs_reconnect") {
+        setCharacters((prev) =>
+          prev.map((item) =>
+            item.id === character.id && item.drive
+              ? { ...item, drive: { ...item.drive, needsReconnect: status === "needs_reconnect" } }
+              : item,
+          ),
+        );
+      }
+    } catch {
+      setDriveMenu((current) => (current?.characterId === character.id ? { ...current, status: "error" } : current));
+    }
+  };
+
+  const handleReconnectDrive = (characterId: string, googleEmail: string | null) => {
+    try {
+      sessionStorage.setItem(RECONNECT_CHARACTER_KEY, characterId);
+    } catch {
+      // 저장소를 못 쓰면 계정 연결만 하고 돌아옴
+    }
+    const params = new URLSearchParams({ returnTo: "myland-reconnect" });
+    if (googleEmail) params.set("loginHint", googleEmail);
+    window.location.href = `/api/deceased-drive/auth?${params.toString()}`;
+  };
 
   // 나의 캐릭터: 처음에 한 번, 그리고 설정 창에서 저장할 때마다 다시 불러옴
   useEffect(() => {
@@ -535,7 +667,10 @@ function MylandPageContent() {
               positionX: character.positionX,
               positionY: character.positionY,
               label: `${character.nickname}의 기록 보기`,
+              // 연결이 지워졌거나(설정에서 연결 해제) 만료된 인물
+              disconnected: !character.drive || character.drive.needsReconnect,
               onOpen: () => router.push(`/archiveshelf?character=${encodeURIComponent(character.id)}`),
+              onContextMenu: (event: React.MouseEvent) => void openDriveMenu(event, character),
             })),
             ...(myCharacter
               ? [{
@@ -545,6 +680,8 @@ function MylandPageContent() {
                   positionX: myCharacter.positionX,
                   positionY: myCharacter.positionY,
                   label: `나의 캐릭터 (${myCharacter.name}) 꾸미기`,
+                  disconnected: false,
+                  onContextMenu: undefined,
                   onOpen: () => {
                     setSettingsTab("profile");
                     setShowSettings(true);
@@ -559,6 +696,7 @@ function MylandPageContent() {
                 key={character.key}
                 type="button"
                 onClick={character.onOpen}
+                onContextMenu={character.onContextMenu}
                 onDoubleClick={(event) => event.stopPropagation()}
                 aria-label={character.label}
                 className="group pointer-events-auto absolute -translate-x-1/2 -translate-y-full cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 hover:-translate-y-[102%]"
@@ -572,11 +710,67 @@ function MylandPageContent() {
                 <CharacterAvatar appearance={character.appearance} className="h-full w-full" />
                 <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   {character.name}
+                  {character.disconnected && (
+                    <span className="ml-2 font-mulish text-xs text-[#9E2121]">Drive 연결 끊김 · 우클릭</span>
+                  )}
                 </span>
               </button>
             ))}
         </div>
       </div>
+      {driveMenu && (
+        <div
+          role="menu"
+          aria-label={`${driveMenu.nickname}의 Drive 연결`}
+          onMouseDown={(event) => event.stopPropagation()}
+          className="fixed z-50 flex w-72 flex-col gap-3 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
+          style={{
+            left: `min(${driveMenu.x}px, calc(100vw - 19rem))`,
+            top: `min(${driveMenu.y}px, calc(100vh - 12rem))`,
+          }}
+        >
+          <p className="font-jeju-myeongjo text-base text-[#4A423C]">{driveMenu.nickname}</p>
+          <div className="flex flex-col gap-1 font-mulish text-xs text-[#898787]">
+            <span>연결된 계정: {driveMenu.googleEmail ?? "없음"}</span>
+            {driveMenu.folderName && <span>폴더: {driveMenu.folderName}</span>}
+            <span
+              className={
+                driveMenu.status === "ok"
+                  ? "text-[#6E8A3E]"
+                  : driveMenu.status === "checking"
+                    ? "text-[#898787]"
+                    : "text-[#9E2121]"
+              }
+            >
+              {
+                {
+                  checking: "연결 상태를 확인하는 중...",
+                  ok: "잘 연결되어 있어요.",
+                  needs_reconnect: "연결이 끊어졌어요. 다시 연결해 주세요.",
+                  not_connected: "연결이 끊어졌어요. 폴더를 공유받은 계정으로 다시 연결해 주세요.",
+                  error: "연결 상태를 확인하지 못했어요.",
+                }[driveMenu.status]
+              }
+            </span>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => handleReconnectDrive(driveMenu.characterId, driveMenu.googleEmail)}
+            className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-2 font-mulish text-sm text-white transition-colors hover:bg-[#9a7d71]"
+          >
+            Drive 다시 연결하기
+          </button>
+        </div>
+      )}
+      {driveNotice && (
+        <p
+          role="status"
+          className="fixed bottom-10 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-white/90 px-6 py-3 font-mulish text-sm text-[#4A423C] shadow"
+        >
+          {driveNotice}
+        </p>
+      )}
       {charactersLoaded && characters.length === 0 && !myCharacter && !showAddModal && (
         <p className="pointer-events-none fixed top-[38%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 text-center font-mulish font-normal text-[#1a1a1a]">
           아직 섬에 아무도 없어요.

@@ -34,6 +34,8 @@ export type CreatedCharacter = {
   positionX: number | null;
   positionY: number | null;
   folderName: string | null;
+  // 연결된 Google 계정 (없으면 null)
+  drive?: { googleEmail: string; needsReconnect: boolean } | null;
 };
 
 type Connection = { id: string; googleEmail: string; needsReconnect: boolean };

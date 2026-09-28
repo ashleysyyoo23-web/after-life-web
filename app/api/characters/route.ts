@@ -29,10 +29,24 @@ type CharacterRow = {
   appearance: unknown;
   position_x: number | null;
   position_y: number | null;
-  deceased: { id: string; kind: string; drive_folder_name: string | null } | Array<{ id: string; kind: string; drive_folder_name: string | null }> | null;
+  drive_connection_id: string | null;
+  deceased: DeceasedJoin | DeceasedJoin[] | null;
 };
 
-function toClient(row: CharacterRow) {
+type DeceasedJoin = { id: string; kind: string; drive_folder_name: string | null; drive_connection_id: string | null };
+
+const CHARACTER_SELECT =
+  "id, nickname, relation, appearance, position_x, position_y, drive_connection_id, deceased(id, kind, drive_folder_name, drive_connection_id)";
+
+// 캐릭터가 쓰는 Drive 연결 (내 연결 → 준비된 고인이면 관리자 연결)
+function connectionIdOf(row: CharacterRow) {
+  const deceased = Array.isArray(row.deceased) ? row.deceased[0] : row.deceased;
+  return row.drive_connection_id ?? deceased?.drive_connection_id ?? null;
+}
+
+type DriveInfo = { googleEmail: string; needsReconnect: boolean };
+
+function toClient(row: CharacterRow, drive: DriveInfo | null = null) {
   const deceased = Array.isArray(row.deceased) ? row.deceased[0] : row.deceased;
   return {
     id: row.id,
@@ -42,6 +56,8 @@ function toClient(row: CharacterRow) {
     positionX: row.position_x,
     positionY: row.position_y,
     folderName: deceased?.drive_folder_name ?? null,
+    // 연결된 Google 계정과 "다시 연결 필요" 여부 (마이랜드 우클릭 메뉴용)
+    drive,
   };
 }
 
@@ -53,7 +69,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("user_characters")
-    .select("id, nickname, relation, appearance, position_x, position_y, deceased(id, kind, drive_folder_name)")
+    .select(CHARACTER_SELECT)
     .eq("owner_email", userEmail)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
@@ -62,7 +78,27 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ characters: (data as CharacterRow[] ?? []).map(toClient) });
+  const rows = (data ?? []) as CharacterRow[];
+  const connectionIds = [...new Set(rows.map(connectionIdOf).filter((id): id is string => Boolean(id)))];
+  const drives = new Map<string, DriveInfo>();
+
+  if (connectionIds.length > 0) {
+    const { data: connections } = await supabase
+      .from("drive_connections")
+      .select("id, google_email, needs_reconnect")
+      .in("id", connectionIds);
+
+    for (const connection of connections ?? []) {
+      drives.set(connection.id, {
+        googleEmail: connection.google_email,
+        needsReconnect: Boolean(connection.needs_reconnect),
+      });
+    }
+  }
+
+  return NextResponse.json({
+    characters: rows.map((row) => toClient(row, drives.get(connectionIdOf(row) ?? "") ?? null)),
+  });
 }
 
 // "YYYY.MM.DD" (또는 MM.DD) → 월·일·년
@@ -203,9 +239,9 @@ export async function POST(request: NextRequest) {
   // 예전에 지웠던 같은 고인 캐릭터가 있으면 되살려서 다시 씀
   const saved = existing
     ? await supabase.from("user_characters").update(characterFields).eq("id", existing.id)
-        .select("id, nickname, relation, appearance, position_x, position_y, deceased(id, kind, drive_folder_name)").single()
+        .select(CHARACTER_SELECT).single()
     : await supabase.from("user_characters").insert(characterFields)
-        .select("id, nickname, relation, appearance, position_x, position_y, deceased(id, kind, drive_folder_name)").single();
+        .select(CHARACTER_SELECT).single();
 
   if (saved.error) {
     return NextResponse.json({ error: saved.error.message }, { status: 500 });
@@ -249,5 +285,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ character: toClient(saved.data as CharacterRow) }, { status: 201 });
+  return NextResponse.json({ character: toClient(saved.data as CharacterRow, { googleEmail: connection.google_email, needsReconnect: false }) }, { status: 201 });
 }

@@ -30,7 +30,12 @@ export function getDeceasedGoogleCredentials() {
   };
 }
 
-export type DeceasedDriveOAuthReturnTo = "myland" | "legacy";
+// myland-reconnect: 마이랜드에서 캐릭터 우클릭 → 끊어진 계정 다시 연결
+export type DeceasedDriveOAuthReturnTo = "myland" | "legacy" | "myland-reconnect";
+
+export function parseOAuthReturnTo(value: unknown): DeceasedDriveOAuthReturnTo {
+  return value === "legacy" || value === "myland-reconnect" ? value : "myland";
+}
 
 export type DeceasedDriveOAuthState = {
   userEmail: string;
@@ -54,7 +59,7 @@ export function decodeOAuthState(state: string): DeceasedDriveOAuthState {
     if (parsed.userEmail) {
       return {
         userEmail: parsed.userEmail,
-        returnTo: parsed.returnTo === "legacy" ? "legacy" : "myland",
+        returnTo: parseOAuthReturnTo(parsed.returnTo),
       };
     }
   } catch {

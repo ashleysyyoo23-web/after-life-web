@@ -6,14 +6,16 @@ import {
   encodeOAuthState,
   getDeceasedDriveRedirectUri,
   getDeceasedGoogleCredentials,
+  parseOAuthReturnTo,
 } from "@/lib/deceased-drive-oauth";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   const userEmail = session?.user?.email;
   const { searchParams } = new URL(request.url);
-  const returnToParam = searchParams.get("returnTo");
-  const returnTo = returnToParam === "legacy" ? "legacy" : "myland";
+  const returnTo = parseOAuthReturnTo(searchParams.get("returnTo"));
+  // 다시 연결할 때는 그 계정을 미리 골라 둠 (다른 계정도 고를 수 있음)
+  const loginHint = searchParams.get("loginHint");
 
   if (!userEmail) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -49,6 +51,10 @@ export async function GET(request: Request) {
     prompt: "consent select_account",
     state: encodeOAuthState(userEmail, returnTo),
   });
+
+  if (loginHint && loginHint.includes("@")) {
+    params.set("login_hint", loginHint);
+  }
 
   return NextResponse.redirect(
     `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,

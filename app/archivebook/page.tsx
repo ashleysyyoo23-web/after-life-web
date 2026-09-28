@@ -6,6 +6,7 @@ import {
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { SectionPhotosModal, type CreatedSection } from "@/components/AlbumModals";
+import { BookTitleForm } from "@/components/BookTitleForm";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -41,6 +42,7 @@ function ArchivebookPageContent() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [book, setBook] = useState<Book | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
   const [sections, setSections] = useState<CreatedSection[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "not-found">(
     "loading",
@@ -180,10 +182,31 @@ function ArchivebookPageContent() {
           >
             ← 책장으로
           </button>
-          {book && (
-            <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">
-              {book.title}
-            </h1>
+          {book && !editingTitle && (
+            <div className="group mt-4 flex items-center gap-3">
+              <h1 className="font-newsreader text-5xl text-[#1a1a1a]">{book.title}</h1>
+              <button
+                type="button"
+                onClick={() => setEditingTitle(true)}
+                aria-label="앨범 이름 바꾸기"
+                title="이름 바꾸기"
+                className="cursor-pointer rounded-full border-0 bg-white/70 px-3 py-1 font-mulish text-base text-[#AF9083] opacity-60 transition-opacity hover:opacity-100 group-hover:opacity-100"
+              >
+                ✎
+              </button>
+            </div>
+          )}
+          {book && editingTitle && (
+            <BookTitleForm
+              bookId={book.id}
+              initialTitle={book.title}
+              className="mt-4 w-96 rounded-xl bg-white/90 p-4"
+              onCancel={() => setEditingTitle(false)}
+              onSaved={(title) => {
+                setBook((prev) => (prev ? { ...prev, title } : prev));
+                setEditingTitle(false);
+              }}
+            />
           )}
         </div>
       </div>

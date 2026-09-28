@@ -52,3 +52,40 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     })),
   });
 }
+
+const TITLE_MAX_LENGTH = 20;
+
+// 앨범(책) 이름 바꾸기. body: { title }
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const context = await getSessionContext();
+  if (!context.ok) return context.response;
+  const { supabase, userEmail } = context;
+  const { bookId } = await params;
+  const body = (await request.json().catch(() => null)) as { title?: unknown } | null;
+  const title = typeof body?.title === "string" ? body.title.trim() : "";
+
+  if (!title || title.length > TITLE_MAX_LENGTH) {
+    return NextResponse.json(
+      { error: `이름은 1~${TITLE_MAX_LENGTH}자로 적어 주세요.` },
+      { status: 400 },
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("album_books")
+    .update({ title, updated_at: new Date().toISOString() })
+    .eq("id", bookId)
+    .eq("owner_email", userEmail)
+    .select("id, title")
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Album not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ book: data });
+}
