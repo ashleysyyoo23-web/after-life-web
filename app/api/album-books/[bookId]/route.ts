@@ -14,7 +14,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: book, error: bookError } = await supabase
     .from("album_books")
-    .select("id, title, color, shape, position, user_character_id")
+    .select("id, title, color, shape, position, user_character_id, user_characters(nickname)")
     .eq("id", bookId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -41,6 +41,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       shape: book.shape,
       position: book.position,
       characterId: book.user_character_id,
+      // 책장 인물 이름 (리캡 마무리 화면 문구용)
+      characterNickname:
+        (Array.isArray(book.user_characters) ? book.user_characters[0] : book.user_characters)?.nickname ?? null,
     },
     sections: (sections ?? []).map((section) => ({
       id: section.id,
