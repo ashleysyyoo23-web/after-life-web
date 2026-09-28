@@ -9,6 +9,15 @@ import { BookOpen, Play, type LucideIcon } from "lucide-react";
 import { getSession, signIn } from "next-auth/react";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { LegacyMyPhotos } from "@/components/LegacyMyPhotos";
+import {
+  LEGACY_MESSAGE_MAX,
+  LEGACY_VIEWER_ID_MAX,
+  LEGACY_VIEWER_RELATION_MAX,
+  LEGACY_VIEWERS_MAX,
+  sanitizeLegacySettings,
+  type LegacyRecordType,
+  type LegacyViewer,
+} from "@/lib/legacy-settings";
 import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
 import {
   DEFAULT_RECAP_VIEW,
@@ -23,15 +32,6 @@ import { useCallback, useEffect, useState } from "react";
 const LEGACY_SETTINGS_CALLBACK_URL = "/mainland?settings=legacy";
 
 type SettingId = "view-method" | "profile" | "legacy" | "edit-person";
-type LegacyRecordType =
-  | "daily-face"
-  | "id-photo"
-  | "anniversary"
-  | "no-face"
-  | "together-daily"
-  | "video-face"
-  | "video-no-face"
-  | "custom";
 
 // 리캡을 열었을 때 처음 보이는 화면
 const viewTypeOptions: {
@@ -105,18 +105,6 @@ const legacyRecordTypeOptions: { id: LegacyRecordType; label: string }[] = [
   { id: "custom", label: "직접 고르고 싶어요" },
 ];
 
-type LegacyViewer = {
-  id: string;
-  relationship: string;
-};
-
-const initialLegacyViewers: LegacyViewer[] = [
-  { id: "seoyeon_05", relationship: "친구" },
-  { id: "eunsol_04", relationship: "친구" },
-  { id: "mingyung_05", relationship: "친구" },
-  { id: "nice_day_00", relationship: "친구" },
-  { id: "missingsh_98", relationship: "친구" },
-];
 
 const legacyViewerCardClass =
   "flex flex-col items-center gap-2 rounded-xl border border-[#E9E0D3] bg-white p-3";
@@ -176,7 +164,11 @@ export function SettingsModal({
   const [legacyEndDate, setLegacyEndDate] = useState("");
   const [legacyMessage, setLegacyMessage] = useState("");
   const [legacyViewers, setLegacyViewers] =
-    useState<LegacyViewer[]>(initialLegacyViewers);
+    useState<LegacyViewer[]>([]);
+  // 내가 남길 기록 2~5번 저장 상태
+  const [legacyLoaded, setLegacyLoaded] = useState(false);
+  const [legacySaving, setLegacySaving] = useState(false);
+  const [legacySaveMessage, setLegacySaveMessage] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [addViewerUsername, setAddViewerUsername] = useState("");
   const [addViewerRelation, setAddViewerRelation] = useState("");
@@ -403,6 +395,15 @@ export function SettingsModal({
       return;
     }
 
+    // 같은 아이디는 한 번만, 최대 인원까지
+    if (
+      legacyViewers.some((viewer) => viewer.id === username) ||
+      legacyViewers.length >= LEGACY_VIEWERS_MAX
+    ) {
+      handleCancelAddViewer();
+      return;
+    }
+
     setLegacyViewers((viewers) => [
       ...viewers,
       {
@@ -444,8 +445,37 @@ export function SettingsModal({
     setSelectedLegacyRecordTypes([]);
   };
 
-  const handleConfirmLegacyMessage = () => {
-    console.log(legacyMessage);
+  const handleSaveLegacySettings = async () => {
+    setLegacySaving(true);
+    setLegacySaveMessage(null);
+
+    try {
+      const res = await fetch("/api/legacy/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          viewers: legacyViewers,
+          recordTypes: selectedLegacyRecordTypes,
+          hiddenStart: legacyStartDate,
+          hiddenEnd: legacyEndDate,
+          lastMessage: legacyMessage,
+        }),
+      });
+
+      if (res.status === 401) {
+        void signIn("google", { callbackUrl: LEGACY_SETTINGS_CALLBACK_URL });
+        return;
+      }
+
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(json?.error ?? "저장하지 못했어요.");
+
+      setLegacySaveMessage("저장했어요.");
+    } catch (saveError) {
+      setLegacySaveMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
+    } finally {
+      setLegacySaving(false);
+    }
   };
 
   const isLegacyDateRangeInvalid =
@@ -507,6 +537,27 @@ export function SettingsModal({
 
     void loadDriveConnection();
   }, [isOpen, loadDriveConnection, selectedSetting]);
+
+  // 저장해 둔 내가 남길 기록(2~5번) 불러오기 (그 탭을 처음 열 때 한 번)
+  useEffect(() => {
+    if (!isOpen || selectedSetting !== "legacy" || legacyLoaded) return;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/legacy/settings", { cache: "no-store" });
+        if (!res.ok) return;
+        const { settings } = (await res.json()) as { settings: unknown };
+        const loaded = sanitizeLegacySettings(settings as Parameters<typeof sanitizeLegacySettings>[0]);
+        setLegacyViewers(loaded.viewers);
+        setSelectedLegacyRecordTypes(loaded.recordTypes);
+        setLegacyStartDate(loaded.hiddenStart);
+        setLegacyEndDate(loaded.hiddenEnd);
+        setLegacyMessage(loaded.lastMessage);
+      } finally {
+        setLegacyLoaded(true);
+      }
+    })();
+  }, [isOpen, selectedSetting, legacyLoaded]);
 
   // 저장해 둔 기록을 마주할 방법 불러오기 (창을 처음 열 때 한 번)
   useEffect(() => {
@@ -1026,6 +1077,7 @@ export function SettingsModal({
                                       setAddViewerUsername(e.target.value)
                                     }
                                     placeholder="아이디를 입력하세요"
+                                    maxLength={LEGACY_VIEWER_ID_MAX}
                                     className="w-full rounded-[7px] border border-[#C0BDBD] bg-white px-3 py-2 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
                                   />
                                   <input
@@ -1035,6 +1087,7 @@ export function SettingsModal({
                                       setAddViewerRelation(e.target.value)
                                     }
                                     placeholder="관계를 입력하세요"
+                                    maxLength={LEGACY_VIEWER_RELATION_MAX}
                                     className="w-full rounded-[7px] border border-[#C0BDBD] bg-white px-3 py-2 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
                                   />
                                   <div className="flex gap-2">
@@ -1171,7 +1224,8 @@ export function SettingsModal({
                               </div>
                               <button
                                 type="button"
-                                onClick={handleConfirmLegacyMessage}
+                                onClick={() => void handleSaveLegacySettings()}
+                                disabled={legacySaving}
                                 className="shrink-0 rounded-lg bg-[#AF9083] px-4 py-1 font-mulish text-sm text-white transition-colors hover:bg-[#9A7F73]"
                               >
                                 확인
@@ -1183,10 +1237,26 @@ export function SettingsModal({
                               onChange={(e) =>
                                 setLegacyMessage(e.target.value)
                               }
-                              maxLength={100}
+                              maxLength={LEGACY_MESSAGE_MAX}
                               placeholder="(최대 100자)"
                               className="h-[154px] w-full max-w-[743px] resize-none rounded-[7px] border border-[#C0BDBD] bg-white p-6 font-newsreader text-base text-[#898787] placeholder:text-[#898787]"
                             />
+                          </div>
+
+                          <div className="flex max-w-[743px] items-center justify-end gap-3 pl-6">
+                            {legacySaveMessage && (
+                              <p className="mr-auto font-mulish text-sm text-[#4A423C]">
+                                {legacySaveMessage}
+                              </p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => void handleSaveLegacySettings()}
+                              disabled={legacySaving || !legacyLoaded || isLegacyDateRangeInvalid}
+                              className="cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] px-8 py-2.5 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {legacySaving ? "저장 중..." : "기록 설정 저장하기"}
+                            </button>
                           </div>
 
                           {driveConnected && (
