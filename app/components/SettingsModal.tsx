@@ -6,21 +6,12 @@ import {
 } from "@/components/legacy-date-picker";
 import Image from "next/image";
 import { BookOpen, Clock, Play, type LucideIcon } from "lucide-react";
-import { TRAVEL_ALBUM_STICKERS } from "@/lib/travel-album-stickers";
 import { getSession, signIn } from "next-auth/react";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
 import { useCallback, useEffect, useState } from "react";
 
 const LEGACY_SETTINGS_CALLBACK_URL = "/mainland?settings=legacy";
-
-type DriveFile = {
-  id: string;
-  name: string;
-  mimeType: string;
-  thumbnailUrl: string | null;
-  webViewLink: string | null;
-};
 
 type SettingId = "view-method" | "profile" | "legacy" | "edit-person";
 type ViewType = "slideshow" | "timeline" | "book";
@@ -166,11 +157,6 @@ export function SettingsModal({
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveUserEmail, setDriveUserEmail] = useState("");
-  const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
-  const [driveFilesLoading, setDriveFilesLoading] = useState(false);
-  const [driveFilesError, setDriveFilesError] = useState<string | null>(null);
-  const [isEditingPhotos, setIsEditingPhotos] = useState(false);
-  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [selectedLegacyRecordTypes, setSelectedLegacyRecordTypes] = useState<
     LegacyRecordType[]
   >([]);
@@ -187,14 +173,6 @@ export function SettingsModal({
     x: number;
     y: number;
   } | null>(null);
-  const [selectedTravelSlug, setSelectedTravelSlug] = useState(
-    TRAVEL_ALBUM_STICKERS[0]?.slug ?? "recapauto",
-  );
-  const [albumPhotoIds, setAlbumPhotoIds] = useState<Set<string>>(new Set());
-  const [legacySaveMessage, setLegacySaveMessage] = useState<string | null>(
-    null,
-  );
-  const [legacySaving, setLegacySaving] = useState(false);
 
   useEffect(() => {
     if (!viewerContextMenu) {
@@ -248,83 +226,6 @@ export function SettingsModal({
     }
   }, []);
 
-  const loadAlbumPhotoIds = useCallback(async (slug: string) => {
-    try {
-      const res = await fetch(`/api/legacy/travel-albums/${slug}`, {
-        cache: "no-store",
-      });
-
-      if (!res.ok) {
-        setAlbumPhotoIds(new Set());
-        return;
-      }
-
-      const data = (await res.json()) as {
-        photos?: Array<{ driveFileId: string }>;
-      };
-
-      setAlbumPhotoIds(
-        new Set(data.photos?.map((photo) => photo.driveFileId) ?? []),
-      );
-    } catch {
-      setAlbumPhotoIds(new Set());
-    }
-  }, []);
-
-  const loadDriveFiles = async () => {
-    setDriveFilesLoading(true);
-    setDriveFilesError(null);
-
-    try {
-      const res = await fetch("/api/drive/files", { cache: "no-store" });
-
-      if (res.status === 401) {
-        const errorJson = (await res.json().catch(() => null)) as {
-          code?: string;
-        } | null;
-
-        if (errorJson?.code === "drive_not_connected") {
-          setDriveConnected(false);
-          setDriveUserEmail("");
-          setDriveFiles([]);
-          return;
-        }
-
-        const session = await getSession();
-        if (!session) {
-          void signIn("google", { callbackUrl: LEGACY_SETTINGS_CALLBACK_URL });
-        }
-        return;
-      }
-
-      if (!res.ok) {
-        const errorJson = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(errorJson?.error ?? "Drive 파일을 불러오지 못했습니다.");
-      }
-
-      const data = (await res.json()) as {
-        files: DriveFile[];
-        driveEmail?: string | null;
-      };
-
-      const connectedEmail = data.driveEmail ?? "";
-
-      setDriveConnected(true);
-      setDriveUserEmail(connectedEmail);
-      setDriveFiles(data.files);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Drive 파일을 불러오지 못했습니다.";
-      setDriveFiles([]);
-      setDriveFilesError(message);
-    } finally {
-      setDriveFilesLoading(false);
-    }
-  };
   const getSidebarMenuClass = (id: SettingId) =>
     selectedSetting === id
       ? `${sidebarMenuBaseClass} bg-[#FDD9BD]`
@@ -383,10 +284,6 @@ export function SettingsModal({
     await fetch("/api/deceased-drive/connection", { method: "DELETE" });
     setDriveConnected(false);
     setDriveUserEmail("");
-    setDriveFiles([]);
-    setDriveFilesError(null);
-    setDriveFilesLoading(false);
-    setAlbumPhotoIds(new Set());
   };
 
   const handleDriveAction = () => {
@@ -445,57 +342,6 @@ export function SettingsModal({
     setViewerContextMenu(null);
   };
 
-  const handleEditLegacyPhotos = () => {
-    setIsEditingPhotos(true);
-    setSelectedPhotos(new Set());
-  };
-
-  const handleFinishEditingPhotos = () => {
-    setIsEditingPhotos(false);
-    setSelectedPhotos(new Set());
-  };
-
-  const togglePhotoSelection = (photoId: string) => {
-    setSelectedPhotos((prev) => {
-      const next = new Set(prev);
-      if (next.has(photoId)) {
-        next.delete(photoId);
-      } else {
-        next.add(photoId);
-      }
-      return next;
-    });
-  };
-
-  const toggleAlbumPhoto = (photoId: string) => {
-    setAlbumPhotoIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(photoId)) {
-        next.delete(photoId);
-      } else {
-        next.add(photoId);
-      }
-      return next;
-    });
-  };
-
-  const handleDeleteSelectedPhotos = () => {
-    if (selectedPhotos.size === 0) {
-      return;
-    }
-
-    setDriveFiles((files) => {
-      const nextFiles = files.filter((file) => !selectedPhotos.has(file.id));
-
-      if (nextFiles.length === 0) {
-        setIsEditingPhotos(false);
-      }
-
-      return nextFiles;
-    });
-    setSelectedPhotos(new Set());
-  };
-
   const toggleLegacyRecordType = (type: LegacyRecordType) => {
     setSelectedLegacyRecordTypes((types) =>
       types.includes(type)
@@ -552,57 +398,6 @@ export function SettingsModal({
     setLegacyEndDate(nextEndDate);
   };
 
-  const handleSaveLegacy = async () => {
-    setLegacySaveMessage(null);
-    setLegacySaving(true);
-
-    try {
-      const orderedPhotos = driveFiles
-        .filter((file) => albumPhotoIds.has(file.id))
-        .map((file) => ({
-          driveFileId: file.id,
-          fileName: file.name,
-        }));
-
-      const res = await fetch(
-        `/api/legacy/travel-albums/${encodeURIComponent(selectedTravelSlug)}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ photos: orderedPhotos }),
-        },
-      );
-
-      if (res.status === 401) {
-        void signIn("google", { callbackUrl: LEGACY_SETTINGS_CALLBACK_URL });
-        return;
-      }
-
-      if (!res.ok) {
-        const errorJson = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(errorJson?.error ?? "앨범 저장에 실패했습니다.");
-      }
-
-      const sticker = TRAVEL_ALBUM_STICKERS.find(
-        (item) => item.slug === selectedTravelSlug,
-      );
-
-      setLegacySaveMessage(
-        `${sticker?.title ?? selectedTravelSlug} 앨범에 ${orderedPhotos.length}장 저장했습니다.`,
-      );
-    } catch (saveError) {
-      setLegacySaveMessage(
-        saveError instanceof Error
-          ? saveError.message
-          : "앨범 저장에 실패했습니다.",
-      );
-    } finally {
-      setLegacySaving(false);
-    }
-  };
-
   useEffect(() => {
     if (!isOpen || !openToSetting) {
       return;
@@ -611,42 +406,17 @@ export function SettingsModal({
     setSelectedSetting(openToSetting);
 
     if (openToSetting === "legacy") {
-      void (async () => {
-        const connected = await loadDriveConnection();
-        if (connected) {
-          await loadDriveFiles();
-        }
-        await loadAlbumPhotoIds(selectedTravelSlug);
-      })();
+      void loadDriveConnection();
     }
-  }, [isOpen, openToSetting, loadAlbumPhotoIds, loadDriveConnection, selectedTravelSlug]);
+  }, [isOpen, openToSetting, loadDriveConnection]);
 
   useEffect(() => {
     if (!isOpen || selectedSetting !== "legacy") {
       return;
     }
 
-    void loadAlbumPhotoIds(selectedTravelSlug);
-  }, [
-    isOpen,
-    loadAlbumPhotoIds,
-    selectedSetting,
-    selectedTravelSlug,
-  ]);
-
-  useEffect(() => {
-    if (!isOpen || selectedSetting !== "legacy") {
-      return;
-    }
-
-    void (async () => {
-      const connected = await loadDriveConnection();
-      if (connected) {
-        await loadDriveFiles();
-      }
-    })();
+    void loadDriveConnection();
   }, [isOpen, loadDriveConnection, selectedSetting]);
-
 
   // 저장해 둔 나의 프로필 불러오기 (창을 처음 열 때 한 번)
   useEffect(() => {
@@ -1037,11 +807,6 @@ export function SettingsModal({
                                 {driveConnected ? "연결 해제" : "연결하기"}
                               </button>
                             </div>
-                            {driveFilesError && (
-                              <p className="font-mulish text-xs text-red-600">
-                                {driveFilesError}
-                              </p>
-                            )}
                           </div>
 
                           <div className="border-t border-[#E9E0D3]" />
@@ -1254,191 +1019,8 @@ export function SettingsModal({
                             />
                           </div>
 
-                          {driveConnected && (
-                            <>
-                              <div className="border-t border-[#E9E0D3]" />
-
-                              <div className="flex flex-col gap-[18px] pl-6">
-                                <div className="flex max-w-[743px] flex-col gap-3">
-                                  <div className="flex gap-2 font-mulish text-sm text-[#898787]">
-                                    <span>6</span>
-                                    <span>
-                                      여행 스티커별 앨범에 넣을 사진을
-                                      골라주세요. 사진을 눌러 이 여행에
-                                      포함/제외할 수 있어요.
-                                    </span>
-                                  </div>
-                                  <label className="flex max-w-[743px] flex-col gap-1 font-mulish text-xs text-[#898787]">
-                                    여행 앨범
-                                    <select
-                                      value={selectedTravelSlug}
-                                      onChange={(event) =>
-                                        setSelectedTravelSlug(event.target.value)
-                                      }
-                                      className="rounded-[7px] border border-[#C0BDBD] bg-white px-4 py-2 font-mulish text-sm text-[#4A423C]"
-                                    >
-                                      {TRAVEL_ALBUM_STICKERS.map((sticker) => (
-                                        <option
-                                          key={sticker.slug}
-                                          value={sticker.slug}
-                                        >
-                                          {sticker.title}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  <p className="font-mulish text-xs text-[#898787]">
-                                    이 앨범에 {albumPhotoIds.size}장 선택됨
-                                  </p>
-                                </div>
-
-                                <div className="flex max-w-[740px] items-center justify-between">
-                                  <div className="flex items-center gap-2 font-mulish text-sm text-[#898787]">
-                                    <span aria-hidden="true">&nbsp;</span>
-                                    <span>연동된 Drive 사진</span>
-                                    {isEditingPhotos &&
-                                      selectedPhotos.size > 0 && (
-                                        <span className="text-[#898787]">
-                                          {selectedPhotos.size}개 선택됨
-                                        </span>
-                                      )}
-                                  </div>
-                                  {driveFiles.length > 0 && (
-                                    <div className="flex items-center gap-2">
-                                      {isEditingPhotos ? (
-                                        <>
-                                          <button
-                                            type="button"
-                                            onClick={handleDeleteSelectedPhotos}
-                                            className="rounded-lg bg-[#9E2121] px-[18px] py-1 font-mulish text-xs text-white transition-colors hover:bg-[#861C1C]"
-                                          >
-                                            삭제
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={handleFinishEditingPhotos}
-                                            className="rounded-lg border border-[#4B3F39] bg-[#776257] px-[18px] py-1 font-mulish text-xs text-white transition-colors hover:bg-[#5E4E47]"
-                                          >
-                                            완료
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={handleEditLegacyPhotos}
-                                          className="rounded-lg border border-[#4B3F39] bg-[#776257] px-[18px] py-1 font-mulish text-xs text-white transition-colors hover:bg-[#5E4E47]"
-                                        >
-                                          편집
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-
-                                {driveFilesLoading ? (
-                                  <p className="font-mulish text-sm text-[#898787]">
-                                    Drive 사진을 불러오는 중...
-                                  </p>
-                                ) : driveFiles.length > 0 ? (
-                                  <div className="scrollbar-thin h-[360px] max-w-[743px] overflow-y-auto">
-                                    <div className="grid grid-cols-3 gap-2">
-                                      {driveFiles.map((file) => {
-                                        const isPhotoSelected =
-                                          selectedPhotos.has(file.id);
-                                        const isInAlbum = albumPhotoIds.has(
-                                          file.id,
-                                        );
-
-                                        return (
-                                          <button
-                                            key={file.id}
-                                            type="button"
-                                            onClick={() => {
-                                              if (isEditingPhotos) {
-                                                togglePhotoSelection(file.id);
-                                                return;
-                                              }
-                                              toggleAlbumPhoto(file.id);
-                                            }}
-                                            className={`relative aspect-square overflow-hidden rounded-lg bg-[#F6F6F6] cursor-pointer ring-2 ${
-                                              isInAlbum && !isEditingPhotos
-                                                ? "ring-[#9BB073]"
-                                                : "ring-transparent"
-                                            }`}
-                                          >
-                                            {(isEditingPhotos
-                                              ? isPhotoSelected
-                                              : isInAlbum) && (
-                                              <span
-                                                className={`absolute left-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                                                  isPhotoSelected || isInAlbum
-                                                    ? "border-transparent bg-[#9BB073]"
-                                                    : "border-white bg-transparent"
-                                                }`}
-                                              >
-                                                {(isEditingPhotos
-                                                  ? isPhotoSelected
-                                                  : isInAlbum) && (
-                                                  <svg
-                                                    viewBox="0 0 12 12"
-                                                    aria-hidden="true"
-                                                    className="h-3 w-3 text-white"
-                                                  >
-                                                    <path
-                                                      d="M2 6.2L4.8 9L10 3"
-                                                      fill="none"
-                                                      stroke="currentColor"
-                                                      strokeWidth="1.8"
-                                                      strokeLinecap="round"
-                                                      strokeLinejoin="round"
-                                                    />
-                                                  </svg>
-                                                )}
-                                              </span>
-                                            )}
-                                            {file.thumbnailUrl ? (
-                                              // eslint-disable-next-line @next/next/no-img-element
-                                              <img
-                                                src={file.thumbnailUrl}
-                                                alt={file.name}
-                                                className="h-full w-full rounded-lg object-cover"
-                                              />
-                                            ) : (
-                                              <div className="flex aspect-square h-full w-full items-center justify-center rounded-lg px-2">
-                                                <span className="truncate text-center font-mulish text-xs text-[#898787]">
-                                                  {file.name}
-                                                </span>
-                                              </div>
-                                            )}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="font-mulish text-sm text-[#898787]">
-                                    연동된 이미지가 없습니다.
-                                  </p>
-                                )}
-                              </div>
-                            </>
-                          )}
                         </div>
 
-                        {legacySaveMessage && (
-                          <p className="w-full max-w-[706px] pl-6 font-mulish text-sm text-[#4A423C]">
-                            {legacySaveMessage}
-                          </p>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => void handleSaveLegacy()}
-                          disabled={legacySaving}
-                          className="flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {legacySaving ? "저장 중..." : "저장하기"}
-                        </button>
                       </div>
                     </div>
                   )}
