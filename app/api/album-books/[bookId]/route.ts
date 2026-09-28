@@ -14,7 +14,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: book, error: bookError } = await supabase
     .from("album_books")
-    .select("id, title, color, shape, position")
+    .select("id, title, color, shape, position, user_character_id")
     .eq("id", bookId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -34,7 +34,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   }
 
   return NextResponse.json({
-    book,
+    book: {
+      id: book.id,
+      title: book.title,
+      color: book.color,
+      shape: book.shape,
+      position: book.position,
+      characterId: book.user_character_id,
+    },
     sections: (sections ?? []).map((section) => ({
       id: section.id,
       title: section.title,

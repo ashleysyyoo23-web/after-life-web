@@ -116,9 +116,11 @@ export type CreatedBook = {
 };
 
 export function CreateAlbumModal({
+  characterId,
   onClose,
   onCreated,
 }: {
+  characterId: string;
   onClose: () => void;
   onCreated: (book: CreatedBook) => void;
 }) {
@@ -135,11 +137,11 @@ export function CreateAlbumModal({
       const res = await fetch("/api/album-books", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, characterId }),
       });
 
       if (res.status === 401) {
-        void signIn("google", { callbackUrl: "/archiveshelf" });
+        void signIn("google", { callbackUrl: `/archiveshelf?character=${characterId}` });
         return;
       }
 
@@ -198,14 +200,17 @@ export type CreatedSection = {
 const MAX_PHOTOS_PER_SECTION = 200;
 
 // bookId 만 주면 "새 섹션", sectionId 를 주면 그 섹션 "사진 편집"
+// characterId 가 있으면 그 인물에게 연결된 Drive 폴더(하위 폴더 포함)의 사진을 보여줌
 export function SectionPhotosModal({
   bookId,
   sectionId,
+  characterId,
   onClose,
   onSaved,
 }: {
   bookId: string;
   sectionId?: string;
+  characterId?: string | null;
   onClose: () => void;
   onSaved: (section: CreatedSection) => void;
 }) {
@@ -221,6 +226,7 @@ export function SectionPhotosModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [folderNote, setFolderNote] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -228,7 +234,7 @@ export function SectionPhotosModal({
     void (async () => {
       try {
         const [filesRes, sectionRes] = await Promise.all([
-          fetch("/api/drive/files", { cache: "no-store" }),
+          fetch(characterId ? `/api/characters/${characterId}/photos` : "/api/drive/files", { cache: "no-store" }),
           sectionId
             ? fetch(`/api/album-sections/${sectionId}`, { cache: "no-store" })
             : Promise.resolve(null),
@@ -237,12 +243,20 @@ export function SectionPhotosModal({
         let driveFiles: DriveFile[] = [];
         let driveConnected = true;
 
-        if (filesRes.status === 401) {
+        if (filesRes.status === 401 && !characterId) {
           driveConnected = false;
         } else if (!filesRes.ok) {
-          throw new Error("Drive 사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+          const json = (await filesRes.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(json?.error ?? "Drive 사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.");
         } else {
-          driveFiles = ((await filesRes.json()) as { files: DriveFile[] }).files;
+          const data = (await filesRes.json()) as { files: DriveFile[]; folderName?: string | null; truncated?: boolean };
+          driveFiles = data.files;
+          if (!cancelled && data.folderName) {
+            setFolderNote(
+              `'${data.folderName}' 폴더(하위 폴더 포함)의 사진이에요.` +
+                (data.truncated ? " 사진이 많아서 일부만 보여요." : ""),
+            );
+          }
         }
 
         if (sectionRes) {
@@ -295,7 +309,7 @@ export function SectionPhotosModal({
     return () => {
       cancelled = true;
     };
-  }, [sectionId]);
+  }, [sectionId, characterId]);
 
   // 대표 이미지가 선택에서 빠지면 남은 첫 사진이 대표가 됨
   const effectiveCoverId =
@@ -420,6 +434,10 @@ export function SectionPhotosModal({
             )}
           </div>
 
+          {folderNote && filesState === "ready" && (
+            <p className="font-mulish text-xs text-[#898787]">{folderNote}</p>
+          )}
+
           {filesState === "loading" && (
             <p className="font-mulish text-sm text-[#898787]">
               Drive 사진을 불러오는 중이에요...
@@ -441,7 +459,7 @@ export function SectionPhotosModal({
 
           {filesState === "ready" && files.length === 0 && (
             <p className="font-mulish text-sm text-[#898787]">
-              연결된 Drive 폴더에 사진이 없어요.
+              연결된 폴더에 사진이 없어요.
             </p>
           )}
 

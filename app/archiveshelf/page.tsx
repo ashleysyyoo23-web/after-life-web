@@ -8,8 +8,8 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { CreateAlbumModal, type CreatedBook } from "@/components/AlbumModals";
 import { BookSketchFilterDefs, ShelfBook } from "@/components/ShelfBook";
 import { arrangeBooksFromCenter, type ShelfBookData } from "@/lib/book-styles";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 // 책 없는 책장 배경(Figma: public/archiveshelf-empty.jpg)이 준비되기 전까지 쓰는 색
 const WALL_COLOR = "#FDF0E8";
@@ -27,26 +27,49 @@ const EMPTY_BOOK: ShelfBookData = {
 };
 
 export default function ArchiveshelfPage() {
+  return (
+    <Suspense fallback={null}>
+      <ArchiveshelfPageContent />
+    </Suspense>
+  );
+}
+
+// 캐릭터마다 따로 있는 책장 (/archiveshelf?character=…). 새 캐릭터는 빈 책장에서 시작.
+function ArchiveshelfPageContent() {
   const router = useRouter();
+  const characterId = useSearchParams().get("character");
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [books, setBooks] = useState<ShelfBookData[]>([]);
+  const [nickname, setNickname] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // 어느 캐릭터의 책장인지 모르면 메인 랜드에서 캐릭터를 고르도록
+    if (!characterId) {
+      router.replace("/myland?from=moodcheck");
+      return;
+    }
+
     void (async () => {
       try {
-        const res = await fetch("/api/album-books", { cache: "no-store" });
+        const res = await fetch(`/api/album-books?character=${encodeURIComponent(characterId)}`, {
+          cache: "no-store",
+        });
 
         if (res.ok) {
-          const data = (await res.json()) as { books: ShelfBookData[] };
+          const data = (await res.json()) as {
+            character: { nickname: string };
+            books: ShelfBookData[];
+          };
           setBooks(data.books);
+          setNickname(data.character.nickname);
         }
       } finally {
         setLoaded(true);
       }
     })();
-  }, []);
+  }, [characterId, router]);
 
   const handleSelectBook = (bookId: string) => {
     if (bookId === EMPTY_BOOK.id) {
@@ -104,6 +127,19 @@ export default function ArchiveshelfPage() {
         </div>
       </div>
 
+      <div className="absolute left-0 top-20 z-20 p-8">
+        <button
+          type="button"
+          onClick={() => router.push("/myland?from=moodcheck")}
+          className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
+        >
+          ← 메인 랜드로
+        </button>
+        {nickname && (
+          <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">{nickname}의 책장</h1>
+        )}
+      </div>
+
       {isEmpty && (
         <p className="pointer-events-none fixed left-1/2 top-[30%] z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
           {EMPTY_HINT}
@@ -129,8 +165,9 @@ export default function ArchiveshelfPage() {
         onClose={() => setShowSettings(false)}
       />
 
-      {showCreateModal && (
+      {showCreateModal && characterId && (
         <CreateAlbumModal
+          characterId={characterId}
           onClose={() => setShowCreateModal(false)}
           onCreated={handleCreated}
         />

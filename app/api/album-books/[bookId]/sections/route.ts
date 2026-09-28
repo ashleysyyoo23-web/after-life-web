@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
-import { getLatestDriveConnection } from "@/lib/deceased-drive-token";
+import { getCharacterDriveAccess, getLatestDriveConnection } from "@/lib/deceased-drive-token";
 import { parseSectionInput } from "@/lib/album-sections";
 
 type RouteParams = {
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   const { data: book, error: bookError } = await supabase
     .from("album_books")
-    .select("id")
+    .select("id, user_character_id")
     .eq("id", bookId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -70,8 +70,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // 대표 이미지를 나중에 다시 읽을 수 있게, 지금 쓰는 Drive 연결을 함께 저장
-  const connection = await getLatestDriveConnection(supabase, userEmail);
+  // 사진을 나중에 다시 읽을 수 있게, 이 인물에게 연결된 Drive 연결을 함께 저장
+  // (캐릭터가 없는 옛 앨범이면 가장 최근 연결)
+  const access = book.user_character_id
+    ? await getCharacterDriveAccess(supabase, userEmail, book.user_character_id)
+    : null;
+  const connection =
+    access && !("error" in access)
+      ? { id: access.connectionId }
+      : await getLatestDriveConnection(supabase, userEmail);
 
   const { data, error } = await supabase
     .from("album_sections")

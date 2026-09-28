@@ -232,3 +232,198 @@ export async function streamDriveFileMedia(
     },
   });
 }
+
+export type DriveFolder = { id: string; name: string };
+
+// 폴더 목록: 내 드라이브의 어떤 폴더 안(parentId, 맨 위는 "root") 또는 공유 문서함
+export async function listDriveFolders(
+  accessToken: string,
+  options: { parentId?: string; shared?: boolean },
+): Promise<DriveFolder[]> {
+  const conditions = ["mimeType = 'application/vnd.google-apps.folder'", "trashed = false"];
+
+  if (options.shared) {
+    conditions.push("sharedWithMe = true");
+  } else {
+    const parentId = options.parentId ?? "root";
+    // 폴더 ID 는 영문·숫자·-·_ 만 사용 (그 외 값은 맨 위 폴더로)
+    conditions.push(`'${/^[A-Za-z0-9_-]+$/.test(parentId) ? parentId : "root"}' in parents`);
+  }
+
+  const query = new URLSearchParams({
+    q: conditions.join(" and "),
+    fields: "files(id,name)",
+    orderBy: "name",
+    pageSize: "200",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error((await res.text()) || "Google Drive folder list failed");
+  }
+
+  const json = (await res.json()) as { files?: DriveFolder[] };
+  return (json.files ?? []).map((file) => ({ id: file.id, name: file.name }));
+}
+
+// 그 연결로 실제로 열 수 있는 폴더인지 확인하고 이름을 가져옴 (못 열면 null)
+export async function getDriveFolder(
+  accessToken: string,
+  folderId: string,
+): Promise<DriveFolder | null> {
+  if (!/^[A-Za-z0-9_-]+$/.test(folderId)) return null;
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,mimeType,trashed&supportsAllDrives=true`,
+    { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" },
+  );
+
+  if (!res.ok) return null;
+
+  const file = (await res.json()) as { id: string; name: string; mimeType: string; trashed?: boolean };
+  if (file.mimeType !== "application/vnd.google-apps.folder" || file.trashed) return null;
+  return { id: file.id, name: file.name };
+}
+
+// 고인 폴더 안의 사진 (하위 폴더까지 모두, D8)
+// 폴더가 너무 많거나 깊으면 끝없이 느려지지 않게 폴더 200개·깊이 10단계·사진 1,000장까지만.
+const TREE_MAX_FOLDERS = 200;
+const TREE_MAX_DEPTH = 10;
+const TREE_MAX_IMAGES = 1000;
+const PARENTS_PER_QUERY = 30;
+
+async function driveList(accessToken: string, q: string, fields: string, pageToken?: string) {
+  const query = new URLSearchParams({
+    q,
+    fields: `nextPageToken,files(${fields})`,
+    pageSize: "1000",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+  if (pageToken) query.set("pageToken", pageToken);
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error((await res.text()) || "Google Drive API request failed");
+  return (await res.json()) as {
+    nextPageToken?: string;
+    files?: Array<{ id: string; name: string; thumbnailLink?: string; iconLink?: string; mimeType?: string }>;
+  };
+}
+
+export async function fetchFolderTreeImages(accessToken: string, rootFolderId: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(rootFolderId)) return { files: [], truncated: false };
+
+  // 1) 폴더 모으기 (바로가기는 따라가지 않음 → 같은 폴더를 두 번 세지 않음)
+  const folderIds = [rootFolderId];
+  let frontier = [rootFolderId];
+  let truncated = false;
+
+  for (let depth = 0; depth < TREE_MAX_DEPTH && frontier.length > 0; depth += 1) {
+    const next: string[] = [];
+    for (let i = 0; i < frontier.length; i += PARENTS_PER_QUERY) {
+      const parents = frontier.slice(i, i + PARENTS_PER_QUERY).map((id) => `'${id}' in parents`).join(" or ");
+      const json = await driveList(accessToken, `(${parents}) and mimeType = 'application/vnd.google-apps.folder' and trashed = false`, "id");
+      for (const folder of json.files ?? []) {
+        if (folderIds.length >= TREE_MAX_FOLDERS) { truncated = true; break; }
+        folderIds.push(folder.id);
+        next.push(folder.id);
+      }
+    }
+    frontier = next;
+  }
+
+  // 2) 모은 폴더 안의 사진을 여러 폴더씩 묶어서 검색
+  const files: Array<{ id: string; name: string; thumbnailUrl: string | null }> = [];
+  for (let i = 0; i < folderIds.length && files.length < TREE_MAX_IMAGES; i += PARENTS_PER_QUERY) {
+    const parents = folderIds.slice(i, i + PARENTS_PER_QUERY).map((id) => `'${id}' in parents`).join(" or ");
+    let pageToken: string | undefined;
+    do {
+      const json = await driveList(accessToken, `(${parents}) and mimeType contains 'image/' and trashed = false`, "id,name,thumbnailLink,iconLink", pageToken);
+      for (const file of json.files ?? []) {
+        if (files.length >= TREE_MAX_IMAGES) { truncated = true; break; }
+        files.push({ id: file.id, name: file.name, thumbnailUrl: file.thumbnailLink ?? file.iconLink ?? null });
+      }
+      pageToken = files.length < TREE_MAX_IMAGES ? json.nextPageToken : undefined;
+    } while (pageToken);
+  }
+
+  return { files, truncated };
+}
+
+// 캐릭터가 쓰는 Drive 연결: 내 캐릭터 연결 → (준비된 고인이면) 관리자 연결
+export async function getCharacterDriveAccess(
+  supabase: SupabaseClient,
+  ownerEmail: string,
+  characterId: string,
+) {
+  const { data: character } = await supabase
+    .from("user_characters")
+    .select("id, nickname, drive_connection_id, deceased(drive_connection_id, drive_folder_id, drive_folder_name)")
+    .eq("id", characterId)
+    .eq("owner_email", ownerEmail)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!character) return { error: "not_found" as const };
+
+  const deceased = (Array.isArray(character.deceased) ? character.deceased[0] : character.deceased) as
+    | { drive_connection_id: string | null; drive_folder_id: string | null; drive_folder_name: string | null }
+    | null;
+  const connectionId = character.drive_connection_id ?? deceased?.drive_connection_id ?? null;
+  const connection = connectionId ? await getDriveConnectionById(supabase, connectionId) : null;
+
+  if (!connection || !deceased?.drive_folder_id) return { error: "not_connected" as const };
+
+  const token = await getValidAccessTokenForConnection(supabase, connection);
+  if (!token) return { error: "needs_reconnect" as const };
+
+  return {
+    accessToken: token.accessToken,
+    connectionId: connection.id,
+    folderId: deceased.drive_folder_id,
+    folderName: deceased.drive_folder_name,
+    nickname: character.nickname as string,
+  };
+}
+
+// ───────── 캐릭터 폴더는 "afterlife_my data" 폴더 안에서만 고르기 ─────────
+export const CHARACTER_ROOT_FOLDER_NAME = "afterlife_my data";
+
+// 이 계정이 볼 수 있는 "afterlife_my data" 폴더 (공유 문서함에 있거나, 이 계정이 직접 만든 것)
+export async function findCharacterRootFolder(accessToken: string): Promise<DriveFolder | null> {
+  const json = await driveList(
+    accessToken,
+    `name = '${CHARACTER_ROOT_FOLDER_NAME.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    "id,name",
+  );
+  const folder = json.files?.[0];
+  return folder ? { id: folder.id, name: folder.name } : null;
+}
+
+// folderId 가 rootId 폴더 "안"(하위, 자기 자신 제외)에 있는지 부모를 따라 올라가며 확인
+export async function isFolderInside(accessToken: string, folderId: string, rootId: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(folderId) || folderId === rootId) return false;
+
+  let current = folderId;
+  for (let depth = 0; depth < TREE_MAX_DEPTH; depth += 1) {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${current}?fields=parents&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" },
+    );
+    if (!res.ok) return false;
+    const parents = ((await res.json()) as { parents?: string[] }).parents ?? [];
+    if (parents.includes(rootId)) return true;
+    if (parents.length === 0) return false;
+    current = parents[0];
+  }
+  return false;
+}

@@ -23,7 +23,7 @@ const SECTION_SLOTS = [
 ];
 const SLOT_SIZE_CQW = 9.8;
 
-type Book = { id: string; title: string };
+type Book = { id: string; title: string; characterId: string | null };
 
 export default function ArchivebookPage() {
   return (
@@ -169,7 +169,13 @@ function ArchivebookPageContent() {
         <div className="absolute left-0 top-20 z-20 p-8">
           <button
             type="button"
-            onClick={() => router.push("/archiveshelf")}
+            onClick={() =>
+              router.push(
+                book?.characterId
+                  ? `/archiveshelf?character=${encodeURIComponent(book.characterId)}`
+                  : "/myland?from=moodcheck",
+              )
+            }
             className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
           >
             ← 책장으로
@@ -220,6 +226,7 @@ function ArchivebookPageContent() {
       {showCreateModal && book && (
         <SectionPhotosModal
           bookId={book.id}
+          characterId={book.characterId}
           onClose={() => setShowCreateModal(false)}
           onSaved={handleCreated}
         />
@@ -229,6 +236,7 @@ function ArchivebookPageContent() {
         <SectionPhotosModal
           bookId={book.id}
           sectionId={editingSectionId}
+          characterId={book.characterId}
           onClose={() => setEditingSectionId(null)}
           onSaved={handleEdited}
         />

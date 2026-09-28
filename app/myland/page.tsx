@@ -1,6 +1,13 @@
 "use client";
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
+import { CharacterAvatar } from "@/components/CharacterAvatar";
+import {
+  CharacterCreateModal,
+  readCharacterDraft,
+  type CharacterDraft,
+  type CreatedCharacter,
+} from "@/components/CharacterCreateModal";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
@@ -10,60 +17,6 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-
-function GoogleDriveIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-6 w-6 shrink-0"
-      aria-hidden="true"
-    >
-      <path fill="#00AC47" d="M12 2 4.5 13.5H12V2z" />
-      <path fill="#FFBA00" d="m4.5 13.5-3 5.5h9l3-5.5H4.5z" />
-      <path fill="#4285F4" d="M12 13.5h7.5L16.5 19H12v-5.5z" />
-    </svg>
-  );
-}
-
-const RELATIONS = [
-  "배우자",
-  "부모님",
-  "조부모님",
-  "형제자매",
-  "자녀",
-  "친구",
-  "스승 · 동료",
-  "반려동물",
-] as const;
-
-const EXCLUDED_TYPE_OPTIONS = [
-  "작별 직전의 순간",
-  "투병, 아픔이 담긴 사진",
-  "채팅 대화 내역",
-  "영상",
-  "음성녹음",
-  "괜찮아요. 모두 볼게요.",
-] as const;
-
-const RECORD_TYPE_OPTIONS = [
-  "사진",
-  "영상",
-  "음성녹음",
-  "대화 내역",
-  "전체",
-] as const;
-
-type SpecialDate = {
-  label: string;
-  date: string;
-  recordType: string;
-};
-
-const createEmptySpecialDate = (): SpecialDate => ({
-  label: "",
-  date: "",
-  recordType: "",
-});
 
 const EMOTION_BARS = [
   {
@@ -424,19 +377,11 @@ function MylandPageContent() {
   const { data: session } = useSession();
   const [showSettings, setShowSettings] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [modalStep, setModalStep] = useState(1);
-  const [nickname, setNickname] = useState("");
-  const [selectedRelation, setSelectedRelation] = useState("");
-  const [description, setDescription] = useState("");
-  const [connectedDriveEmail, setConnectedDriveEmail] = useState<string | null>(
-    null,
-  );
-  const [emotionLevel, setEmotionLevel] = useState(50);
-  const [excludedTypes, setExcludedTypes] = useState<string[]>([]);
-  const [specialDates, setSpecialDates] = useState<SpecialDate[]>([
-    createEmptySpecialDate(),
-  ]);
-  const [allowRecommendation, setAllowRecommendation] = useState(true);
+  // Google 계정을 연결하고 돌아왔을 때 이어서 쓸 내용
+  const [resumeDraft, setResumeDraft] = useState<CharacterDraft | null>(null);
+  const [resumeGoogleEmail, setResumeGoogleEmail] = useState<string | null>(null);
+  const [characters, setCharacters] = useState<CreatedCharacter[]>([]);
+  const [charactersLoaded, setCharactersLoaded] = useState(false);
   const [showHint, setShowHint] = useState(true);
   const [showAnniversaryModal, setShowAnniversaryModal] = useState(false);
   const [showRecordTypeModal, setShowRecordTypeModal] = useState(false);
@@ -474,31 +419,6 @@ function MylandPageContent() {
     );
   };
 
-  const toggleExcludedType = (type: string) => {
-    setExcludedTypes((prev) =>
-      prev.includes(type)
-        ? prev.filter((item) => item !== type)
-        : [...prev, type],
-    );
-  };
-
-  const updateSpecialDate = (
-    index: number,
-    field: keyof SpecialDate,
-    value: string,
-  ) => {
-    setSpecialDates((prev) =>
-      prev.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value } : item,
-      ),
-    );
-  };
-
-  const handleSavePreferences = () => {
-    setShowAddModal(false);
-    setModalStep(1);
-  };
-
   useEffect(() => {
     if (searchParams.get("from") === "moodcheck") {
       return;
@@ -511,17 +431,30 @@ function MylandPageContent() {
       return;
     }
 
-    const driveEmail = searchParams.get("drive_email");
-
+    // 적던 내용(보관해 둔 것)을 꺼내 계정 고르기 단계부터 이어서
+    const draft = readCharacterDraft();
+    // (보관한 내용이 없으면 처음 단계부터)
+    setResumeDraft(draft);
+    setResumeGoogleEmail(searchParams.get("drive_email"));
     setShowAddModal(true);
-    setModalStep(2);
-
-    if (driveEmail) {
-      setConnectedDriveEmail(driveEmail);
-    }
 
     router.replace("/myland?from=moodcheck");
   }, [router, searchParams]);
+
+  // 내 캐릭터 목록
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/characters", { cache: "no-store" });
+        if (res.ok) {
+          const data = (await res.json()) as { characters: CreatedCharacter[] };
+          setCharacters(data.characters);
+        }
+      } finally {
+        setCharactersLoaded(true);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("anniversary") === "true") {
@@ -548,22 +481,51 @@ function MylandPageContent() {
         className="relative h-screen w-screen overflow-hidden"
         onDoubleClick={() => setShowAnniversaryModal(true)}
       >
-        <MoodSkyBackground scene="myland" />
+        <MoodSkyBackground scene="myland-empty" />
         <h1 className="sr-only">메인 랜드</h1>
-        <button
-          type="button"
-          onClick={() => router.push("/archiveroom")}
-          aria-label="캐릭터 기록 열람"
-          className="absolute z-20 cursor-pointer rounded-full border-0 bg-transparent transition-all duration-200 hover:bg-white/20"
+        {/* 배경(16:9)과 같은 크기의 무대 위에 캐릭터를 % 위치로 세움 */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
           style={{
-            left: "59.5%",
-            top: "63%",
-            width: "3%",
-            height: "18%",
+            width: "max(100vw, 177.78vh)",
+            height: "max(56.25vw, 100vh)",
+            containerType: "size",
           }}
-        />
+        >
+          {[...characters]
+            // 화면 아래쪽(앞쪽)에 선 캐릭터가 앞에 보이게
+            .sort((a, b) => (a.positionY ?? 0) - (b.positionY ?? 0))
+            .map((character) => (
+              <button
+                key={character.id}
+                type="button"
+                onClick={() => router.push(`/archiveshelf?character=${encodeURIComponent(character.id)}`)}
+                onDoubleClick={(event) => event.stopPropagation()}
+                aria-label={`${character.nickname}의 기록 보기`}
+                className="group pointer-events-auto absolute -translate-x-1/2 -translate-y-full cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 hover:-translate-y-[102%]"
+                style={{
+                  left: `${character.positionX ?? 50}%`,
+                  top: `${character.positionY ?? 76}%`,
+                  height: "19cqh",
+                  aspectRatio: "220 / 300",
+                }}
+              >
+                <CharacterAvatar appearance={character.appearance} className="h-full w-full" />
+                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  {character.nickname}
+                </span>
+              </button>
+            ))}
+        </div>
       </div>
-      {showHint && (
+      {charactersLoaded && characters.length === 0 && !showAddModal && (
+        <p className="pointer-events-none fixed top-[38%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 text-center font-mulish font-normal text-[#1a1a1a]">
+          아직 섬에 아무도 없어요.
+          <br />
+          오른쪽 위 &lsquo;+ 고인 불러오기&rsquo;로 기억하고 싶은 분을 불러와 주세요.
+        </p>
+      )}
+      {showHint && characters.length > 0 && (
         <p
           ref={hintRef}
           className="fixed top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a] opacity-100 transition-opacity duration-1000"
@@ -596,353 +558,19 @@ function MylandPageContent() {
         📄 감정 기록 돌아보기
       </button>
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className={`relative flex w-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] ${
-              modalStep === 3
-                ? "max-h-[80vh] max-w-2xl p-8"
-                : "h-auto max-w-3xl p-10"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <p className="font-mulish text-sm text-[#AF9083]">
-                {modalStep === 3 ? (
-                  <>
-                    정보 입력하기 &gt; 기록 불러오기 &gt;{" "}
-                    <span className="font-bold">열람방식 설정하기</span>
-                  </>
-                ) : (
-                  <>정보 입력하기 &gt; 기록 불러오기 &gt; 열람방식 설정하기</>
-                )}
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]"
-                aria-label="닫기"
-              >
-                X
-              </button>
-            </div>
-            {modalStep === 1 && (
-              <>
-                <div className="mt-6 flex flex-1 flex-col gap-8">
-                  <h2 className="font-newsreader text-3xl text-[#1a1a1a]">
-                    누구를 오랫동안 기억하고 싶으세요?
-                  </h2>
-
-                  <div className="flex flex-col gap-[18px]">
-                    <p className="flex gap-2 font-mulish text-sm text-[#AF9083]">
-                      <span>1</span>
-                      <span>기억하고 싶은 분을 부르던 호칭을 입력해주세요.</span>
-                    </p>
-                    <input
-                      type="text"
-                      value={nickname}
-                      onChange={(e) => setNickname(e.target.value)}
-                      placeholder="예: 할머니, 뭉치, 아버지"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-4 font-mulish text-base text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
-                    />
-                  </div>
-
-                  <div className="mt-2 flex flex-col gap-[18px]">
-                    <p className="flex gap-2 font-mulish text-sm text-[#AF9083]">
-                      <span>2</span>
-                      <span>기억하고 싶은 분과의 관계를 선택해주세요</span>
-                    </p>
-                    <div className="grid grid-cols-4 gap-x-[22px] gap-y-[10px]">
-                      {RELATIONS.map((relation) => {
-                        const isSelected = selectedRelation === relation;
-                        return (
-                          <button
-                            key={relation}
-                            type="button"
-                            onClick={() => setSelectedRelation(relation)}
-                            className={`w-full cursor-pointer rounded-xl border py-4 font-mulish text-base transition-colors ${
-                              isSelected
-                                ? "border-[#AF9083] bg-[#FDD9BD]/30 text-[#AF9083]"
-                                : "border-gray-200 bg-white text-[#1a1a1a]"
-                            }`}
-                          >
-                            {relation}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setModalStep(2)}
-                  className="w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a]"
-                >
-                  다음으로 &gt;
-                </button>
-              </>
-            )}
-
-            {modalStep === 2 && (
-              <>
-                <div className="mt-6 flex flex-1 flex-col gap-8">
-                  <h2 className="font-newsreader text-3xl text-[#1a1a1a]">
-                    어떤 분이셨나요?
-                  </h2>
-
-                  <div className="flex flex-col gap-[18px]">
-                    <p className="flex gap-2 font-mulish text-sm text-[#AF9083]">
-                      <span>1</span>
-                      <span>기억하고 싶은 모습을 자유롭게 적어주세요</span>
-                    </p>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="(예시) 항상 밥 먹었냐고 물어보시던 분이에요."
-                      className="h-32 w-full resize-none rounded-xl border border-gray-200 px-4 py-4 font-mulish text-base text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-[18px]">
-                    <p className="flex gap-2 font-mulish text-sm text-[#AF9083]">
-                      <span>2</span>
-                      <span>고인의 디지털 기록을 연결해주세요.</span>
-                    </p>
-                    <div className="rounded-xl bg-[#FAF6F0] p-3">
-                      {connectedDriveEmail ? (
-                        <div className="flex items-center gap-4 rounded-xl border border-[#E8DDD5] bg-white p-4 font-mulish">
-                          <GoogleDriveIcon />
-                          <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className="text-sm font-semibold text-[#9BB073]">
-                              Google Drive 연결 완료
-                            </span>
-                            <span className="truncate text-sm text-[#1a1a1a]">
-                              {connectedDriveEmail}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-4 rounded-xl border border-[#E8DDD5] bg-white p-4 font-mulish">
-                          <GoogleDriveIcon />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-[#1a1a1a]">
-                              고인의 Google Drive 계정을 연결해주세요
-                            </p>
-                            <p className="mt-1 text-xs text-[#AF9083]">
-                              별도 Google 계정으로 로그인합니다
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              window.location.href = "/api/deceased-drive/auth";
-                            }}
-                            className="shrink-0 cursor-pointer rounded-full border-0 bg-[#AF9083] px-6 py-2 font-['Mulish'] text-sm font-medium text-white transition-colors hover:bg-[#9d7e72]"
-                          >
-                            연결하기
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setModalStep(1)}
-                    className="cursor-pointer rounded-xl border border-[#AF9083] bg-white px-6 py-3 font-mulish text-base text-[#AF9083]"
-                  >
-                    &lt; 뒤로가기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModalStep(3)}
-                    className="flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a]"
-                  >
-                    다음으로 &gt;
-                  </button>
-                </div>
-              </>
-            )}
-
-            {modalStep === 3 && (
-              <>
-                <h2 className="mt-6 font-newsreader text-3xl text-[#1a1a1a]">
-                  기록을 어떻게 마주하고 싶으신가요?
-                </h2>
-
-                <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
-                  <section>
-                    <p className="mb-4 font-mulish text-sm text-[#666]">
-                      1&nbsp;&nbsp;고인을 떠올릴 때 마음이 어떠신가요?
-                    </p>
-                    <div className="flex items-center justify-between gap-4 font-mulish text-sm text-[#666]">
-                      <span>슬픔이 파도처럼 밀려와요</span>
-                      <span>감정이 잔잔해요</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={emotionLevel}
-                      onChange={(e) => setEmotionLevel(Number(e.target.value))}
-                      className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-[#E8DDD5] accent-[#9BB073] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#9BB073]"
-                      style={{
-                        background: `linear-gradient(to right, #9BB073 0%, #9BB073 ${emotionLevel}%, #E8DDD5 ${emotionLevel}%, #E8DDD5 100%)`,
-                      }}
-                    />
-                  </section>
-
-                  <div className="my-6 border-t border-[#E8DDD5]" />
-
-                  <section>
-                    <p className="mb-4 font-mulish text-sm text-[#666]">
-                      2&nbsp;&nbsp;고인과 관련해서 보고싶지 않은 기록이 있나요?
-                      선택하신 기록은 언제든 바꿀 수 있어요.
-                    </p>
-                    <div className="grid grid-cols-3 gap-3">
-                      {EXCLUDED_TYPE_OPTIONS.map((type) => {
-                        const isSelected = excludedTypes.includes(type);
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => toggleExcludedType(type)}
-                            className={`cursor-pointer rounded-lg border px-4 py-3 font-mulish text-sm font-medium transition-colors ${
-                              isSelected
-                                ? "border-[#9BB073] bg-[#f0f5e8] text-[#9BB073]"
-                                : "border-[#E8DDD5] bg-white text-[#666]"
-                            }`}
-                          >
-                            {type}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-
-                  <div className="my-6 border-t border-[#E8DDD5]" />
-
-                  <section>
-                    <p className="mb-4 font-mulish text-sm text-[#666]">
-                      3&nbsp;&nbsp;특별히 기억하고 싶은 날짜가 있나요?
-                    </p>
-                    <div className="mb-3 grid grid-cols-3 gap-3 font-mulish text-sm text-[#666]">
-                      <span>어떤 날인가요?</span>
-                      <span>며칠인가요?</span>
-                      <span>어떤 기록을 보고싶으신가요?</span>
-                    </div>
-                    <div className="flex flex-col gap-3">
-                      {specialDates.map((specialDate, index) => (
-                        <div
-                          key={index}
-                          className="grid grid-cols-3 gap-3"
-                        >
-                          <input
-                            type="text"
-                            value={specialDate.label}
-                            onChange={(e) =>
-                              updateSpecialDate(index, "label", e.target.value)
-                            }
-                            placeholder="예시: 기일"
-                            className="rounded-lg border border-[#E8DDD5] px-4 py-2 font-mulish text-sm text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
-                          />
-                          <input
-                            type="text"
-                            value={specialDate.date}
-                            onChange={(e) =>
-                              updateSpecialDate(index, "date", e.target.value)
-                            }
-                            placeholder="YYYY.MM.DD"
-                            className="rounded-lg border border-[#E8DDD5] px-4 py-2 font-mulish text-sm text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
-                          />
-                          <select
-                            value={specialDate.recordType}
-                            onChange={(e) =>
-                              updateSpecialDate(
-                                index,
-                                "recordType",
-                                e.target.value,
-                              )
-                            }
-                            className="rounded-lg border border-[#E8DDD5] bg-white px-4 py-2 font-mulish text-sm text-[#1a1a1a] outline-none"
-                          >
-                            <option value="">선택하기</option>
-                            {RECORD_TYPE_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSpecialDates((prev) => [
-                          ...prev,
-                          createEmptySpecialDate(),
-                        ])
-                      }
-                      className="mt-4 cursor-pointer rounded-lg border border-[#AF9083] bg-white px-4 py-2 font-mulish text-sm text-[#AF9083]"
-                    >
-                      + 날짜 추가하기
-                    </button>
-                  </section>
-
-                  <div className="my-6 border-t border-[#E8DDD5]" />
-
-                  <section>
-                    <p className="mb-4 font-mulish text-sm text-[#666]">
-                      4&nbsp;&nbsp;위의 날짜가 다가오면 적절한 기록을
-                      열람하시도록 추천해도 될까요?
-                    </p>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setAllowRecommendation(true)}
-                        className={`flex-1 rounded-lg border py-3 font-mulish text-sm font-medium transition-colors ${
-                          allowRecommendation === true
-                            ? "border-[#9BB073] bg-[#f0f5e8] text-[#9BB073]"
-                            : "border-[#E8DDD5] bg-white text-[#666]"
-                        }`}
-                      >
-                        네, 좋아요.
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAllowRecommendation(false)}
-                        className={`flex-1 rounded-lg border py-3 font-mulish text-sm font-medium transition-colors ${
-                          allowRecommendation === false
-                            ? "border-[#9BB073] bg-[#f0f5e8] text-[#9BB073]"
-                            : "border-[#E8DDD5] bg-white text-[#666]"
-                        }`}
-                      >
-                        원치 않아요.
-                      </button>
-                    </div>
-                  </section>
-                </div>
-
-                <div className="mt-6 flex shrink-0 items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setModalStep(2)}
-                    className="cursor-pointer rounded-xl border border-[#AF9083] bg-white px-6 py-3 font-mulish text-base text-[#AF9083]"
-                  >
-                    &lt; 뒤로가기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSavePreferences}
-                    className="flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a]"
-                  >
-                    저장하기 &gt;
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <CharacterCreateModal
+          initialDraft={resumeDraft}
+          resumeGoogleEmail={resumeGoogleEmail}
+          onClose={() => {
+            setShowAddModal(false);
+            setResumeDraft(null);
+          }}
+          onCreated={(character) => {
+            setCharacters((prev) => [...prev, character]);
+            setShowAddModal(false);
+            setResumeDraft(null);
+          }}
+        />
       )}
       {showAnniversaryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
