@@ -9,6 +9,7 @@ import { BookOpen, Play, type LucideIcon } from "lucide-react";
 import { getSession, signIn } from "next-auth/react";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { LegacyMyPhotos } from "@/components/LegacyMyPhotos";
+import { CharacterManager } from "@/components/CharacterManager";
 import {
   LEGACY_MESSAGE_MAX,
   LEGACY_VIEWER_ID_MAX,
@@ -985,6 +986,8 @@ export function SettingsModal({
                       </div>
                     </div>
                   )}
+
+                  {selectedSetting === "edit-person" && <CharacterManager />}
 
                   {selectedSetting === "legacy" && (
                     <div className="flex h-full min-h-0 flex-col">

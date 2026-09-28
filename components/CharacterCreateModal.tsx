@@ -2,9 +2,10 @@
 
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
+import { CHARACTER_RELATIONS } from "@/lib/character-fields";
 import { useCallback, useEffect, useState } from "react";
 
-const RELATIONS = ["배우자", "부모님", "조부모님", "형제자매", "자녀", "친구", "스승 · 동료", "반려동물"] as const;
+const RELATIONS = CHARACTER_RELATIONS;
 const EXCLUDED_TYPE_OPTIONS = ["작별 직전의 순간", "투병, 아픔이 담긴 사진", "채팅 대화 내역", "영상", "음성녹음", "괜찮아요. 모두 볼게요."] as const;
 const RECORD_TYPE_OPTIONS = ["사진", "영상", "음성녹음", "대화 내역", "전체"] as const;
 const STEPS = ["정보 입력하기", "캐릭터 꾸미기", "기록 불러오기", "열람방식 설정하기"];

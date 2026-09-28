@@ -3,6 +3,7 @@
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { clampToSand } from "@/lib/myland-area";
+import { CHARACTERS_UPDATED_EVENT } from "@/components/CharacterManager";
 import type { CharacterAppearance } from "@/lib/character-parts";
 import {
   CharacterCreateModal,
@@ -719,9 +720,9 @@ function MylandPageContent() {
     return () => window.removeEventListener("afterlife:profile-updated", handleUpdated);
   }, []);
 
-  // 고인 캐릭터 목록
+  // 고인 캐릭터 목록: 처음에 한 번, 그리고 설정 "마이랜드의 인물 편집"에서 고치거나 지울 때마다
   useEffect(() => {
-    void (async () => {
+    const loadCharacters = async () => {
       try {
         const res = await fetch("/api/characters", { cache: "no-store" });
         if (res.ok) {
@@ -731,7 +732,12 @@ function MylandPageContent() {
       } finally {
         setCharactersLoaded(true);
       }
-    })();
+    };
+
+    void loadCharacters();
+    const handleUpdated = () => void loadCharacters();
+    window.addEventListener(CHARACTERS_UPDATED_EVENT, handleUpdated);
+    return () => window.removeEventListener(CHARACTERS_UPDATED_EVENT, handleUpdated);
   }, []);
 
   useEffect(() => {

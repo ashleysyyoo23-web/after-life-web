@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { sanitizeAppearance } from "@/lib/character-parts";
 import {
+  CHARACTER_DESCRIPTION_MAX,
+  CHARACTER_NICKNAME_MAX,
+  CHARACTER_RELATIONS,
+} from "@/lib/character-fields";
+import {
   CHARACTER_ROOT_FOLDER_NAME,
   findCharacterRootFolder,
   getDriveConnectionById,
@@ -10,9 +15,9 @@ import {
   isFolderInside,
 } from "@/lib/deceased-drive-token";
 
-const NICKNAME_MAX_LENGTH = 20;
-const DESCRIPTION_MAX_LENGTH = 300;
-const RELATIONS = ["배우자", "부모님", "조부모님", "형제자매", "자녀", "친구", "스승 · 동료", "반려동물"];
+const NICKNAME_MAX_LENGTH = CHARACTER_NICKNAME_MAX;
+const DESCRIPTION_MAX_LENGTH = CHARACTER_DESCRIPTION_MAX;
+const RELATIONS: readonly string[] = CHARACTER_RELATIONS;
 const EXCLUDED_TYPES = ["작별 직전의 순간", "투병, 아픔이 담긴 사진", "채팅 대화 내역", "영상", "음성녹음", "괜찮아요. 모두 볼게요."];
 const RECORD_TYPES = ["사진", "영상", "음성녹음", "대화 내역", "전체"];
 
