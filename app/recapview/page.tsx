@@ -15,8 +15,7 @@ import { DEFAULT_SLIDE_SECONDS, sanitizeViewSettings } from "@/lib/view-settings
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 const FALLBACK_SLIDE_COUNT = 11;
-// 자동 넘김 속도(초). 처음 값은 설정 "기록을 마주할 방법"에서 정한 초 (없으면 3초).
-const SPEED_OPTIONS = [2, 3, 5, 8];
+// 자동 넘김 속도(초)는 설정 "기록을 마주할 방법"에서 정한 초 (없으면 3초).
 // 사진이 많으면 점 대신 "3 / 120" 으로 표시
 const MAX_DOTS = 20;
 // 지금 사진 앞뒤 몇 장까지만 미리 불러올지 (사진이 많을 때 한꺼번에 받지 않도록)
@@ -80,8 +79,6 @@ function RecapviewPageContent() {
   const [drawings, setDrawings] = useState<Record<number, DrawingStroke[]>>({});
   // 사진마다 원래 크기 → 액자를 지금 사진 모양에 딱 맞춤
   const [photoSizes, setPhotoSizes] = useState<Record<string, { w: number; h: number }>>({});
-  // 설정에서 정한 초 (속도 버튼에 없는 값이면 버튼을 하나 더 보여줌)
-  const [savedSlideSeconds, setSavedSlideSeconds] = useState<number | null>(null);
   // 설정을 불러오기 전에 이미 손으로 바꿨으면 덮어쓰지 않음
   const viewTouchedRef = useRef(false);
 
@@ -93,7 +90,6 @@ function RecapviewPageContent() {
         if (!res.ok || viewTouchedRef.current) return;
         const { settings } = (await res.json()) as { settings: Parameters<typeof sanitizeViewSettings>[0] };
         const loaded = sanitizeViewSettings(settings);
-        setSavedSlideSeconds(loaded.slideSeconds);
         setSlideSeconds(loaded.slideSeconds);
         setViewMode(loaded.recapView === "book" ? "book" : "auto");
       } catch {
@@ -101,11 +97,6 @@ function RecapviewPageContent() {
       }
     })();
   }, []);
-
-  const speedOptions =
-    savedSlideSeconds && !SPEED_OPTIONS.includes(savedSlideSeconds)
-      ? [...SPEED_OPTIONS, savedSlideSeconds].sort((a, b) => a - b)
-      : SPEED_OPTIONS;
 
   // 앨범(책) 안의 섹션에서 들어오면 ?section=… , 예전 여행 앨범은 ?bg=…
   const sectionId = searchParams.get("section");
@@ -645,38 +636,6 @@ function RecapviewPageContent() {
                       ? "섹션을 불러오지 못했어요. 앨범으로 돌아가 다시 골라 주세요."
                       : "이 섹션에는 아직 사진이 없어요."}
                   </p>
-                )}
-                {slideCount > 1 && (
-                  <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-white/80 px-1.5 py-1">
-                    <button
-                      type="button"
-                      onClick={() => setIsPlaying((playing) => !playing)}
-                      className="cursor-pointer rounded-full border-0 bg-transparent px-2 py-0.5"
-                      aria-label={isPlaying ? "일시정지" : "재생"}
-                    >
-                      {isPlaying ? "⏸" : "▶"}
-                    </button>
-                    <span className="h-4 w-px bg-[#C0BDBD]" aria-hidden="true" />
-                    {speedOptions.map((seconds) => (
-                      <button
-                        key={seconds}
-                        type="button"
-                        onClick={() => {
-                          viewTouchedRef.current = true;
-                          setSlideSeconds(seconds);
-                        }}
-                        aria-pressed={slideSeconds === seconds}
-                        aria-label={`${seconds}초마다 넘기기`}
-                        className={`cursor-pointer rounded-full border-0 px-2 py-0.5 font-mulish text-xs transition-colors ${
-                          slideSeconds === seconds
-                            ? "bg-[#FDD9BD] font-semibold text-[#4A423C]"
-                            : "bg-transparent text-[#898787] hover:text-[#4A423C]"
-                        }`}
-                      >
-                        {seconds}초
-                      </button>
-                    ))}
-                  </div>
                 )}
                 </div>
 

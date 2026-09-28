@@ -30,6 +30,11 @@ const PHOTO_WIDTH = 20.5;
 const PHOTO_HEIGHT = 20.5;
 // 사진 아래 글까지의 간격
 const CAPTION_GAP = 3.4;
+// 세로 사진은 글을 사진 오른쪽에: 사진과 글 사이 간격, 글 칸 너비 (무대 가로 %)
+const SIDE_CAPTION_GAP = 1.2;
+const SIDE_CAPTION_WIDTH = 8.5;
+// 무대는 16:9 → 세로 % 를 가로 % 로 바꿀 때 곱하는 값
+const STAGE_HEIGHT_TO_WIDTH = 9 / 16;
 // 그림을 그릴 수 있는 펼친 책 영역
 const BOOK_AREA = { left: 18.7, top: 23.7, width: 64.3, height: 63.3 };
 const PHOTOS_PER_SPREAD = 4;
@@ -58,6 +63,8 @@ export function RecapBookView({
   onDrawingSaved,
 }: RecapBookViewProps) {
   const [spreadIndex, setSpreadIndex] = useState(0);
+  // 사진마다 가로÷세로 비율 (불러온 뒤 알게 됨) → 세로 사진이면 글을 오른쪽에
+  const [photoRatios, setPhotoRatios] = useState<Record<string, number>>({});
   const [isDrawing, setIsDrawing] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
@@ -142,11 +149,73 @@ export function RecapBookView({
         {spreadPhotos.map((photo, index) => {
           const slot = PHOTO_SLOTS[index];
           const rotate = getPhotoRotation(spreadIndex, index);
+          const ratio = photoRatios[photo.driveFileId];
+          const isPortrait = ratio !== undefined && ratio < 1;
+          const rememberRatio = (event: React.SyntheticEvent<HTMLImageElement>) => {
+            const { naturalWidth: w, naturalHeight: h } = event.currentTarget;
+            if (w > 0 && h > 0 && photoRatios[photo.driveFileId] === undefined) {
+              setPhotoRatios((prev) => ({ ...prev, [photo.driveFileId]: w / h }));
+            }
+          };
+          const image = (
+            // 본인만 볼 수 있는 API 주소라 일반 img 사용
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photo.mediaUrl}
+              alt={photo.caption || photo.fileName || ""}
+              onLoad={rememberRatio}
+              className="block h-auto max-h-full w-auto max-w-full bg-[#EFE8DF] object-contain shadow-[0_1px_4px_rgba(42,37,34,0.2)]"
+            />
+          );
+          const caption = (props: { style: React.CSSProperties; side?: boolean }) => (
+            <CaptionInput
+              // 쪽을 넘기면 새 입력칸으로 (적던 글이 다른 사진으로 옮겨 가지 않게)
+              key={`${spreadIndex}-${photo.driveFileId}-${props.side ? "side" : "below"}`}
+              initialValue={photo.caption}
+              disabled={isDrawing}
+              onSave={(text) => void saveCaption(photo, text)}
+              side={props.side}
+              style={props.style}
+            />
+          );
 
+          // 세로 사진: [사진][글] 을 한 줄로, 둘을 합친 가운데를 원래 자리 가운데에 맞춤
+          if (isPortrait) {
+            const photoWidth = PHOTO_HEIGHT * STAGE_HEIGHT_TO_WIDTH * ratio;
+            const groupLeft = slot.centerX - (photoWidth + SIDE_CAPTION_GAP + SIDE_CAPTION_WIDTH) / 2;
+
+            return (
+              <div key={photo.driveFileId}>
+                <div
+                  className="absolute flex items-center justify-center"
+                  style={{
+                    left: `${groupLeft}%`,
+                    top: `${slot.top}%`,
+                    width: `${photoWidth}%`,
+                    height: `${PHOTO_HEIGHT}%`,
+                    rotate: `${rotate}deg`,
+                  }}
+                >
+                  {image}
+                </div>
+                {caption({
+                  side: true,
+                  style: {
+                    left: `${groupLeft + photoWidth + SIDE_CAPTION_GAP}%`,
+                    top: `${slot.top + PHOTO_HEIGHT / 2}%`,
+                    width: `${SIDE_CAPTION_WIDTH}%`,
+                  },
+                })}
+              </div>
+            );
+          }
+
+          // 가로 사진(또는 아직 불러오는 중): 사진 아래에 글
           return (
             <div key={photo.driveFileId}>
+              {/* 사진 자리(최대 크기) 안에 사진을 자르지 않고 통째로. 그림자는 사진에 딱 맞게 */}
               <div
-                className="absolute -translate-x-1/2 overflow-hidden bg-[#EFE8DF] shadow-[0_1px_4px_rgba(42,37,34,0.2)]"
+                className="absolute flex -translate-x-1/2 items-center justify-center"
                 style={{
                   left: `${slot.centerX}%`,
                   top: `${slot.top}%`,
@@ -155,25 +224,14 @@ export function RecapBookView({
                   rotate: `${rotate}deg`,
                 }}
               >
-                {/* 본인만 볼 수 있는 API 주소라 일반 img 사용 */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.mediaUrl}
-                  alt={photo.caption || photo.fileName || ""}
-                  className="h-full w-full object-cover"
-                />
+                {image}
               </div>
-              <CaptionInput
-                // 쪽을 넘기면 새 입력칸으로 (적던 글이 다른 사진으로 옮겨 가지 않게)
-                key={`${spreadIndex}-${photo.driveFileId}`}
-                initialValue={photo.caption}
-                disabled={isDrawing}
-                onSave={(caption) => void saveCaption(photo, caption)}
-                style={{
+              {caption({
+                style: {
                   left: `${slot.centerX}%`,
                   top: `${slot.top + PHOTO_HEIGHT + CAPTION_GAP}%`,
-                }}
-              />
+                },
+              })}
             </div>
           );
         })}
@@ -279,13 +337,39 @@ function CaptionInput({
   disabled,
   onSave,
   style,
+  side = false,
 }: {
   initialValue: string;
   disabled: boolean;
   onSave: (caption: string) => void;
   style: React.CSSProperties;
+  // 세로 사진 오른쪽에 붙는 글 (여러 줄, 왼쪽 정렬)
+  side?: boolean;
 }) {
   const [value, setValue] = useState(initialValue);
+
+  if (side) {
+    return (
+      <textarea
+        value={value}
+        maxLength={CAPTION_MAX_LENGTH}
+        disabled={disabled}
+        rows={3}
+        onChange={(event) => setValue(event.target.value.replace(/\n/g, " "))}
+        onBlur={() => onSave(value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+        placeholder="여기를 눌러 글을 적어 보세요"
+        aria-label="사진 설명"
+        className="absolute -translate-y-1/2 resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 text-left font-mulish leading-snug text-[#1a1a1a] outline-none transition-colors placeholder:text-[#C8BDB3] hover:border-[#E9E0D3] focus:border-[#AF9083] focus:bg-white/70 disabled:hover:border-transparent"
+        style={{ ...style, fontSize: "1.15cqw" }}
+      />
+    );
+  }
 
   return (
     <input
