@@ -2,6 +2,7 @@
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
+import type { CharacterAppearance } from "@/lib/character-parts";
 import {
   CharacterCreateModal,
   readCharacterDraft,
@@ -376,6 +377,14 @@ function MylandPageContent() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"profile" | null>(null);
+  // 설정 창 "나의 프로필"에서 만든 나의 캐릭터 (저장 전이면 null)
+  const [myCharacter, setMyCharacter] = useState<{
+    name: string;
+    appearance: CharacterAppearance;
+    positionX: number;
+    positionY: number;
+  } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   // Google 계정을 연결하고 돌아왔을 때 이어서 쓸 내용
   const [resumeDraft, setResumeDraft] = useState<CharacterDraft | null>(null);
@@ -441,7 +450,33 @@ function MylandPageContent() {
     router.replace("/myland?from=moodcheck");
   }, [router, searchParams]);
 
-  // 내 캐릭터 목록
+  // 나의 캐릭터: 처음에 한 번, 그리고 설정 창에서 저장할 때마다 다시 불러옴
+  useEffect(() => {
+    const loadMyCharacter = async () => {
+      const res = await fetch("/api/me/profile", { cache: "no-store" });
+      if (!res.ok) return;
+      const { profile } = (await res.json()) as {
+        profile: { displayName: string; appearance: CharacterAppearance | null; positionX: number; positionY: number };
+      };
+      setMyCharacter(
+        profile.appearance
+          ? {
+              name: profile.displayName || "나",
+              appearance: profile.appearance,
+              positionX: profile.positionX,
+              positionY: profile.positionY,
+            }
+          : null,
+      );
+    };
+
+    void loadMyCharacter();
+    const handleUpdated = () => void loadMyCharacter();
+    window.addEventListener("afterlife:profile-updated", handleUpdated);
+    return () => window.removeEventListener("afterlife:profile-updated", handleUpdated);
+  }, []);
+
+  // 고인 캐릭터 목록
   useEffect(() => {
     void (async () => {
       try {
@@ -492,16 +527,40 @@ function MylandPageContent() {
             containerType: "size",
           }}
         >
-          {[...characters]
+          {[
+            ...characters.map((character) => ({
+              key: character.id,
+              name: character.nickname,
+              appearance: character.appearance,
+              positionX: character.positionX,
+              positionY: character.positionY,
+              label: `${character.nickname}의 기록 보기`,
+              onOpen: () => router.push(`/archiveshelf?character=${encodeURIComponent(character.id)}`),
+            })),
+            ...(myCharacter
+              ? [{
+                  key: "me",
+                  name: myCharacter.name,
+                  appearance: myCharacter.appearance,
+                  positionX: myCharacter.positionX,
+                  positionY: myCharacter.positionY,
+                  label: `나의 캐릭터 (${myCharacter.name}) 꾸미기`,
+                  onOpen: () => {
+                    setSettingsTab("profile");
+                    setShowSettings(true);
+                  },
+                }]
+              : []),
+          ]
             // 화면 아래쪽(앞쪽)에 선 캐릭터가 앞에 보이게
             .sort((a, b) => (a.positionY ?? 0) - (b.positionY ?? 0))
             .map((character) => (
               <button
-                key={character.id}
+                key={character.key}
                 type="button"
-                onClick={() => router.push(`/archiveshelf?character=${encodeURIComponent(character.id)}`)}
+                onClick={character.onOpen}
                 onDoubleClick={(event) => event.stopPropagation()}
-                aria-label={`${character.nickname}의 기록 보기`}
+                aria-label={character.label}
                 className="group pointer-events-auto absolute -translate-x-1/2 -translate-y-full cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 hover:-translate-y-[102%]"
                 style={{
                   left: `${character.positionX ?? 50}%`,
@@ -512,13 +571,13 @@ function MylandPageContent() {
               >
                 <CharacterAvatar appearance={character.appearance} className="h-full w-full" />
                 <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                  {character.nickname}
+                  {character.name}
                 </span>
               </button>
             ))}
         </div>
       </div>
-      {charactersLoaded && characters.length === 0 && !showAddModal && (
+      {charactersLoaded && characters.length === 0 && !myCharacter && !showAddModal && (
         <p className="pointer-events-none fixed top-[38%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 text-center font-mulish font-normal text-[#1a1a1a]">
           아직 섬에 아무도 없어요.
           <br />
@@ -541,7 +600,11 @@ function MylandPageContent() {
       />
       <SettingsModal
         isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+        openToSetting={settingsTab}
+        onClose={() => {
+          setShowSettings(false);
+          setSettingsTab(null);
+        }}
       />
       <button
         type="button"

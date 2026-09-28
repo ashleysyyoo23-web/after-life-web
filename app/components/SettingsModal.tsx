@@ -8,6 +8,8 @@ import Image from "next/image";
 import { BookOpen, Clock, Play, type LucideIcon } from "lucide-react";
 import { TRAVEL_ALBUM_STICKERS } from "@/lib/travel-album-stickers";
 import { getSession, signIn } from "next-auth/react";
+import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
+import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
 import { useCallback, useEffect, useState } from "react";
 
 const LEGACY_SETTINGS_CALLBACK_URL = "/mainland?settings=legacy";
@@ -22,15 +24,6 @@ type DriveFile = {
 
 type SettingId = "view-method" | "profile" | "legacy" | "edit-person";
 type ViewType = "slideshow" | "timeline" | "book";
-type SelectedGender = "여성" | "남성";
-type SelectedTop =
-  | "민소매"
-  | "반팔"
-  | "긴팔"
-  | "원피스"
-  | "치마"
-  | "반바지"
-  | "긴바지";
 type LegacyRecordType =
   | "daily-face"
   | "id-photo"
@@ -40,22 +33,6 @@ type LegacyRecordType =
   | "video-face"
   | "video-no-face"
   | "custom";
-
-const skinToneColors = [
-  "#F7D0CB",
-  "#C8845A",
-  "#E8C8A0",
-  "#A07050",
-  "#74513A",
-] as const;
-
-const clothingColors = [
-  "#8A6878",
-  "#6A8A5A",
-  "#ECB0AE",
-  "#7A6A9A",
-  "#9A7A5A",
-] as const;
 
 const viewTypeOptions: {
   id: ViewType;
@@ -123,16 +100,6 @@ const sidebarMenuBaseClass =
 const sliderRangeClass =
   "h-[14px] w-full flex-1 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-sm [&::-webkit-slider-runnable-track]:bg-[#E9E0D3] [&::-webkit-slider-thumb]:-mt-[4px] [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#C4D4A5]";
 
-const profileSelectButtonClass = (selected: boolean) =>
-  selected
-    ? "rounded-xl border-2 border-[#9BB073] bg-[#E4EACE] px-6 py-3 font-mulish text-sm font-bold text-[#4A423C]"
-    : "rounded-xl border border-[#E9E0D3] bg-white px-6 py-3 font-mulish text-sm text-[#4A423C]";
-
-const profileColorButtonClass = (selected: boolean) =>
-  `h-7 w-7 rounded-full border-2 ${
-    selected ? "border-[#4A423C]" : "border-transparent"
-  }`;
-
 const legacyRecordTypeOptions: { id: LegacyRecordType; label: string }[] = [
   { id: "daily-face", label: "얼굴이 나온 일상사진" },
   { id: "id-photo", label: "증명사진" },
@@ -192,16 +159,11 @@ export function SettingsModal({
   const [profileName, setProfileName] = useState("");
   const [profileId, setProfileId] = useState("");
   const [profileIntro, setProfileIntro] = useState("");
-  const [selectedGender, setSelectedGender] =
-    useState<SelectedGender | null>("여성");
-  const [selectedTop, setSelectedTop] = useState<SelectedTop | null>("원피스");
-  const [selectedSkin, setSelectedSkin] = useState<string>(skinToneColors[0]);
-  const [selectedTopColor, setSelectedTopColor] = useState<string | null>(
-    null,
-  );
-  const [selectedBottomColor, setSelectedBottomColor] = useState<string | null>(
-    null,
-  );
+  // 나의 캐릭터 (고인 캐릭터와 같은 파츠 꾸미기)
+  const [myAppearance, setMyAppearance] = useState<CharacterAppearance>(DEFAULT_APPEARANCE);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveUserEmail, setDriveUserEmail] = useState("");
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
@@ -372,17 +334,38 @@ export function SettingsModal({
     console.log({ sliderValue, selectedViewType });
   };
 
-  const handleSaveProfile = () => {
-    console.log({
-      profileName,
-      profileId,
-      profileIntro,
-      selectedGender,
-      selectedTop,
-      selectedSkin,
-      selectedTopColor,
-      selectedBottomColor,
-    });
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    setProfileMessage(null);
+
+    try {
+      const res = await fetch("/api/me/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: profileName,
+          handle: profileId,
+          intro: profileIntro,
+          appearance: myAppearance,
+        }),
+      });
+
+      if (res.status === 401) {
+        void signIn("google");
+        return;
+      }
+
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(json?.error ?? "프로필을 저장하지 못했어요.");
+
+      setProfileMessage("저장했어요. 메인 랜드에 나의 캐릭터가 나타나요.");
+      // 메인 랜드가 열려 있으면 내 캐릭터를 바로 다시 그리게 알림
+      window.dispatchEvent(new Event("afterlife:profile-updated"));
+    } catch (saveError) {
+      setProfileMessage(saveError instanceof Error ? saveError.message : "프로필을 저장하지 못했어요.");
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const handleConnectDrive = async () => {
@@ -665,6 +648,27 @@ export function SettingsModal({
   }, [isOpen, loadDriveConnection, selectedSetting]);
 
 
+  // 저장해 둔 나의 프로필 불러오기 (창을 처음 열 때 한 번)
+  useEffect(() => {
+    if (!isOpen || profileLoaded) return;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/me/profile", { cache: "no-store" });
+        if (!res.ok) return;
+        const { profile } = (await res.json()) as {
+          profile: { displayName: string; handle: string; intro: string; appearance: CharacterAppearance | null };
+        };
+        setProfileName(profile.displayName);
+        setProfileId(profile.handle);
+        setProfileIntro(profile.intro);
+        if (profile.appearance) setMyAppearance(profile.appearance);
+      } finally {
+        setProfileLoaded(true);
+      }
+    })();
+  }, [isOpen, profileLoaded]);
+
   if (!isOpen) {
     return null;
   }
@@ -936,6 +940,7 @@ export function SettingsModal({
                                   onChange={(e) =>
                                     setProfileId(e.target.value)
                                   }
+                                  maxLength={20}
                                   placeholder="영문으로 작성해주세요."
                                   className="w-[200px] rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
                                 />
@@ -967,179 +972,27 @@ export function SettingsModal({
                               <span>나의 캐릭터</span>
                             </div>
 
-                            <div className="flex items-end justify-between gap-6">
-                              <div className="relative h-[411px] w-[236px] shrink-0 overflow-hidden bg-[#FDEFE6]">
-                                <div className="absolute inset-x-0 bottom-0 h-[122px] bg-[#E9E0D3]" />
-                                <div className="absolute left-1/2 top-[137px] -translate-x-1/2">
-                                  <Image
-                                    src="/icons/settings/character-preview.svg"
-                                    alt=""
-                                    width={138}
-                                    height={227}
-                                    unoptimized
-                                    className="h-[227px] w-[138px]"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex w-[479px] shrink-0 flex-col gap-3">
-                                <div className="flex flex-col gap-3 p-3">
-                                  <span className="font-mulish text-sm text-[#4A423C]">
-                                    성별
-                                  </span>
-                                  <div className="flex gap-4">
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedGender("여성")}
-                                      className={profileSelectButtonClass(
-                                        selectedGender === "여성",
-                                      )}
-                                      aria-pressed={selectedGender === "여성"}
-                                    >
-                                      여성
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedGender("남성")}
-                                      className={profileSelectButtonClass(
-                                        selectedGender === "남성",
-                                      )}
-                                      aria-pressed={selectedGender === "남성"}
-                                    >
-                                      남성
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="relative min-h-[147px] p-3">
-                                  <span className="font-mulish text-sm text-[#4A423C]">
-                                    의상
-                                  </span>
-                                  <div className="mt-3 grid grid-cols-4 gap-3">
-                                    {(
-                                      [
-                                        "민소매",
-                                        "반팔",
-                                        "긴팔",
-                                        "원피스",
-                                        "치마",
-                                        "반바지",
-                                        "긴바지",
-                                      ] as const
-                                    ).map((top, index) => {
-                                      const isDress = selectedTop === "원피스";
-                                      const isBottom =
-                                        top === "치마" ||
-                                        top === "반바지" ||
-                                        top === "긴바지";
-                                      return (
-                                        <button
-                                          key={top}
-                                          type="button"
-                                          onClick={() => {
-                                            setSelectedTop(top);
-                                            if (top === "원피스") {
-                                              setSelectedBottomColor(null);
-                                            }
-                                          }}
-                                          disabled={isDress && isBottom}
-                                          className={`${profileSelectButtonClass(selectedTop === top)} ${index === 0 ? "col-start-1" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
-                                          aria-pressed={selectedTop === top}
-                                        >
-                                          {top}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-col gap-3 p-3">
-                                  <span className="font-mulish text-sm text-[#4A423C]">
-                                    피부 톤
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    {skinToneColors.map((color, index) => (
-                                      <button
-                                        key={color}
-                                        type="button"
-                                        onClick={() => setSelectedSkin(color)}
-                                        className={profileColorButtonClass(
-                                          selectedSkin === color,
-                                        )}
-                                        style={{ backgroundColor: color }}
-                                        aria-label={`피부 톤 ${index + 1}`}
-                                        aria-pressed={selectedSkin === color}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-[22px] p-3">
-                                  <div className="flex flex-col gap-3">
-                                    <span className="font-mulish text-sm text-[#4A423C]">
-                                      상의 색상
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                      {clothingColors.map((color, index) => (
-                                        <button
-                                          key={`top-${color}`}
-                                          type="button"
-                                          onClick={() =>
-                                            setSelectedTopColor(color)
-                                          }
-                                          className={profileColorButtonClass(
-                                            selectedTopColor === color,
-                                          )}
-                                          style={{ backgroundColor: color }}
-                                          aria-label={`상의 색상 ${index + 1}`}
-                                          aria-pressed={
-                                            selectedTopColor === color
-                                          }
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  <div className="h-[85px] w-px bg-[#E9E0D3]" />
-
-                                  <div
-                                    className={`flex flex-col gap-3 ${selectedTop === "원피스" ? "opacity-50" : ""}`}
-                                  >
-                                    <span className="font-mulish text-sm text-[#4A423C]">
-                                      하의 색상
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                      {clothingColors.map((color, index) => (
-                                        <button
-                                          key={`bottom-${color}`}
-                                          type="button"
-                                          onClick={() =>
-                                            setSelectedBottomColor(color)
-                                          }
-                                          disabled={selectedTop === "원피스"}
-                                          className={`${profileColorButtonClass(selectedBottomColor === color)} disabled:cursor-not-allowed`}
-                                          style={{ backgroundColor: color }}
-                                          aria-label={`하의 색상 ${index + 1}`}
-                                          aria-pressed={
-                                            selectedBottomColor === color
-                                          }
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                            <CharacterPartsPicker
+                              appearance={myAppearance}
+                              onChange={setMyAppearance}
+                              previewLabel="나의 캐릭터"
+                            />
                           </div>
                           </div>
                         </div>
 
+                        {profileMessage && (
+                          <p className="w-full max-w-[706px] font-mulish text-sm text-[#4A423C]">
+                            {profileMessage}
+                          </p>
+                        )}
                         <button
                           type="button"
-                          onClick={handleSaveProfile}
-                          className="flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white"
+                          onClick={() => void handleSaveProfile()}
+                          disabled={profileSaving}
+                          className="flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:opacity-60"
                         >
-                          저장하기
+                          {profileSaving ? "저장하는 중..." : "저장하기"}
                         </button>
                       </div>
                     </div>
