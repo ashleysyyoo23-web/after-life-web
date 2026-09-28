@@ -468,3 +468,32 @@ export async function findLegacyOwnerFolder(accessToken: string, rootId: string)
     null
   );
 }
+
+// 폴더 바로 안의 하위 폴더 + 사진 (한 단계만, 이름순)
+export async function listFolderChildren(accessToken: string, folderId: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(folderId)) return { folders: [], images: [] };
+
+  const folders: DriveFolder[] = [];
+  const images: Array<{ id: string; name: string; thumbnailUrl: string | null }> = [];
+  let pageToken: string | undefined;
+
+  do {
+    const json = await driveList(
+      accessToken,
+      `'${folderId}' in parents and trashed = false and (mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'image/')`,
+      "id,name,mimeType,thumbnailLink",
+      pageToken,
+    );
+    for (const file of json.files ?? []) {
+      if (file.mimeType === "application/vnd.google-apps.folder") {
+        folders.push({ id: file.id, name: file.name });
+      } else if (images.length < 500) {
+        images.push({ id: file.id, name: file.name, thumbnailUrl: file.thumbnailLink ?? null });
+      }
+    }
+    pageToken = images.length < 500 ? json.nextPageToken : undefined;
+  } while (pageToken);
+
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "ko");
+  return { folders: folders.sort(byName), images: images.sort(byName) };
+}

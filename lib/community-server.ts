@@ -4,7 +4,12 @@ import {
   type CommunityMessage,
   type CommunityWall,
 } from "@/lib/community";
-import { getValidAccessTokenForConnection, type DriveConnectionRow } from "@/lib/deceased-drive-token";
+import {
+  findCharacterRootFolder,
+  getValidAccessTokenForConnection,
+  type DriveConnectionRow,
+  type DriveFolder,
+} from "@/lib/deceased-drive-token";
 
 // 카드에 보여줄 수 있는 사진 형식 (브라우저가 바로 그릴 수 있는 것만)
 export const COMMUNITY_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
@@ -64,6 +69,35 @@ export async function findDriveImageForUser(
     status: 404,
     error: "연결한 Google 계정에서 이 사진을 열 수 없어요. 주소와 공유 설정을 확인해 주세요.",
   };
+}
+
+// 내가 연결한 계정 중 "afterlife_my data" 폴더가 보이는 계정 (메시지 창 사진 고르기용)
+export async function findMyDataRootForUser(
+  supabase: SupabaseClient,
+  userEmail: string,
+): Promise<{ ok: true; accessToken: string; root: DriveFolder } | { ok: false; status: number; error: string }> {
+  const { data: connections } = await supabase
+    .from("drive_connections")
+    .select("id, owner_email, google_email, access_token, refresh_token, needs_reconnect")
+    .eq("owner_email", userEmail)
+    .order("updated_at", { ascending: false });
+
+  if (!connections || connections.length === 0) {
+    return { ok: false, status: 409, error: "Google Drive를 먼저 연결해 주세요. (설정 → 내가 남길 기록)" };
+  }
+
+  let anyToken = false;
+  for (const connection of connections as DriveConnectionRow[]) {
+    const token = await getValidAccessTokenForConnection(supabase, connection);
+    if (!token) continue;
+    anyToken = true;
+    const root = await findCharacterRootFolder(token.accessToken);
+    if (root) return { ok: true, accessToken: token.accessToken, root };
+  }
+
+  return anyToken
+    ? { ok: false, status: 404, error: "연결한 계정에서 'afterlife_my data' 폴더를 찾을 수 없어요." }
+    : { ok: false, status: 401, error: "Drive 연결이 만료됐어요. 설정에서 다시 연결해 주세요." };
 }
 
 export async function downloadDriveFile(accessToken: string, fileId: string) {

@@ -7,6 +7,7 @@ import {
   COMMUNITY_NICKNAME_MAX,
   type CommunityWall,
 } from "@/lib/community";
+import { DrivePhotoPicker } from "@/components/community/DrivePhotoPicker";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type KYHMessageModalProps = {
@@ -96,6 +97,8 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
   const [driveUrl, setDriveUrl] = useState("");
   const [drivePreview, setDrivePreview] = useState<DrivePreview | null>(null);
   const [checkingDrive, setCheckingDrive] = useState(false);
+  // 주소가 비어 있을 때 "불러오기" → afterlife_my data 둘러보기
+  const [showPicker, setShowPicker] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -117,6 +120,7 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
 
   const resetForm = () => {
     setMessage("");
+    setShowPicker(false);
     setDriveUrl("");
     setDrivePreview(null);
     setDriveError(null);
@@ -129,8 +133,20 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
     onClose();
   };
 
+  const handlePickPhoto = (photo: { id: string; name: string }) => {
+    setShowPicker(false);
+    setDriveError(null);
+    setDriveUrl(`https://drive.google.com/file/d/${photo.id}/view`);
+    setDrivePreview({ name: photo.name, previewUrl: `/api/community/drive-image/${photo.id}` });
+  };
+
   const handleCheckDrive = async () => {
-    if (!driveUrl.trim() || checkingDrive) return;
+    if (checkingDrive) return;
+    // 주소가 없으면 afterlife_my data 에서 고르기
+    if (!driveUrl.trim()) {
+      setShowPicker((open) => !open);
+      return;
+    }
     setCheckingDrive(true);
     setDriveError(null);
     setDrivePreview(null);
@@ -529,8 +545,9 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
             )}
           </div>
 
-          <div className="flex w-full max-w-[652px] flex-1 flex-col gap-[62px]">
-            <div className="flex flex-col gap-[21px]">
+          {/* 오른쪽 영역은 원래 창 높이로 고정: 사진 목록이 열려도 창 크기는 그대로, 이 안에서만 스크롤 */}
+          <div className="flex h-[612px] w-full max-w-[652px] flex-1 flex-col gap-[62px]">
+            <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-[21px] overflow-y-auto pr-2">
               <div className="flex flex-col gap-[18px]">
                 <div className="flex gap-2 font-mulish text-sm text-[#4A423C]">
                   <span>1</span>
@@ -577,7 +594,7 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
                     onKeyDown={(event) => {
                       if (event.key === "Enter") void handleCheckDrive();
                     }}
-                    placeholder="Google Drive 사진 주소 (선택)"
+                    placeholder="Drive 사진 주소를 붙여넣거나, 비워 두고 '불러오기'로 고르기 (선택)"
                     className="h-[42px] w-full max-w-[575px] rounded-[7px] border border-[#C0BDBD] bg-white px-6 font-mulish text-sm text-[#4A423C] placeholder:text-[#898787]"
                   />
                   {drivePreview ? (
@@ -595,7 +612,7 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
                     <button
                       type="button"
                       onClick={() => void handleCheckDrive()}
-                      disabled={!driveUrl.trim() || checkingDrive}
+                      disabled={checkingDrive}
                       className="shrink-0 cursor-pointer rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-base text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {checkingDrive ? "확인 중..." : "불러오기"}
@@ -603,6 +620,9 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
                   )}
                 </div>
                 {driveError && <p className="font-mulish text-xs text-[#9E2121]">{driveError}</p>}
+                {showPicker && !drivePreview && (
+                  <DrivePhotoPicker onPick={handlePickPhoto} onClose={() => setShowPicker(false)} />
+                )}
                 {drivePreview && (
                   <div className="flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -619,7 +639,7 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex shrink-0 flex-col gap-2">
               {submitError && <p className="font-mulish text-sm text-[#9E2121]">{submitError}</p>}
               <button
                 type="button"
