@@ -576,16 +576,26 @@ function RecapviewPageContent() {
                     ? albumPhotos.map((photo, index) => (
                         <div
                           key={photo.driveFileId}
-                          className="relative h-full min-w-full shrink-0 bg-white/40"
+                          className="relative flex h-full w-full min-w-full shrink-0 grow-0 basis-full items-center justify-center overflow-hidden bg-white/40"
                         >
+                          {/* 한 슬라이드에 사진 한 장을 자르지 않고 통째로. 남는 곳은 같은 사진을 흐리게 깔아 채움 */}
                           {isNearCurrent(index) && (
-                            // 본인만 볼 수 있는 API 주소라 일반 img 사용
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={photo.mediaUrl}
-                              alt={photo.fileName ?? ""}
-                              className="h-full w-full rounded-lg object-cover"
-                            />
+                            <>
+                              {/* 본인만 볼 수 있는 API 주소라 일반 img 사용 */}
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={photo.mediaUrl}
+                                alt=""
+                                aria-hidden="true"
+                                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-50 blur-2xl"
+                              />
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={photo.mediaUrl}
+                                alt={photo.fileName ?? ""}
+                                className="relative max-h-full max-w-full object-contain"
+                              />
+                            </>
                           )}
                         </div>
                       ))
