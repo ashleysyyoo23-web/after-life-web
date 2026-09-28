@@ -14,10 +14,35 @@ type CharacterStatus = {
   revealedCount: number;
 };
 
-type Status = { characters: CharacterStatus[]; revealedTotal: number };
+type Status = {
+  characters: CharacterStatus[];
+  revealedTotal: number;
+  // 지금 사진 글 ("섹션ID:파일ID" → 글), 감정 기록 메모 수
+  captions: Record<string, string>;
+  memoCount: number;
+};
 
 // 캐릭터별 시작 노출 강도는 이 컴퓨터에 기억 (한 번만 정하면 됨)
 const BASELINE_KEY = "afterlife:facilitator-baseline";
+// 사진 글의 시작 상태 (진행자가 미리 적어 둔 글). 처음 들어올 때 지금 글로 자동 저장
+const CAPTIONS_KEY = "afterlife:facilitator-captions";
+
+function readStartCaptions(): Record<string, string> | null {
+  try {
+    const raw = window.localStorage.getItem(CAPTIONS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStartCaptions(captions: Record<string, string>) {
+  try {
+    window.localStorage.setItem(CAPTIONS_KEY, JSON.stringify(captions));
+  } catch {
+    // 저장이 안 되는 브라우저면 이번 화면에서만 사용
+  }
+}
 
 function readBaseline(): Record<string, number> {
   try {
@@ -45,6 +70,10 @@ export default function FacilitatorPage() {
   const [confirming, setConfirming] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // 함께 초기화할 것
+  const [restoreCaptions, setRestoreCaptions] = useState(true);
+  const [clearMemos, setClearMemos] = useState(true);
+  const [startCaptions, setStartCaptions] = useState<Record<string, string>>({});
 
   useEffect(() => {
     void (async () => {
@@ -59,6 +88,14 @@ export default function FacilitatorPage() {
           data.characters.map((character) => [character.id, saved[character.id] ?? character.emotionLevel ?? 50]),
         );
         setBaseline(filled);
+        // 사진 글 시작 상태: 저장한 적 없으면 지금 글을 시작 상태로
+        const savedCaptions = readStartCaptions();
+        if (savedCaptions) {
+          setStartCaptions(savedCaptions);
+        } else {
+          setStartCaptions(data.captions);
+          writeStartCaptions(data.captions);
+        }
         setStatus(data);
       } catch (loadError) {
         setError(loadError instanceof Error && loadError.message ? loadError.message : "불러오지 못했어요.");
@@ -80,16 +117,37 @@ export default function FacilitatorPage() {
       const res = await fetch("/api/facilitator/test-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ levels: baseline }),
+        body: JSON.stringify({
+          levels: baseline,
+          ...(restoreCaptions ? { captions: startCaptions } : {}),
+          clearMemos,
+        }),
       });
       const data = (await res.json().catch(() => null)) as
-        | (Status & { clearedPhotos: number; resetCharacters: number; error?: string })
+        | (Status & {
+            clearedPhotos: number;
+            resetCharacters: number;
+            restoredCaptions: number;
+            deletedMemos: number;
+            error?: string;
+          })
         | null;
       if (!res.ok || !data) throw new Error(data?.error ?? "초기화하지 못했어요.");
 
-      setStatus({ characters: data.characters, revealedTotal: data.revealedTotal });
+      setStatus({
+        characters: data.characters,
+        revealedTotal: data.revealedTotal,
+        captions: data.captions,
+        memoCount: data.memoCount,
+      });
       setMessage(
-        `초기화했어요. 본 사진 ${data.clearedPhotos}장을 다시 흐리게, 캐릭터 ${data.resetCharacters}명의 노출 강도를 시작 값으로 되돌렸어요.`,
+        [
+          `초기화했어요. 본 사진 ${data.clearedPhotos}장을 다시 흐리게, 캐릭터 ${data.resetCharacters}명의 노출 강도를 시작 값으로`,
+          restoreCaptions ? `사진 글 ${data.restoredCaptions}개를 시작 상태로` : null,
+          clearMemos ? `감정 기록 메모 ${data.deletedMemos}개 삭제` : null,
+        ]
+          .filter(Boolean)
+          .join(", ") + ".",
       );
     } catch (resetError) {
       setMessage(resetError instanceof Error ? resetError.message : "초기화하지 못했어요.");
@@ -107,7 +165,7 @@ export default function FacilitatorPage() {
           <h1 className="font-newsreader text-4xl text-black">사용성 테스트 초기화</h1>
           <p className="text-sm text-[#898787]">
             참가자를 바꿀 때 누르세요. &lsquo;눌러서 보기&rsquo;로 본 사진을 모두 다시 흐리게 하고, 캐릭터마다 정한 시작 노출
-            강도로 되돌려요. 글·그림·메모·기분 기록은 그대로예요.
+            강도로 되돌려요. 아래에서 고르면 사진 글과 감정 기록 메모도 함께 되돌려요. 그림·기분 기록은 그대로예요.
           </p>
         </header>
 
@@ -158,6 +216,56 @@ export default function FacilitatorPage() {
               <p className="text-xs text-[#898787]">시작 값은 이 컴퓨터에 기억돼요. 한 번 정하면 다음 참가자 때도 그대로예요.</p>
             </section>
 
+            <section className="flex flex-col gap-4 rounded-2xl bg-white p-6">
+              <h2 className="text-base font-semibold">함께 되돌릴 것</h2>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={restoreCaptions}
+                  onChange={(event) => setRestoreCaptions(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#AF9083]"
+                />
+                <span className="flex flex-col gap-1 text-sm">
+                  <span>
+                    사진 글(책 보기)을 <b>시작 상태</b>로 — 참가자가 새로 쓰거나 고친 글만 되돌려요
+                  </span>
+                  <span className="text-xs text-[#898787]">
+                    시작 상태: 글 {Object.keys(startCaptions).length}개 기억됨 · 지금 글 {Object.keys(status.captions).length}개
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartCaptions(status.captions);
+                      writeStartCaptions(status.captions);
+                      setMessage(`지금 사진 글 ${Object.keys(status.captions).length}개를 시작 상태로 기억했어요.`);
+                    }}
+                    className="self-start cursor-pointer rounded-full border border-[#E8DDD5] bg-white px-3 py-1 text-xs text-[#4A423C] hover:border-[#AF9083]"
+                  >
+                    지금 글을 시작 상태로 기억하기
+                  </button>
+                  <span className="text-xs text-[#AF9083]">
+                    테스트용 글을 새로 준비했으면, 참가자가 오기 전에 이 버튼을 눌러 주세요.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={clearMemos}
+                  onChange={(event) => setClearMemos(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#AF9083]"
+                />
+                <span className="flex flex-col gap-1 text-sm">
+                  <span>
+                    리캡 ✎ <b>감정 기록 메모</b>를 모두 지우기
+                  </span>
+                  <span className="text-xs text-[#898787]">지금 메모 {status.memoCount}개</span>
+                </span>
+              </label>
+            </section>
+
             <div className="flex flex-wrap items-center gap-4">
               {!confirming ? (
                 <button
@@ -171,7 +279,9 @@ export default function FacilitatorPage() {
               ) : (
                 <div className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-4">
                   <span className="text-sm">
-                    본 사진 {status.revealedTotal}장을 다시 흐리게 하고, 노출 강도를 시작 값으로 되돌릴까요?
+                    본 사진 {status.revealedTotal}장을 다시 흐리게 하고, 노출 강도를 시작 값으로
+                    {restoreCaptions ? ", 사진 글을 시작 상태로" : ""}
+                    {clearMemos ? `, 메모 ${status.memoCount}개를 지우고` : ""} 되돌릴까요?
                   </span>
                   <button
                     type="button"
