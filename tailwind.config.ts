@@ -50,6 +50,7 @@ const config: Config = {
         newsreader: ["var(--font-newsreader)", "serif"],
         mulish: ["var(--font-mulish)", "sans-serif"],
         "jeju-myeongjo": ["'Jeju Myeongjo'", "serif"],
+        handwriting: ["var(--font-handwriting)", "cursive"],
       },
       fontSize: {
         "headline-1": ["68px", { lineHeight: "auto" }],

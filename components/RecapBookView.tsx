@@ -20,19 +20,22 @@ export type BookPhoto = {
 // 배경 그림(recapmanual-empty.jpg, 16:9) 속 위치. 무대 기준 %.
 // 양쪽 쪽에 사진 2장씩(왼쪽 위·아래, 오른쪽 위·아래), 사진 바로 아래에 글 한 줄.
 // centerX·top 은 사진 가운데 가로 위치와 위쪽 끝, rotate 는 기본 기울기.
+// 사진을 크게 놓아서 기울어진 모서리끼리는 살짝 겹칠 수 있어요.
 const PHOTO_SLOTS = [
-  { centerX: 34.4, top: 27.0, rotate: -2.6 },
-  { centerX: 35.0, top: 56.5, rotate: 1.8 },
-  { centerX: 66.4, top: 27.8, rotate: 1.4 },
-  { centerX: 66.0, top: 57.0, rotate: -2.1 },
+  { centerX: 34.4, top: 25.0, rotate: -2.6 },
+  { centerX: 35.0, top: 55.0, rotate: 1.8 },
+  { centerX: 66.4, top: 25.6, rotate: 1.4 },
+  { centerX: 66.0, top: 55.4, rotate: -2.1 },
 ];
-const PHOTO_WIDTH = 20.5;
-const PHOTO_HEIGHT = 20.5;
+const PHOTO_WIDTH = 24;
+const PHOTO_HEIGHT = 27;
 // 사진 아래 글까지의 간격
-const CAPTION_GAP = 3.4;
+const CAPTION_GAP = 2.4;
 // 세로 사진은 글을 사진 오른쪽에: 사진과 글 사이 간격, 글 칸 너비 (무대 가로 %)
 const SIDE_CAPTION_GAP = 1.2;
 const SIDE_CAPTION_WIDTH = 8.5;
+// 사진 글 크기: 예전(1.15cqw)보다 4px 작게, 손글씨 (작은 화면에서도 10px 아래로는 안 줄어듦)
+const CAPTION_FONT_SIZE = "max(10px, calc(1.15cqw - 4px))";
 // 무대는 16:9 → 세로 % 를 가로 % 로 바꿀 때 곱하는 값
 const STAGE_HEIGHT_TO_WIDTH = 9 / 16;
 // 그림을 그릴 수 있는 펼친 책 영역
@@ -365,8 +368,8 @@ function CaptionInput({
         }}
         placeholder="여기를 눌러 글을 적어 보세요"
         aria-label="사진 설명"
-        className="absolute -translate-y-1/2 resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 text-left font-mulish leading-snug text-[#1a1a1a] outline-none transition-colors placeholder:text-[#C8BDB3] hover:border-[#E9E0D3] focus:border-[#AF9083] focus:bg-white/70 disabled:hover:border-transparent"
-        style={{ ...style, fontSize: "1.15cqw" }}
+        className="absolute -translate-y-1/2 resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1 text-left font-handwriting leading-snug text-[#1a1a1a] outline-none transition-colors placeholder:text-[#C8BDB3] hover:border-[#E9E0D3] focus:border-[#AF9083] focus:bg-white/70 disabled:hover:border-transparent"
+        style={{ ...style, fontSize: CAPTION_FONT_SIZE }}
       />
     );
   }
@@ -384,8 +387,8 @@ function CaptionInput({
       }}
       placeholder="여기를 눌러 글을 적어 보세요"
       aria-label="사진 설명"
-      className="absolute w-[21%] -translate-x-1/2 -translate-y-1/2 rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-mulish text-[#1a1a1a] outline-none transition-colors placeholder:text-[#C8BDB3] hover:border-[#E9E0D3] focus:border-[#AF9083] focus:bg-white/70 disabled:hover:border-transparent"
-      style={{ ...style, fontSize: "1.15cqw" }}
+      className="absolute w-[21%] -translate-x-1/2 -translate-y-1/2 rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-handwriting text-[#1a1a1a] outline-none transition-colors placeholder:text-[#C8BDB3] hover:border-[#E9E0D3] focus:border-[#AF9083] focus:bg-white/70 disabled:hover:border-transparent"
+      style={{ ...style, fontSize: CAPTION_FONT_SIZE }}
     />
   );
 }
