@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import sharp from "sharp";
 import {
   COMMUNITY_IMAGE_MAX_BYTES,
   type CommunityMessage,
@@ -166,4 +167,25 @@ export async function toClientMessages(
       isMine: row.author_email === userEmail,
     };
   });
+}
+
+// 공유 사진은 긴 쪽 1600px 로 줄여 WEBP 로 저장 (카드에는 이 정도면 충분, 보통 0.5MB 이하)
+// GIF 는 움직임을 지키려고 원본 그대로.
+export const COMMUNITY_IMAGE_MAX_SIDE = 1600;
+
+export async function shrinkCommunityImage(buffer: Buffer, mimeType: string) {
+  if (mimeType === "image/gif") return { buffer, mimeType };
+
+  try {
+    const output = await sharp(buffer)
+      .rotate() // 휴대폰 사진의 회전 정보대로 똑바로 세움
+      .resize({ width: COMMUNITY_IMAGE_MAX_SIDE, height: COMMUNITY_IMAGE_MAX_SIDE, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+    // 줄였는데 오히려 커지면(아주 작은 사진) 원본 유지
+    return output.byteLength < buffer.byteLength ? { buffer: output, mimeType: "image/webp" } : { buffer, mimeType };
+  } catch (shrinkError) {
+    console.error("[community] image shrink failed, keeping original", shrinkError);
+    return { buffer, mimeType };
+  }
 }

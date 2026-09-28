@@ -13,6 +13,7 @@ import {
   COMMUNITY_MESSAGE_COLUMNS,
   downloadDriveFile,
   findDriveImageForUser,
+  shrinkCommunityImage,
   toClientMessages,
 } from "@/lib/community-server";
 
@@ -104,7 +105,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-      image = { buffer: await downloadDriveFile(found.accessToken, fileId), mimeType: found.meta.mimeType };
+      const original = await downloadDriveFile(found.accessToken, fileId);
+      image = await shrinkCommunityImage(original, found.meta.mimeType);
     } catch (downloadError) {
       const text = downloadError instanceof Error ? downloadError.message : "Drive 사진을 받지 못했어요.";
       return NextResponse.json({ error: text }, { status: 502 });
