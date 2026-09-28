@@ -2,12 +2,32 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import {
+  COMMUNITY_MESSAGE_MAX,
+  COMMUNITY_NICKNAME_MAX,
+  type CommunityWall,
+} from "@/lib/community";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type KYHMessageModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  // 어느 추모 공간에 남기는지 (kyh = 김영희 님의 섬, sewol = 세월호 참사 추모공간)
+  wall: CommunityWall;
 };
+
+type DrivePreview = { name: string; previewUrl: string };
+
+// 캔버스에 한 점이라도 그려져 있는지 (다 지웠으면 그림 없음)
+function canvasHasDrawing(canvas: HTMLCanvasElement) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return false;
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] !== 0) return true;
+  }
+  return false;
+}
 
 type ActiveTool = "pen" | "eraser" | null;
 
@@ -60,7 +80,7 @@ function toolButtonClass(isActive: boolean) {
   ].join(" ");
 }
 
-export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
+export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps) {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
@@ -70,7 +90,16 @@ export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState(3);
   const [selectedColor, setSelectedColor] = useState("#000000");
-  const [isDriveConnected, setIsDriveConnected] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const [message, setMessage] = useState("");
+  // 3. 이미지 공유: Drive 주소 → 불러오기로 확인 → 미리보기
+  const [driveUrl, setDriveUrl] = useState("");
+  const [drivePreview, setDrivePreview] = useState<DrivePreview | null>(null);
+  const [checkingDrive, setCheckingDrive] = useState(false);
+  const [driveError, setDriveError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const nicknameFilledRef = useRef(false);
 
   const handlePenClick = () => {
     if (activeTool !== "pen") {
@@ -86,9 +115,88 @@ export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
     setIsPaletteOpen(false);
   };
 
-  const handleUpload = () => {
+  const resetForm = () => {
+    setMessage("");
+    setDriveUrl("");
+    setDrivePreview(null);
+    setDriveError(null);
+    setSubmitError(null);
+  };
+
+  const handleClose = () => {
+    setSubmitError(null);
+    setDriveError(null);
     onClose();
-    router.push("/KYHleaving");
+  };
+
+  const handleCheckDrive = async () => {
+    if (!driveUrl.trim() || checkingDrive) return;
+    setCheckingDrive(true);
+    setDriveError(null);
+    setDrivePreview(null);
+
+    try {
+      const res = await fetch(`/api/community/drive-image?url=${encodeURIComponent(driveUrl.trim())}`, {
+        cache: "no-store",
+      });
+      const data = (await res.json().catch(() => null)) as ({ error?: string } & Partial<DrivePreview>) | null;
+      if (!res.ok || !data?.previewUrl) throw new Error(data?.error ?? "사진을 불러오지 못했어요.");
+      setDrivePreview({ name: data.name ?? "", previewUrl: data.previewUrl });
+    } catch (checkError) {
+      setDriveError(checkError instanceof Error ? checkError.message : "사진을 불러오지 못했어요.");
+    } finally {
+      setCheckingDrive(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (submitting) return;
+    const trimmedNickname = nickname.trim();
+    const trimmedMessage = message.trim();
+
+    if (!trimmedNickname) {
+      setSubmitError("1번 닉네임을 적어 주세요.");
+      return;
+    }
+    if (!trimmedMessage) {
+      setSubmitError("2번 메시지를 적어 주세요.");
+      return;
+    }
+    if (driveUrl.trim() && !drivePreview) {
+      setSubmitError("3번 사진 주소를 '불러오기'로 먼저 확인해 주세요. (공유하지 않으려면 주소를 지워 주세요)");
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const drawing = canvas && canvasHasDrawing(canvas) ? canvas.toDataURL("image/png") : undefined;
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const res = await fetch(`/api/community/${wall}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nickname: trimmedNickname,
+          message: trimmedMessage,
+          drawing,
+          driveUrl: drivePreview ? driveUrl.trim() : undefined,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) {
+        throw new Error(res.status === 401 ? "로그인한 뒤 메시지를 남길 수 있어요." : (data?.error ?? "메시지를 남기지 못했어요."));
+      }
+
+      resetForm();
+      onClose();
+      router.push(`/KYHleaving?wall=${wall}`);
+    } catch (uploadError) {
+      setSubmitError(uploadError instanceof Error ? uploadError.message : "메시지를 남기지 못했어요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getCanvasPoint = useCallback(
@@ -238,6 +346,24 @@ export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
     setIsPaletteOpen(false);
   }, [isOpen]);
 
+  // 닉네임 칸이 비어 있으면 나의 프로필 이름으로 채워 둠 (처음 열 때 한 번)
+  useEffect(() => {
+    if (!isOpen || nicknameFilledRef.current) return;
+    nicknameFilledRef.current = true;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/me/profile", { cache: "no-store" });
+        if (!res.ok) return;
+        const { profile } = (await res.json()) as { profile?: { displayName?: string } };
+        const name = profile?.displayName?.slice(0, COMMUNITY_NICKNAME_MAX) ?? "";
+        if (name) setNickname((current) => current || name);
+      } catch {
+        // 못 불러오면 빈칸 그대로
+      }
+    })();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -246,7 +372,7 @@ export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
         <div className="mb-4 flex justify-end">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
             aria-label="닫기"
           >
@@ -412,7 +538,9 @@ export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
                 </div>
                 <input
                   type="text"
-                  maxLength={10}
+                  value={nickname}
+                  onChange={(event) => setNickname(event.target.value)}
+                  maxLength={COMMUNITY_NICKNAME_MAX}
                   placeholder="어떤 이름으로 기록을 남기고 싶으신가요?(최대 10자)"
                   className="w-full rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-newsreader text-sm text-[#4A423C] placeholder:text-[#898787]"
                 />
@@ -424,7 +552,9 @@ export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
                   <span>남기고 싶은 메시지를 작성해주세요.</span>
                 </div>
                 <textarea
-                  maxLength={100}
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                  maxLength={COMMUNITY_MESSAGE_MAX}
                   placeholder="(최대 100자)"
                   className="h-[184px] w-full resize-none rounded-[7px] border border-[#C0BDBD] bg-white p-6 font-newsreader text-sm text-[#4A423C] placeholder:text-[#898787]"
                 />
@@ -438,33 +568,68 @@ export function KYHMessageModal({ isOpen, onClose }: KYHMessageModalProps) {
                 <div className="flex items-center gap-3">
                   <input
                     type="text"
-                    placeholder="Google Drive URL"
-                    disabled={isDriveConnected}
-                    className={`h-[42px] w-full max-w-[575px] rounded-[7px] border border-[#C0BDBD] bg-white px-6 font-mulish text-sm text-[#4A423C] placeholder:text-[#4A423C] ${
-                      isDriveConnected ? "opacity-50" : ""
-                    }`}
+                    value={driveUrl}
+                    onChange={(event) => {
+                      setDriveUrl(event.target.value);
+                      setDrivePreview(null);
+                      setDriveError(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void handleCheckDrive();
+                    }}
+                    placeholder="Google Drive 사진 주소 (선택)"
+                    className="h-[42px] w-full max-w-[575px] rounded-[7px] border border-[#C0BDBD] bg-white px-6 font-mulish text-sm text-[#4A423C] placeholder:text-[#898787]"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setIsDriveConnected((prev) => !prev)}
-                    className={`shrink-0 cursor-pointer rounded-lg border border-[#4B3F39] px-4 py-[11px] font-mulish text-base text-white ${
-                      isDriveConnected ? "bg-[#9BB073]" : "bg-[#776257]"
-                    }`}
-                    aria-pressed={isDriveConnected}
-                  >
-                    {isDriveConnected ? "연결됨 ✓" : "연결하기"}
-                  </button>
+                  {drivePreview ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDriveUrl("");
+                        setDrivePreview(null);
+                      }}
+                      className="shrink-0 cursor-pointer rounded-lg border border-[#C0BDBD] bg-white px-4 py-[11px] font-mulish text-base text-[#4A423C]"
+                    >
+                      빼기
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void handleCheckDrive()}
+                      disabled={!driveUrl.trim() || checkingDrive}
+                      className="shrink-0 cursor-pointer rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-base text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {checkingDrive ? "확인 중..." : "불러오기"}
+                    </button>
+                  )}
                 </div>
+                {driveError && <p className="font-mulish text-xs text-[#9E2121]">{driveError}</p>}
+                {drivePreview && (
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={drivePreview.previewUrl}
+                      alt="공유할 사진 미리보기"
+                      className="h-20 w-20 rounded-lg object-cover"
+                    />
+                    <p className="font-mulish text-xs text-[#6E8A3E]">
+                      {drivePreview.name} — 올리면 이 사진의 복사본이 추모비에 함께 보여요.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleUpload}
-              className="flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#D99B82] bg-[#FDD9BD] font-newsreader text-base text-[#4A423C] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
-            >
-              추모비에 업로드하기
-            </button>
+            <div className="flex flex-col gap-2">
+              {submitError && <p className="font-mulish text-sm text-[#9E2121]">{submitError}</p>}
+              <button
+                type="button"
+                onClick={() => void handleUpload()}
+                disabled={submitting}
+                className="flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#D99B82] bg-[#FDD9BD] font-newsreader text-base text-[#4A423C] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting ? "올리는 중..." : "추모비에 업로드하기"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

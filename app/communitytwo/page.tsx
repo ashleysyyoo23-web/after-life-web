@@ -7,54 +7,10 @@ import {
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { BackgroundPageLayout } from "@/components/background-page-layout";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
+import { HoverMessageCard, useWallMessages } from "@/components/community/CommunityCards";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-
-const HOVER_CARDS = [
-  {
-    id: 0,
-    userId: "missingsh_98",
-    date: "2026년 4월 19일",
-    time: "10:15 am",
-    message: "사랑한다는 말, 더 많이 할걸",
-  },
-  {
-    id: 1,
-    userId: "forever_mom",
-    date: "2026년 4월 19일",
-    time: "1:30 pm",
-    message: "목소리가 많이 그리워",
-  },
-  {
-    id: 2,
-    userId: "remember_u",
-    date: "2026년 4월 19일",
-    time: "3:45 pm",
-    message: "좋은 곳에서 행복해..",
-  },
-  {
-    id: 3,
-    userId: "heart_4ever",
-    date: "2026년 4월 19일",
-    time: "6:20 pm",
-    message: "오래오래 기억할게요",
-  },
-  {
-    id: 4,
-    userId: "sunflower_kim",
-    date: "2026년 4월 19일",
-    time: "9:00 am",
-    message: "그곳에서는 부디 행복해",
-  },
-  {
-    id: 5,
-    userId: "blue_sky_79",
-    date: "2026년 4월 19일",
-    time: "4:30 pm",
-    message: "꿈에서라도 만나고 싶어",
-  },
-];
 
 const HOVER_SPOTS = [
   {
@@ -95,155 +51,15 @@ const HOVER_SPOTS = [
   },
 ] as const;
 
-function ProfileSilhouette() {
-  return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8DDD5]">
-      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#AF9083]">
-        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-      </svg>
-    </div>
-  );
-}
-
-function HoverMessageCard({
-  id,
-  userId,
-  date,
-  time,
-  message,
-  bookmarked,
-  liked,
-  onToggleBookmark,
-  onToggleLike,
-}: {
-  id: number;
-  userId: string;
-  date: string;
-  time: string;
-  message: string;
-  bookmarked: boolean;
-  liked: boolean;
-  onToggleBookmark: (id: number) => void;
-  onToggleLike: (id: number) => void;
-}) {
-  return (
-    <div className="flex w-64 flex-col gap-3 rounded-2xl bg-white p-4 shadow-lg transition-opacity duration-200">
-      <div className="flex items-start gap-2">
-        <ProfileSilhouette />
-        <div className="min-w-0 font-mulish text-sm text-[#4A423C]">
-          <p className="truncate font-semibold">{userId}</p>
-          <p className="text-xs text-[#898787]">
-            {date} / {time}
-          </p>
-        </div>
-      </div>
-
-      <p className="font-mulish text-sm text-[#4A423C]">{message}</p>
-
-      <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => onToggleBookmark(id)}
-          className="cursor-pointer border-0 bg-transparent p-1 text-[#AF9083]"
-          aria-label="북마크"
-          aria-pressed={bookmarked}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill={bookmarked ? "currentColor" : "none"}
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-            />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={() => onToggleLike(id)}
-          className={`cursor-pointer border-0 bg-transparent p-1 ${
-            liked ? "text-red-400" : "text-[#AF9083]"
-          }`}
-          aria-label="좋아요"
-          aria-pressed={liked}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill={liked ? "currentColor" : "none"}
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-            />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="cursor-pointer border-0 bg-transparent p-1 text-[#AF9083]"
-          aria-label="공유"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"
-            />
-          </svg>
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function CommunityTwoPage() {
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
-  const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const toggleLike = (id: number) => {
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const toggleBookmark = (id: number) => {
-    setBookmarkedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  // 이 추모 공간에 남겨진 메시지 (최근 것부터 섬의 자리에 하나씩)
+  const { messages, loaded, error, onToggle, onDelete } = useWallMessages("sewol");
+  const placed = messages.slice(0, HOVER_SPOTS.length);
 
   const handleHoverEnter = (id: number) => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
@@ -270,7 +86,7 @@ export default function CommunityTwoPage() {
       />
 
       <div className="pointer-events-none fixed inset-0 z-30">
-        {HOVER_SPOTS.map((spot) => (
+        {HOVER_SPOTS.slice(0, placed.length).map((spot) => (
           <div
             key={spot.id}
             className="pointer-events-auto absolute z-30 h-12 w-12 rounded-full bg-transparent"
@@ -280,31 +96,19 @@ export default function CommunityTwoPage() {
           />
         ))}
 
-        {HOVER_CARDS.map((card) => {
-          if (hoveredId !== card.id) return null;
-
-          const spot = HOVER_SPOTS.find((s) => s.id === card.id);
-          if (!spot) return null;
+        {placed.map((message, index) => {
+          const spot = HOVER_SPOTS[index];
+          if (hoveredId !== spot.id) return null;
 
           return (
             <div
-              key={card.id}
+              key={message.id}
               className="pointer-events-auto fixed z-40 transition-opacity duration-200"
               style={spot.cardPosition}
               onMouseEnter={handleCardEnter}
               onMouseLeave={handleCardLeave}
             >
-              <HoverMessageCard
-                id={card.id}
-                userId={card.userId}
-                date={card.date}
-                time={card.time}
-                message={card.message}
-                bookmarked={bookmarkedIds.has(card.id)}
-                liked={likedIds.has(card.id)}
-                onToggleBookmark={toggleBookmark}
-                onToggleLike={toggleLike}
-              />
+              <HoverMessageCard message={message} onToggle={onToggle} onDelete={onDelete} />
             </div>
           );
         })}
@@ -383,9 +187,18 @@ export default function CommunityTwoPage() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+      {loaded && (error || messages.length === 0 || messages.length > placed.length) && (
+        <p className="pointer-events-none fixed bottom-10 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-3 font-mulish text-sm text-[#4A423C]">
+          {error ??
+            (messages.length === 0
+              ? "아직 남겨진 메시지가 없어요. '메시지 남기기'로 첫 메시지를 남겨 주세요."
+              : `최근 메시지 ${placed.length}개가 섬에 있어요. 모든 메시지(${messages.length}개)는 그리드 보기에서 볼 수 있어요.`)}
+        </p>
+      )}
       <KYHMessageModal
         isOpen={showMessageModal}
         onClose={() => setShowMessageModal(false)}
+        wall="sewol"
       />
     </>
   );
