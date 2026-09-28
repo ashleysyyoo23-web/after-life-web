@@ -5,16 +5,23 @@ import {
   toLegacyDateTimestamp,
 } from "@/components/legacy-date-picker";
 import Image from "next/image";
-import { BookOpen, Clock, Play, type LucideIcon } from "lucide-react";
+import { BookOpen, Play, type LucideIcon } from "lucide-react";
 import { getSession, signIn } from "next-auth/react";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
+import {
+  DEFAULT_RECAP_VIEW,
+  DEFAULT_SLIDE_SECONDS,
+  SLIDE_SECONDS_MAX,
+  SLIDE_SECONDS_MIN,
+  sanitizeViewSettings,
+  type RecapView,
+} from "@/lib/view-settings";
 import { useCallback, useEffect, useState } from "react";
 
 const LEGACY_SETTINGS_CALLBACK_URL = "/mainland?settings=legacy";
 
 type SettingId = "view-method" | "profile" | "legacy" | "edit-person";
-type ViewType = "slideshow" | "timeline" | "book";
 type LegacyRecordType =
   | "daily-face"
   | "id-photo"
@@ -25,8 +32,9 @@ type LegacyRecordType =
   | "video-no-face"
   | "custom";
 
+// 리캡을 열었을 때 처음 보이는 화면
 const viewTypeOptions: {
-  id: ViewType;
+  id: RecapView;
   title: string;
   description: string;
   Icon: LucideIcon;
@@ -34,14 +42,8 @@ const viewTypeOptions: {
   {
     id: "slideshow",
     title: "슬라이드쇼",
-    description: "사진이 한 장씩 천천히 흘러가요.",
+    description: "정한 시간마다 사진이 한 장씩 넘어가요.",
     Icon: Play,
-  },
-  {
-    id: "timeline",
-    title: "타임라인",
-    description: "시간의 순서대로 기억이 펼쳐져요.",
-    Icon: Clock,
   },
   {
     id: "book",
@@ -143,10 +145,11 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const [selectedSetting, setSelectedSetting] =
     useState<SettingId>("view-method");
-  const [sliderValue, setSliderValue] = useState(5);
-  const [selectedViewType, setSelectedViewType] = useState<ViewType | null>(
-    null,
-  );
+  const [sliderValue, setSliderValue] = useState(DEFAULT_SLIDE_SECONDS);
+  const [selectedViewType, setSelectedViewType] = useState<RecapView>(DEFAULT_RECAP_VIEW);
+  const [viewSettingsLoaded, setViewSettingsLoaded] = useState(false);
+  const [viewSaving, setViewSaving] = useState(false);
+  const [viewMessage, setViewMessage] = useState<string | null>(null);
   const [profileName, setProfileName] = useState("");
   const [profileId, setProfileId] = useState("");
   const [profileIntro, setProfileIntro] = useState("");
@@ -231,8 +234,31 @@ export function SettingsModal({
       ? `${sidebarMenuBaseClass} bg-[#FDD9BD]`
       : `${sidebarMenuBaseClass} bg-transparent hover:bg-[#FBE2E1]`;
 
-  const handleSaveViewMethod = () => {
-    console.log({ sliderValue, selectedViewType });
+  const handleSaveViewMethod = async () => {
+    setViewSaving(true);
+    setViewMessage(null);
+
+    try {
+      const res = await fetch("/api/me/view-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slideSeconds: sliderValue, recapView: selectedViewType }),
+      });
+
+      if (res.status === 401) {
+        void signIn("google");
+        return;
+      }
+
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(json?.error ?? "저장하지 못했어요.");
+
+      setViewMessage("저장했어요. 다음에 리캡을 열 때부터 적용돼요.");
+    } catch (saveError) {
+      setViewMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
+    } finally {
+      setViewSaving(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -418,6 +444,24 @@ export function SettingsModal({
     void loadDriveConnection();
   }, [isOpen, loadDriveConnection, selectedSetting]);
 
+  // 저장해 둔 기록을 마주할 방법 불러오기 (창을 처음 열 때 한 번)
+  useEffect(() => {
+    if (!isOpen || viewSettingsLoaded) return;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/me/view-settings", { cache: "no-store" });
+        if (!res.ok) return;
+        const { settings } = (await res.json()) as { settings: unknown };
+        const loaded = sanitizeViewSettings(settings as Parameters<typeof sanitizeViewSettings>[0]);
+        setSliderValue(loaded.slideSeconds);
+        setSelectedViewType(loaded.recapView);
+      } finally {
+        setViewSettingsLoaded(true);
+      }
+    })();
+  }, [isOpen, viewSettingsLoaded]);
+
   // 저장해 둔 나의 프로필 불러오기 (창을 처음 열 때 한 번)
   useEffect(() => {
     if (!isOpen || profileLoaded) return;
@@ -578,21 +622,21 @@ export function SettingsModal({
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center justify-between gap-4">
                                 <span className="shrink-0 font-mulish text-sm text-[#4A423C]">
-                                  느리게 보기
+                                  빠르게 보기
                                 </span>
                                 <div className="relative flex-1 pb-8">
                                   <span
                                     className="pointer-events-none absolute top-[20px] -translate-x-1/2 rounded-[29px] bg-[#C4D4A5] px-3 py-1 font-mulish text-sm text-[#4A423C]"
                                     style={{
-                                      left: `${((sliderValue - 1) / (10 - 1)) * 100}%`,
+                                      left: `${((sliderValue - SLIDE_SECONDS_MIN) / (SLIDE_SECONDS_MAX - SLIDE_SECONDS_MIN)) * 100}%`,
                                     }}
                                   >
                                     {sliderValue}초/장
                                   </span>
                                   <input
                                     type="range"
-                                    min={1}
-                                    max={10}
+                                    min={SLIDE_SECONDS_MIN}
+                                    max={SLIDE_SECONDS_MAX}
                                     value={sliderValue}
                                     onChange={(e) =>
                                       setSliderValue(Number(e.target.value))
@@ -601,7 +645,7 @@ export function SettingsModal({
                                   />
                                 </div>
                                 <span className="shrink-0 font-mulish text-sm text-[#4A423C]">
-                                  빠르게 보기
+                                  느리게 보기
                                 </span>
                               </div>
                             </div>
@@ -613,8 +657,8 @@ export function SettingsModal({
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>2</span>
                               <span>
-                                고인과 관련해서 보고싶지 않은 기록이 있나요?
-                                선택하신 기록은 언제든 바꿀 수 있어요.
+                                리캡을 열었을 때 처음 보일 화면을 골라주세요.
+                                리캡 안에서도 언제든 바꿀 수 있어요.
                               </span>
                             </div>
 
@@ -658,12 +702,18 @@ export function SettingsModal({
                         </div>
                       </div>
 
+                      {viewMessage && (
+                        <p className="-mb-12 w-full max-w-[706px] font-mulish text-sm text-[#4A423C]">
+                          {viewMessage}
+                        </p>
+                      )}
                       <button
                         type="button"
-                        onClick={handleSaveViewMethod}
-                        className="flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white"
+                        onClick={() => void handleSaveViewMethod()}
+                        disabled={viewSaving}
+                        className="flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        저장하기
+                        {viewSaving ? "저장 중..." : "저장하기"}
                       </button>
                     </div>
                   )}

@@ -11,12 +11,12 @@ import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { DEFAULT_SLIDE_SECONDS, sanitizeViewSettings } from "@/lib/view-settings";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 const FALLBACK_SLIDE_COUNT = 11;
-// 자동 넘김 속도(초). 기본 3초.
+// 자동 넘김 속도(초). 처음 값은 설정 "기록을 마주할 방법"에서 정한 초 (없으면 3초).
 const SPEED_OPTIONS = [2, 3, 5, 8];
-const DEFAULT_SLIDE_SECONDS = 3;
 // 사진이 많으면 점 대신 "3 / 120" 으로 표시
 const MAX_DOTS = 20;
 // 지금 사진 앞뒤 몇 장까지만 미리 불러올지 (사진이 많을 때 한꺼번에 받지 않도록)
@@ -73,6 +73,32 @@ function RecapviewPageContent() {
   // 섹션 보기 방식: 자동으로 넘어가는 화면(처음) ↔ 책을 손으로 넘기는 화면
   const [viewMode, setViewMode] = useState<"auto" | "book">("auto");
   const [drawings, setDrawings] = useState<Record<number, DrawingStroke[]>>({});
+  // 설정에서 정한 초 (속도 버튼에 없는 값이면 버튼을 하나 더 보여줌)
+  const [savedSlideSeconds, setSavedSlideSeconds] = useState<number | null>(null);
+  // 설정을 불러오기 전에 이미 손으로 바꿨으면 덮어쓰지 않음
+  const viewTouchedRef = useRef(false);
+
+  // 설정 "기록을 마주할 방법": 사진 한 장당 초 + 처음 보이는 화면(슬라이드쇼/책)
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/me/view-settings", { cache: "no-store" });
+        if (!res.ok || viewTouchedRef.current) return;
+        const { settings } = (await res.json()) as { settings: Parameters<typeof sanitizeViewSettings>[0] };
+        const loaded = sanitizeViewSettings(settings);
+        setSavedSlideSeconds(loaded.slideSeconds);
+        setSlideSeconds(loaded.slideSeconds);
+        setViewMode(loaded.recapView === "book" ? "book" : "auto");
+      } catch {
+        // 못 불러오면 기본값(3초 · 슬라이드쇼) 그대로
+      }
+    })();
+  }, []);
+
+  const speedOptions =
+    savedSlideSeconds && !SPEED_OPTIONS.includes(savedSlideSeconds)
+      ? [...SPEED_OPTIONS, savedSlideSeconds].sort((a, b) => a - b)
+      : SPEED_OPTIONS;
 
   // 앨범(책) 안의 섹션에서 들어오면 ?section=… , 예전 여행 앨범은 ?bg=…
   const sectionId = searchParams.get("section");
@@ -328,6 +354,7 @@ function RecapviewPageContent() {
                   <button
                     type="button"
                     onClick={() => {
+                      viewTouchedRef.current = true;
                       if (isSectionMode) setViewMode("book");
                     }}
                     className={`relative h-12 w-[79px] cursor-pointer border-0 p-0 ${
@@ -359,6 +386,7 @@ function RecapviewPageContent() {
                     type="button"
                     onClick={() => {
                       if (isSectionMode) {
+                        viewTouchedRef.current = true;
                         setViewMode("auto");
                       } else {
                         router.push("/recapmanual");
@@ -549,11 +577,14 @@ function RecapviewPageContent() {
                       {isPlaying ? "⏸" : "▶"}
                     </button>
                     <span className="h-4 w-px bg-[#C0BDBD]" aria-hidden="true" />
-                    {SPEED_OPTIONS.map((seconds) => (
+                    {speedOptions.map((seconds) => (
                       <button
                         key={seconds}
                         type="button"
-                        onClick={() => setSlideSeconds(seconds)}
+                        onClick={() => {
+                          viewTouchedRef.current = true;
+                          setSlideSeconds(seconds);
+                        }}
                         aria-pressed={slideSeconds === seconds}
                         aria-label={`${seconds}초마다 넘기기`}
                         className={`cursor-pointer rounded-full border-0 px-2 py-0.5 font-mulish text-xs transition-colors ${
