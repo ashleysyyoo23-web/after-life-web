@@ -2,7 +2,7 @@
 
 export const SECTION_TITLE_MAX_LENGTH = 20;
 export const MAX_PHOTOS_PER_SECTION = 200;
-export const CAPTION_MAX_LENGTH = 20;
+export const CAPTION_MAX_LENGTH = 40;
 export const DRIVE_FILE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export type SectionPhotoInput = { driveFileId: string; fileName: string | null };
