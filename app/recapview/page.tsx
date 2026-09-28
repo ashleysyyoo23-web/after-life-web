@@ -78,6 +78,8 @@ function RecapviewPageContent() {
   // 섹션 보기 방식: 자동으로 넘어가는 화면(처음) ↔ 책을 손으로 넘기는 화면
   const [viewMode, setViewMode] = useState<"auto" | "book">("auto");
   const [drawings, setDrawings] = useState<Record<number, DrawingStroke[]>>({});
+  // 사진마다 원래 크기 → 액자를 지금 사진 모양에 딱 맞춤
+  const [photoSizes, setPhotoSizes] = useState<Record<string, { w: number; h: number }>>({});
   // 설정에서 정한 초 (속도 버튼에 없는 값이면 버튼을 하나 더 보여줌)
   const [savedSlideSeconds, setSavedSlideSeconds] = useState<number | null>(null);
   // 설정을 불러오기 전에 이미 손으로 바꿨으면 덮어쓰지 않음
@@ -276,6 +278,15 @@ function RecapviewPageContent() {
     const distance = Math.abs(index - currentIndex);
     return Math.min(distance, slideCount - distance) <= PRELOAD_RANGE;
   };
+
+  // 액자 크기: 가로 55vw · 세로 60vh 안에서 지금 사진 비율 그대로 (모르면 기존 크기)
+  const currentSize = photoSizes[albumPhotos[currentIndex]?.driveFileId ?? ""];
+  const frameStyle = currentSize
+    ? {
+        width: `min(55vw, calc(60vh * ${currentSize.w / currentSize.h}))`,
+        height: `min(60vh, calc(55vw * ${currentSize.h / currentSize.w}))`,
+      }
+    : { width: "55vw", height: "60vh" };
 
   const currentTitle = isSectionMode
     ? albumTitle
@@ -567,7 +578,10 @@ function RecapviewPageContent() {
                   ◀
                 </button>
 
-                <div className="relative h-[60vh] w-[55vw] overflow-hidden rounded-lg">
+                <div
+                  className="relative overflow-hidden rounded-lg transition-[width,height] duration-500 ease-in-out"
+                  style={frameStyle}
+                >
                 <div
                   className="flex h-full transition-transform duration-500 ease-in-out"
                   style={{ transform: `translateX(-${currentIndex * 100}%)` }}
@@ -593,6 +607,14 @@ function RecapviewPageContent() {
                               <img
                                 src={photo.mediaUrl}
                                 alt={photo.fileName ?? ""}
+                                onLoad={(event) => {
+                                  const { naturalWidth: w, naturalHeight: h } = event.currentTarget;
+                                  if (w > 0 && h > 0) {
+                                    setPhotoSizes((prev) =>
+                                      prev[photo.driveFileId] ? prev : { ...prev, [photo.driveFileId]: { w, h } },
+                                    );
+                                  }
+                                }}
                                 className="relative max-h-full max-w-full object-contain"
                               />
                             </>
