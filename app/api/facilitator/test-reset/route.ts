@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSessionContext } from "@/lib/api-session";
+import { sanitizeViewSettings } from "@/lib/view-settings";
 
 // 진행자 도구: 사용성 테스트 참가자를 바꿀 때 "본 사진 기억"과 노출 강도를 처음 상태로.
 // 로그인한 계정 자신의 데이터만 다뤄요.
@@ -46,7 +47,15 @@ async function loadStatus({ supabase: db, userEmail }: { supabase: SupabaseClien
     .select("id", { count: "exact", head: true })
     .eq("owner_email", userEmail);
 
+  // 기록을 마주할 방법 (넘김 속도·처음 화면)
+  const { data: profile } = await db
+    .from("user_profiles")
+    .select("slide_seconds, recap_view")
+    .eq("user_email", userEmail)
+    .maybeSingle();
+
   return {
+    viewSettings: sanitizeViewSettings({ slideSeconds: profile?.slide_seconds, recapView: profile?.recap_view }),
     captions: Object.fromEntries(
       ((captionRows ?? []) as Array<{ section_id: string; drive_file_id: string; caption: string }>).map((row) => [
         `${row.section_id}:${row.drive_file_id}`,
@@ -74,6 +83,7 @@ export async function GET() {
 //   levels: { [characterId]: 0~100 }          → 본 사진 기억을 모두 지우고, 노출 강도를 그 값으로
 //   captions?: { ["섹션ID:파일ID"]: 글 }        → 사진 글을 이 시작 상태로 (없는 사진의 글은 지움). 안 보내면 글은 그대로
 //   clearMemos?: boolean                        → 리캡 ✎ 감정 기록 메모를 모두 지움
+//   viewSettings?: { slideSeconds, recapView }  → 넘김 속도·처음 화면을 이 값으로. 안 보내면 그대로
 // }
 export async function POST(request: NextRequest) {
   const context = await getSessionContext();
@@ -84,6 +94,7 @@ export async function POST(request: NextRequest) {
     levels?: unknown;
     captions?: unknown;
     clearMemos?: unknown;
+    viewSettings?: unknown;
   } | null;
   const levels = (body?.levels && typeof body.levels === "object" ? body.levels : {}) as Record<string, unknown>;
   const startCaptions =
@@ -173,11 +184,31 @@ export async function POST(request: NextRequest) {
     deletedMemos = data?.length ?? 0;
   }
 
+  // 5) 넘김 속도·처음 화면 되돌리기
+  let resetViewSettings = false;
+  if (body?.viewSettings && typeof body.viewSettings === "object") {
+    const view = sanitizeViewSettings(body.viewSettings as { slideSeconds?: unknown; recapView?: unknown });
+    const { error } = await supabase.from("user_profiles").upsert(
+      {
+        user_email: userEmail,
+        slide_seconds: view.slideSeconds,
+        recap_view: view.recapView,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_email" },
+    );
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    resetViewSettings = true;
+  }
+
   return NextResponse.json({
     clearedPhotos,
     resetCharacters,
     restoredCaptions,
     deletedMemos,
+    resetViewSettings,
     ...(await loadStatus(context)),
   });
 }

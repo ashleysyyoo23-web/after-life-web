@@ -1,6 +1,14 @@
 "use client";
 
 import { EXPOSURE_STEPS, exposureStepIndex } from "@/lib/exposure";
+import {
+  DEFAULT_RECAP_VIEW,
+  DEFAULT_SLIDE_SECONDS,
+  SLIDE_SECONDS_MAX,
+  SLIDE_SECONDS_MIN,
+  type RecapView,
+  type ViewSettings,
+} from "@/lib/view-settings";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -20,12 +28,34 @@ type Status = {
   // 지금 사진 글 ("섹션ID:파일ID" → 글), 감정 기록 메모 수
   captions: Record<string, string>;
   memoCount: number;
+  // 지금 넘김 속도·처음 화면
+  viewSettings: ViewSettings;
 };
 
 // 캐릭터별 시작 노출 강도는 이 컴퓨터에 기억 (한 번만 정하면 됨)
 const BASELINE_KEY = "afterlife:facilitator-baseline";
 // 사진 글의 시작 상태 (진행자가 미리 적어 둔 글). 처음 들어올 때 지금 글로 자동 저장
 const CAPTIONS_KEY = "afterlife:facilitator-captions";
+// 넘김 속도·처음 화면의 시작 값 (기본 3초 · 슬라이드쇼)
+const VIEW_KEY = "afterlife:facilitator-view";
+
+function readStartView(): ViewSettings {
+  try {
+    const raw = window.localStorage.getItem(VIEW_KEY);
+    if (raw) return JSON.parse(raw) as ViewSettings;
+  } catch {
+    // 못 읽으면 기본값
+  }
+  return { slideSeconds: DEFAULT_SLIDE_SECONDS, recapView: DEFAULT_RECAP_VIEW };
+}
+
+function writeStartView(view: ViewSettings) {
+  try {
+    window.localStorage.setItem(VIEW_KEY, JSON.stringify(view));
+  } catch {
+    // 저장이 안 되는 브라우저면 이번 화면에서만 사용
+  }
+}
 
 function readStartCaptions(): Record<string, string> | null {
   try {
@@ -74,6 +104,11 @@ export default function FacilitatorPage() {
   const [restoreCaptions, setRestoreCaptions] = useState(true);
   const [clearMemos, setClearMemos] = useState(true);
   const [startCaptions, setStartCaptions] = useState<Record<string, string>>({});
+  const [resetView, setResetView] = useState(true);
+  const [startView, setStartView] = useState<ViewSettings>({
+    slideSeconds: DEFAULT_SLIDE_SECONDS,
+    recapView: DEFAULT_RECAP_VIEW,
+  });
 
   useEffect(() => {
     void (async () => {
@@ -96,6 +131,7 @@ export default function FacilitatorPage() {
           setStartCaptions(data.captions);
           writeStartCaptions(data.captions);
         }
+        setStartView(readStartView());
         setStatus(data);
       } catch (loadError) {
         setError(loadError instanceof Error && loadError.message ? loadError.message : "불러오지 못했어요.");
@@ -121,6 +157,7 @@ export default function FacilitatorPage() {
           levels: baseline,
           ...(restoreCaptions ? { captions: startCaptions } : {}),
           clearMemos,
+          ...(resetView ? { viewSettings: startView } : {}),
         }),
       });
       const data = (await res.json().catch(() => null)) as
@@ -129,6 +166,7 @@ export default function FacilitatorPage() {
             resetCharacters: number;
             restoredCaptions: number;
             deletedMemos: number;
+            resetViewSettings: boolean;
             error?: string;
           })
         | null;
@@ -139,12 +177,16 @@ export default function FacilitatorPage() {
         revealedTotal: data.revealedTotal,
         captions: data.captions,
         memoCount: data.memoCount,
+        viewSettings: data.viewSettings,
       });
       setMessage(
         [
           `초기화했어요. 본 사진 ${data.clearedPhotos}장을 다시 흐리게, 캐릭터 ${data.resetCharacters}명의 노출 강도를 시작 값으로`,
           restoreCaptions ? `사진 글 ${data.restoredCaptions}개를 시작 상태로` : null,
           clearMemos ? `감정 기록 메모 ${data.deletedMemos}개 삭제` : null,
+          data.resetViewSettings
+            ? `넘김 속도 ${startView.slideSeconds}초 · 처음 화면 ${startView.recapView === "book" ? "책" : "슬라이드쇼"}로`
+            : null,
         ]
           .filter(Boolean)
           .join(", ") + ".",
@@ -165,7 +207,7 @@ export default function FacilitatorPage() {
           <h1 className="font-newsreader text-4xl text-black">사용성 테스트 초기화</h1>
           <p className="text-sm text-[#898787]">
             참가자를 바꿀 때 누르세요. &lsquo;눌러서 보기&rsquo;로 본 사진을 모두 다시 흐리게 하고, 캐릭터마다 정한 시작 노출
-            강도로 되돌려요. 아래에서 고르면 사진 글과 감정 기록 메모도 함께 되돌려요. 그림·기분 기록은 그대로예요.
+            강도로 되돌려요. 아래에서 고르면 사진 글, 감정 기록 메모, 넘김 속도도 함께 되돌려요. 그림·기분 기록은 그대로예요.
           </p>
         </header>
 
@@ -264,6 +306,58 @@ export default function FacilitatorPage() {
                   <span className="text-xs text-[#898787]">지금 메모 {status.memoCount}개</span>
                 </span>
               </label>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={resetView}
+                  onChange={(event) => setResetView(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#AF9083]"
+                />
+                <span className="flex flex-col gap-2 text-sm">
+                  <span>
+                    <b>넘김 속도·처음 화면</b>(설정 → 기록을 마주할 방법)을 시작 값으로
+                  </span>
+                  <span className="text-xs text-[#898787]">
+                    지금: {status.viewSettings.slideSeconds}초 ·{" "}
+                    {status.viewSettings.recapView === "book" ? "책" : "슬라이드쇼"}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2 text-xs">
+                    시작 값:
+                    <select
+                      value={startView.slideSeconds}
+                      onChange={(event) => {
+                        const next = { ...startView, slideSeconds: Number(event.target.value) };
+                        setStartView(next);
+                        writeStartView(next);
+                      }}
+                      aria-label="시작 넘김 속도"
+                      className="rounded-md border border-[#E8DDD5] bg-white px-2 py-1"
+                    >
+                      {Array.from({ length: SLIDE_SECONDS_MAX - SLIDE_SECONDS_MIN + 1 }, (_, index) => SLIDE_SECONDS_MIN + index).map(
+                        (seconds) => (
+                          <option key={seconds} value={seconds}>
+                            {seconds}초
+                          </option>
+                        ),
+                      )}
+                    </select>
+                    <select
+                      value={startView.recapView}
+                      onChange={(event) => {
+                        const next = { ...startView, recapView: event.target.value as RecapView };
+                        setStartView(next);
+                        writeStartView(next);
+                      }}
+                      aria-label="시작 처음 화면"
+                      className="rounded-md border border-[#E8DDD5] bg-white px-2 py-1"
+                    >
+                      <option value="slideshow">슬라이드쇼</option>
+                      <option value="book">책</option>
+                    </select>
+                  </span>
+                </span>
+              </label>
             </section>
 
             <div className="flex flex-wrap items-center gap-4">
@@ -281,7 +375,8 @@ export default function FacilitatorPage() {
                   <span className="text-sm">
                     본 사진 {status.revealedTotal}장을 다시 흐리게 하고, 노출 강도를 시작 값으로
                     {restoreCaptions ? ", 사진 글을 시작 상태로" : ""}
-                    {clearMemos ? `, 메모 ${status.memoCount}개를 지우고` : ""} 되돌릴까요?
+                    {clearMemos ? `, 메모 ${status.memoCount}개를 지우고` : ""}
+                    {resetView ? `, 넘김 속도를 ${startView.slideSeconds}초로` : ""} 되돌릴까요?
                   </span>
                   <button
                     type="button"
