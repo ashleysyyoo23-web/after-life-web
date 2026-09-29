@@ -6,6 +6,11 @@ type TokenWithAccess = JWT & { accessToken?: string };
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
+  // 기본 영어 로그인·오류 화면 대신 우리 로그인 입구
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",

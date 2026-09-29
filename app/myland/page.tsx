@@ -3,6 +3,7 @@
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { clampToSand } from "@/lib/myland-area";
+import { loginUrl } from "@/lib/login";
 import { CHARACTERS_UPDATED_EVENT } from "@/components/CharacterManager";
 import type { CharacterAppearance } from "@/lib/character-parts";
 import {
@@ -406,7 +407,9 @@ export default function MylandPage() {
 function MylandPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
+  // 로그인 안 했으면 인물을 불러올 수 없어서 로그인 입구로 안내
+  const { status: sessionStatus } = useSession();
+  const isLoggedOut = sessionStatus === "unauthenticated";
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"profile" | null>(null);
   // 설정 창 "나의 프로필"에서 만든 나의 캐릭터 (저장 전이면 null)
@@ -909,7 +912,9 @@ function MylandPageContent() {
         <p className="pointer-events-none fixed top-[38%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 text-center font-mulish font-normal text-[#1a1a1a]">
           아직 섬에 아무도 없어요.
           <br />
-          오른쪽 위 &lsquo;+ 고인 불러오기&rsquo;로 기억하고 싶은 분을 불러와 주세요.
+          {isLoggedOut
+            ? "로그인하면 기억하고 싶은 분을 불러올 수 있어요."
+            : "오른쪽 위 ‘+ 고인 불러오기’로 기억하고 싶은 분을 불러와 주세요."}
         </p>
       )}
       {showHint && characters.length > 0 && (
@@ -938,7 +943,13 @@ function MylandPageContent() {
       />
       <button
         type="button"
-        onClick={() => setShowAddModal(true)}
+        onClick={() => {
+          if (isLoggedOut) {
+            router.push(loginUrl("/myland?from=moodcheck"));
+            return;
+          }
+          setShowAddModal(true);
+        }}
         className="fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
       >
         + 고인 불러오기

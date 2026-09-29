@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { loginUrl } from "@/lib/login";
+import { useSession } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 let globalBgm: HTMLAudioElement | null = null;
@@ -52,6 +54,9 @@ export function TopNav({
   settingsExpanded = false,
 }: TopNavProps) {
   const router = useRouter();
+  // 로그인 안 했으면 오른쪽 위에 "로그인" (로그인 뒤 지금 화면으로 돌아옴)
+  const { status: sessionStatus } = useSession();
+  const pathname = usePathname();
   const [isMusicPlaying, setIsMusicPlaying] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -111,6 +116,15 @@ export function TopNav({
         <Link href="/about" className={navTextClass}>
           소개
         </Link>
+
+        {sessionStatus === "unauthenticated" && (
+          <Link
+            href={loginUrl(`${pathname ?? "/mainland"}`)}
+            className="rounded-full border border-[#AF9083] bg-white/80 px-4 py-1.5 font-mulish text-base font-semibold text-[#AF9083] transition-colors hover:bg-[#FDD9BD]"
+          >
+            로그인
+          </Link>
+        )}
 
         <button
           type="button"

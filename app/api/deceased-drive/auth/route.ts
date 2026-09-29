@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { loginUrl } from "@/lib/login";
 import {
   DECEASED_DRIVE_SCOPE,
   encodeOAuthState,
@@ -18,7 +19,8 @@ export async function GET(request: Request) {
   const loginHint = searchParams.get("loginHint");
 
   if (!userEmail) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const here = new URL(request.url);
+    return NextResponse.redirect(new URL(loginUrl(`${here.pathname}${here.search}`), request.url));
   }
 
   const { clientId } = getDeceasedGoogleCredentials();

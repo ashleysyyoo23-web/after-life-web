@@ -10,6 +10,7 @@ import { getSession, signIn } from "next-auth/react";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { LegacyMyPhotos } from "@/components/LegacyMyPhotos";
 import { CharacterManager } from "@/components/CharacterManager";
+import { AccountBox } from "@/components/AccountBox";
 import {
   LEGACY_MESSAGE_MAX,
   LEGACY_VIEWER_ID_MAX,
@@ -745,6 +746,10 @@ export function SettingsModal({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="mt-auto">
+                <AccountBox />
               </div>
             </aside>
 
