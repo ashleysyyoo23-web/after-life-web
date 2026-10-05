@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
+import { excludedTypesMatching, sanitizeExcludedTypes } from "@/lib/character-fields";
 
 type RouteParams = {
   params: Promise<{ bookId: string }>;
@@ -14,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: book, error: bookError } = await supabase
     .from("album_books")
-    .select("id, title, color, shape, position, user_character_id, user_characters(nickname, emotion_level)")
+    .select("id, title, color, shape, position, user_character_id, user_characters(nickname, emotion_level, excluded_types)")
     .eq("id", bookId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -31,6 +32,22 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   if (sectionsError) {
     return NextResponse.json({ error: sectionsError.message }, { status: 500 });
+  }
+
+  // 대표 사진이 "보고 싶지 않은 기록"(AI 분류·직접 고친 태그)에 해당하면 책 화면에서 가림
+  const bookCharacter = Array.isArray(book.user_characters) ? book.user_characters[0] : book.user_characters;
+  const excludedTypes = sanitizeExcludedTypes(bookCharacter?.excluded_types);
+  const hiddenCovers = new Set<string>();
+  const coverIds = (sections ?? []).map((section) => section.cover_drive_file_id).filter((id): id is string => Boolean(id));
+  if (excludedTypes.length > 0 && coverIds.length > 0) {
+    const { data: coverAnalyses } = await supabase
+      .from("photo_analyses")
+      .select("drive_file_id, categories")
+      .eq("owner_email", userEmail)
+      .in("drive_file_id", coverIds);
+    for (const row of coverAnalyses ?? []) {
+      if (excludedTypesMatching(excludedTypes, (row.categories ?? []) as string[]).length > 0) hiddenCovers.add(row.drive_file_id);
+    }
   }
 
   // 대표 사진이 이미 "눌러서 보기"로 본 사진이면 책 화면에서도 선명하게
@@ -69,6 +86,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       // 대표 이미지가 바뀌면 주소도 바뀌게 (브라우저에 남은 옛 이미지 방지)
       coverFileId: section.cover_drive_file_id,
       coverRevealed: revealedKeys.has(`${section.id}:${section.cover_drive_file_id}`),
+      coverHidden: hiddenCovers.has(section.cover_drive_file_id ?? ""),
     })),
   });
 }

@@ -109,3 +109,16 @@ export function toSpecialDate(row: {
     recordType: row.record_type ?? "",
   };
 }
+
+// "보고 싶지 않은 기록" → AI 사진 분류(lib/photo-categories.ts)와 연결
+// (작별 직전의 순간·음성녹음은 아직 구분할 분류가 없어서 걸러내지 못해요)
+export const EXCLUDED_TYPE_CATEGORIES: Record<string, string[]> = {
+  "투병, 아픔이 담긴 사진": ["hospital"],
+  "채팅 대화 내역": ["chat"],
+  영상: ["video"],
+};
+
+// 이 사진의 분류가 보고 싶지 않다고 한 기록에 해당하면, 해당하는 항목 이름들
+export function excludedTypesMatching(excludedTypes: readonly string[], categories: readonly string[]) {
+  return excludedTypes.filter((type) => (EXCLUDED_TYPE_CATEGORIES[type] ?? []).some((category) => categories.includes(category)));
+}

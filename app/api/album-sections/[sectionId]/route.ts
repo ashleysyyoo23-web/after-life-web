@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { excludedTypesMatching, sanitizeExcludedTypes } from "@/lib/character-fields";
 import { getSessionContext } from "@/lib/api-session";
 import { parseSectionInput } from "@/lib/album-sections";
 
@@ -43,7 +44,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: section, error: sectionError } = await supabase
     .from("album_sections")
-    .select("id, title, cover_drive_file_id, book_id, album_books(id, title, user_character_id, user_characters(nickname, emotion_level))")
+    .select("id, title, cover_drive_file_id, book_id, album_books(id, title, user_character_id, user_characters(nickname, emotion_level, excluded_types))")
     .eq("id", sectionId)
     .eq("owner_email", userEmail)
     .maybeSingle();
@@ -76,14 +77,30 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
         title: string;
         user_character_id: string | null;
         user_characters:
-          | { nickname: string; emotion_level: number | null }
-          | Array<{ nickname: string; emotion_level: number | null }>
+          | { nickname: string; emotion_level: number | null; excluded_types: unknown }
+          | Array<{ nickname: string; emotion_level: number | null; excluded_types: unknown }>
           | null;
       }
     | null;
   const character = Array.isArray(book?.user_characters)
     ? book?.user_characters[0]
     : book?.user_characters;
+
+  // "보고 싶지 않은 기록": AI 분류(또는 직접 고친 태그)가 거기에 해당하는 사진은 hiddenReason 을 붙여 보냄
+  // (리캡이 기본으로 빼고 보여줘요. 지우지는 않아요)
+  const excludedTypes = sanitizeExcludedTypes(character?.excluded_types);
+  const photoCategories = new Map<string, string[]>();
+  const sectionPhotoIds = (photosResult.data ?? []).map((photo) => photo.drive_file_id);
+  if (excludedTypes.length > 0 && sectionPhotoIds.length > 0) {
+    for (let i = 0; i < sectionPhotoIds.length; i += 200) {
+      const { data: analysisRows } = await supabase
+        .from("photo_analyses")
+        .select("drive_file_id, categories")
+        .eq("owner_email", userEmail)
+        .in("drive_file_id", sectionPhotoIds.slice(i, i + 200));
+      for (const row of analysisRows ?? []) photoCategories.set(row.drive_file_id, (row.categories ?? []) as string[]);
+    }
+  }
 
   return NextResponse.json({
     section: {
@@ -103,6 +120,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       caption: photo.caption ?? "",
       // 한 번 "눌러서 보기"로 본 사진은 계속 선명하게
       revealed: Boolean(photo.revealed_at),
+      // 보고 싶지 않다고 한 기록에 해당하면 그 항목 이름 (예: "투병, 아픔이 담긴 사진")
+      hiddenReason: excludedTypesMatching(excludedTypes, photoCategories.get(photo.drive_file_id) ?? [])[0] ?? null,
       mediaUrl: `/api/album-sections/${section.id}/photos/${encodeURIComponent(
         photo.drive_file_id,
       )}`,

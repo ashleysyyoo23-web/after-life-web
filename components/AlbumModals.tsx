@@ -231,6 +231,8 @@ export type CreatedSection = {
   photoCount?: number;
   // 대표 사진을 이미 "눌러서 보기"로 봤으면 흐리지 않음
   coverRevealed?: boolean;
+  // 대표 사진이 "보고 싶지 않은 기록"에 해당하면 책 화면에서 가림
+  coverHidden?: boolean;
 };
 
 const MAX_PHOTOS_PER_SECTION = 200;

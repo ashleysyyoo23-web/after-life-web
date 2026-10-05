@@ -140,7 +140,13 @@ function ArchivebookPageContent() {
                     className="block h-full w-full cursor-pointer overflow-hidden border-0 bg-white shadow-[0_1px_3px_rgba(42,37,34,0.18)] transition-shadow group-hover:shadow-[0_6px_14px_rgba(42,37,34,0.22)]"
                     style={{ padding: "0.3cqw" }}
                   >
-                    {section.hasCover && (
+                    {/* 대표 사진이 보고 싶지 않은 기록이면 사진 대신 조용한 표시 (리캡에서는 "함께 보기"로 볼 수 있음) */}
+                    {section.hasCover && section.coverHidden && (
+                      <span className="flex h-full w-full items-center justify-center bg-[#F2EAE2] px-1 text-center font-mulish text-[0.8cqw] text-[#AF9083]">
+                        가려 둔 사진
+                      </span>
+                    )}
+                    {section.hasCover && !section.coverHidden && (
                       // 본인만 볼 수 있는 API 주소라 일반 img 사용
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
