@@ -1,5 +1,7 @@
 "use client";
 
+import { SceneMotion } from "@/components/SceneMotion";
+import { STORAGE_INSIDE_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
@@ -16,7 +18,8 @@ export default function StorageInsidePage() {
   return (
     <>
       <div className="relative h-screen w-screen overflow-hidden">
-        <MoodSkyBackground scene="storageinside" />
+        <MoodSkyBackground scene="storageinside" clouds />
+        <SceneMotion config={STORAGE_INSIDE_MOTION} />
         <h1 className="sr-only">저장소</h1>
 
         <button

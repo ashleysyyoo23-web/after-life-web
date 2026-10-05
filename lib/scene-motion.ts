@@ -74,3 +74,21 @@ export const STORAGE_MOTION: SceneMotionConfig = {
     ],
   },
 };
+
+// 저장소 안 (/storageinside): 액자가 걸린 섬. 화분 잎과 꽃병 꽃이 살랑, 언덕 들꽃이 일렁
+export const STORAGE_INSIDE_MOTION: SceneMotionConfig = {
+  sea: { mask: "/scenes/inside-sea-mask.png", fade: [70, 80] },
+  palms: [
+    { src: "/scenes/inside-pot.png", left: 20.547, top: 44.907, width: 11.354, origin: "51.6% 99.8%", duration: 6.2, delay: -2 },
+    { src: "/scenes/inside-vase.png", left: 45.312, top: 63.056, width: 4.375, origin: "48.2% 99.1%", duration: 4.8, delay: -0.7 },
+  ],
+  plants: [{ src: "/scenes/inside-plants.webp", left: 29.635, top: 61.528, width: 53.125 }],
+  birds: {
+    sky: { left: 4, right: 96, top: 6, bottom: 30 },
+    width: 3.4,
+    starts: [
+      { start: [80, 14], size: 1 },
+      { start: [16, 22], size: 0.8 },
+    ],
+  },
+};
