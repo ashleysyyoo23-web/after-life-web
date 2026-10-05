@@ -1,7 +1,15 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  ANALYZE_BATCH_SIZE,
+  ANALYZE_CONCURRENCY,
+  EDITABLE_PHOTO_CATEGORIES,
+  PHOTO_CATEGORIES,
+  photoCategoryShort,
+  type PhotoCategory,
+} from "@/lib/photo-categories";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 const TITLE_MAX_LENGTH = 20;
 
@@ -186,6 +194,32 @@ type DriveFile = {
   id: string;
   name: string;
   thumbnailUrl: string | null;
+  // 사진 정리용 (인물 폴더 사진일 때)
+  mimeType?: string | null;
+  takenAt?: string | null; // 찍은 날짜
+  analyzed?: boolean; // 분류했는지 (AI 또는 직접)
+  outdated?: boolean; // 예전 분류 기준으로 분류됨 (원하면 다시 분류)
+  manual?: boolean; // 태그를 직접 고침 (AI 가 덮어쓰지 않음)
+  categories?: PhotoCategory[];
+  description?: string | null; // AI 가 쓴 한 줄 설명 (검색용)
+};
+
+type SortMode = "folder" | "name" | "date" | "category";
+type CategoryFilter = PhotoCategory | "all" | "unclassified";
+
+const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
+  { value: "folder", label: "폴더 순서" },
+  { value: "name", label: "이름순" },
+  { value: "date", label: "찍은 날짜순" },
+  { value: "category", label: "AI 분류순" },
+];
+
+const CATEGORY_ORDER: PhotoCategory[] = ["face", "solo", "group", "scenery", "hospital", "chat", "video"];
+// 사용량 한도(429)에 연달아 걸려도 진행이 없으면 이만큼 기다린 뒤 멈춤
+const MAX_RATE_LIMIT_WAITS = 12;
+const categoryRank = (file: DriveFile) => {
+  const ranks = (file.categories ?? []).map((category) => CATEGORY_ORDER.indexOf(category));
+  return ranks.length > 0 ? Math.min(...ranks) : CATEGORY_ORDER.length;
 };
 
 export type CreatedSection = {
@@ -229,6 +263,20 @@ export function SectionPhotosModal({
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [folderNote, setFolderNote] = useState<string | null>(null);
+  // 사진 정리: 정렬 · 분류 걸러 보기 · 검색 · AI 분류
+  const [sortMode, setSortMode] = useState<SortMode>("folder");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [search, setSearch] = useState("");
+  const [aiReady, setAiReady] = useState(false);
+  const [askConsent, setAskConsent] = useState(false);
+  // waitSeconds: 사용량 한도로 쉬는 중이면 남은 초
+  const [analyzing, setAnalyzing] = useState<{ done: number; total: number; waitSeconds?: number } | null>(null);
+  const [analyzeMessage, setAnalyzeMessage] = useState<string | null>(null);
+  const stopAnalyzeRef = useRef(false);
+  // 태그 직접 고치기
+  const [tagEditing, setTagEditing] = useState<{ fileId: string; categories: PhotoCategory[] } | null>(null);
+  const [tagSaving, setTagSaving] = useState(false);
+  const [tagError, setTagError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,8 +299,14 @@ export function SectionPhotosModal({
           const json = (await filesRes.json().catch(() => null)) as { error?: string } | null;
           throw new Error(json?.error ?? "Drive 사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.");
         } else {
-          const data = (await filesRes.json()) as { files: DriveFile[]; folderName?: string | null; truncated?: boolean };
+          const data = (await filesRes.json()) as {
+            files: DriveFile[];
+            folderName?: string | null;
+            truncated?: boolean;
+            aiReady?: boolean;
+          };
           driveFiles = data.files;
+          if (!cancelled) setAiReady(Boolean(data.aiReady));
           if (!cancelled && data.folderName) {
             setFolderNote(
               `'${data.folderName}' 폴더(하위 폴더 포함)의 사진이에요.` +
@@ -313,6 +367,196 @@ export function SectionPhotosModal({
     };
   }, [sectionId, characterId]);
 
+  // 분류 걸러 보기 · 검색 · 정렬을 적용한 사진 목록
+  const visibleFiles = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    const filtered = files.filter((file) => {
+      if (categoryFilter === "unclassified" && file.analyzed) return false;
+      if (categoryFilter !== "all" && categoryFilter !== "unclassified" && !file.categories?.includes(categoryFilter)) {
+        return false;
+      }
+      if (!keyword) return true;
+      return `${file.name} ${file.description ?? ""}`.toLowerCase().includes(keyword);
+    });
+
+    if (sortMode === "folder") return filtered;
+    return [...filtered].sort((a, b) => {
+      if (sortMode === "name") return a.name.localeCompare(b.name, "ko", { numeric: true });
+      if (sortMode === "date") return (a.takenAt ?? "9999").localeCompare(b.takenAt ?? "9999");
+      return categoryRank(a) - categoryRank(b) || a.name.localeCompare(b.name, "ko", { numeric: true });
+    });
+  }, [files, categoryFilter, search, sortMode]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<PhotoCategory, number>();
+    for (const file of files) for (const category of file.categories ?? []) counts.set(category, (counts.get(category) ?? 0) + 1);
+    return counts;
+  }, [files]);
+  const unanalyzed = files.filter((file) => !file.analyzed && !file.thumbnailUrl?.startsWith("/api/"));
+  const outdated = files.filter((file) => file.outdated);
+
+  // AI(Gemini) 분류: 사진 여러 장을 한 요청에 묶어, 요청 ANALYZE_CONCURRENCY 개를 동시에 보냄.
+  // 사용량 한도(429)에 걸리면 모두 함께 Google 이 알려 준 시간만큼 쉬었다가 끝까지 자동으로 이어 감.
+  // mode "new" = 아직 분류 안 한 사진, "redo" = 예전 기준으로 분류한 사진 다시
+  const runAnalyze = async (mode: "new" | "redo") => {
+    if (!characterId || analyzing) return;
+    setAskConsent(false);
+    setAnalyzeMessage(null);
+    stopAnalyzeRef.current = false;
+
+    const queue = (mode === "new" ? unanalyzed : outdated).map((file) => file.id);
+    const total = queue.length;
+    let done = 0;
+    let failed = 0;
+    let pausedUntil = 0;
+    let waitsWithoutProgress = 0;
+    let stoppedMessage: string | null = null;
+    const progress = () =>
+      setAnalyzing({
+        done,
+        total,
+        waitSeconds: pausedUntil > Date.now() ? Math.ceil((pausedUntil - Date.now()) / 1000) : undefined,
+      });
+    progress();
+
+    const pause = (seconds: number) => {
+      pausedUntil = Math.max(pausedUntil, Date.now() + seconds * 1000);
+    };
+    const waitIfPaused = async () => {
+      while (Date.now() < pausedUntil && !stopAnalyzeRef.current) {
+        progress();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      progress();
+    };
+
+    const worker = async () => {
+      while (!stopAnalyzeRef.current && !stoppedMessage) {
+        await waitIfPaused();
+        const batch = queue.splice(0, ANALYZE_BATCH_SIZE);
+        if (batch.length === 0) return;
+
+        let res: Response;
+        let data: {
+          results?: Record<string, { categories?: PhotoCategory[]; description?: string | null; error?: string }>;
+          error?: string;
+          retryAfterSeconds?: number | null;
+        } | null;
+        try {
+          res = await fetch(`/api/characters/${characterId}/photos/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileIds: batch, redo: mode === "redo" }),
+          });
+          data = (await res.json().catch(() => null)) as typeof data;
+        } catch {
+          // 잠깐 연결이 끊긴 경우: 같은 묶음을 줄 앞에 되돌리고 조금 쉬었다 다시
+          queue.unshift(...batch);
+          waitsWithoutProgress += 1;
+          if (waitsWithoutProgress > MAX_RATE_LIMIT_WAITS) stoppedMessage = "연결이 계속 끊겨서 멈췄어요. 다시 누르면 이어서 분류해요.";
+          pause(10);
+          continue;
+        }
+
+        const results = data?.results ?? {};
+        const handled = new Set(Object.keys(results));
+        failed += Object.values(results).filter((result) => result.error).length;
+        setFiles((prev) =>
+          prev.map((file) => {
+            const result = results[file.id];
+            if (!result || result.error) return file;
+            return {
+              ...file,
+              analyzed: true,
+              outdated: false,
+              categories: result.categories ?? [],
+              description: result.description ?? null,
+            };
+          }),
+        );
+
+        if (res.ok) {
+          // 건너뛴 사진(이미 분류됨·직접 고침)도 끝난 것으로
+          done += batch.length;
+          waitsWithoutProgress = 0;
+          progress();
+          continue;
+        }
+
+        done += handled.size;
+        queue.unshift(...batch.filter((id) => !handled.has(id)));
+
+        if (res.status === 429) {
+          waitsWithoutProgress = handled.size > 0 ? 0 : waitsWithoutProgress + 1;
+          if (waitsWithoutProgress > MAX_RATE_LIMIT_WAITS) {
+            stoppedMessage = "Google 사용량 한도가 풀리지 않아 멈췄어요. 조금 뒤 다시 누르면 이어서 분류해요.";
+            return;
+          }
+          pause(Math.min(Math.max(data?.retryAfterSeconds ?? 30, 5), 120) + 2);
+          continue;
+        }
+
+        // 키·모델·표 준비 같은 문제는 기다려도 안 풀려서 멈춤
+        stoppedMessage = data?.error ?? "AI 분류를 멈췄어요.";
+        return;
+      }
+    };
+
+    await Promise.all(Array.from({ length: ANALYZE_CONCURRENCY }, () => worker()));
+
+    setAnalyzing(null);
+    setAnalyzeMessage(
+      stoppedMessage ??
+        (stopAnalyzeRef.current
+          ? `멈췄어요. ${done}/${total}장 분류했어요. 다시 누르면 이어서 분류해요.`
+          : failed > 0
+            ? `분류를 마쳤어요. ${failed}장은 분류하지 못했어요.`
+            : `분류를 마쳤어요. ${total}장 모두 분류했어요.`),
+    );
+  };
+
+  // 태그 직접 고쳐서 저장 (AI 가 다시 분류해도 덮어쓰지 않음)
+  const saveTags = async () => {
+    if (!tagEditing) return;
+    setTagSaving(true);
+    setTagError(null);
+    try {
+      const res = await fetch(`/api/photo-analyses/${encodeURIComponent(tagEditing.fileId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories: tagEditing.categories }),
+      });
+      const data = (await res.json().catch(() => null)) as { categories?: PhotoCategory[]; error?: string } | null;
+      if (!res.ok) throw new Error(data?.error ?? "태그를 저장하지 못했어요.");
+      const saved = data?.categories ?? tagEditing.categories;
+      setFiles((prev) =>
+        prev.map((file) =>
+          file.id === tagEditing.fileId
+            ? { ...file, categories: saved, analyzed: true, outdated: false, manual: true }
+            : file,
+        ),
+      );
+      setTagEditing(null);
+    } catch (saveError) {
+      setTagError(saveError instanceof Error ? saveError.message : "태그를 저장하지 못했어요.");
+    } finally {
+      setTagSaving(false);
+    }
+  };
+
+  const toggleEditingTag = (category: PhotoCategory) =>
+    setTagEditing((prev) => {
+      if (!prev) return prev;
+      if (prev.categories.includes(category)) {
+        return { ...prev, categories: prev.categories.filter((item) => item !== category) };
+      }
+      // 혼자·단체는 둘 중 하나만
+      const without = prev.categories.filter(
+        (item) => !(category === "solo" && item === "group") && !(category === "group" && item === "solo"),
+      );
+      return { ...prev, categories: [...without, category] };
+    });
+
   // 대표 이미지가 선택에서 빠지면 남은 첫 사진이 대표가 됨
   const effectiveCoverId =
     coverId && selectedIds.includes(coverId) ? coverId : (selectedIds[0] ?? null);
@@ -331,7 +575,7 @@ export function SectionPhotosModal({
 
   const selectAll = () => {
     setSelectedIds((prev) => {
-      const rest = files
+      const rest = visibleFiles
         .map((file) => file.id)
         .filter((id) => !prev.includes(id));
       return [...prev, ...rest].slice(0, MAX_PHOTOS_PER_SECTION);
@@ -344,7 +588,7 @@ export function SectionPhotosModal({
   };
 
   const allSelected =
-    files.length > 0 && files.every((file) => selectedIds.includes(file.id));
+    visibleFiles.length > 0 && visibleFiles.every((file) => selectedIds.includes(file.id));
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -422,7 +666,7 @@ export function SectionPhotosModal({
                   disabled={allSelected}
                   className="cursor-pointer rounded-full border border-[#AF9083] bg-white px-4 py-1.5 font-mulish text-sm text-[#AF9083] transition-colors hover:bg-[#FAF6F0] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  모두 선택
+                  {visibleFiles.length < files.length ? "보이는 사진 모두 선택" : "모두 선택"}
                 </button>
                 <button
                   type="button"
@@ -438,6 +682,120 @@ export function SectionPhotosModal({
 
           {folderNote && filesState === "ready" && (
             <p className="font-mulish text-xs text-[#898787]">{folderNote}</p>
+          )}
+
+          {/* 사진 정리: 정렬 · 분류로 걸러 보기 · 검색 · AI 분류 */}
+          {filesState === "ready" && files.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-xl bg-[#FAF6F0] px-4 py-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 font-mulish text-sm text-[#4A423C]">
+                  정렬
+                  <select
+                    value={sortMode}
+                    onChange={(event) => setSortMode(event.target.value as SortMode)}
+                    className="rounded-lg border border-[#E8DDD5] bg-white px-3 py-1.5 font-mulish text-sm"
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="이름이나 AI 설명으로 찾기 (예: 바다)"
+                  aria-label="사진 찾기"
+                  className="min-w-[220px] flex-1 rounded-lg border border-[#E8DDD5] bg-white px-3 py-1.5 font-mulish text-sm placeholder:text-[#AF9083]"
+                />
+                {characterId && (
+                  <button
+                    type="button"
+                    onClick={() => (analyzing ? (stopAnalyzeRef.current = true) : setAskConsent(true))}
+                    disabled={!analyzing && (!aiReady || unanalyzed.length === 0)}
+                    title={!aiReady ? "GEMINI_API_KEY 가 설정되면 쓸 수 있어요" : undefined}
+                    className="cursor-pointer rounded-full border border-[#AF9083] bg-white px-4 py-1.5 font-mulish text-sm font-semibold text-[#AF9083] transition-colors hover:bg-[#FDD9BD] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {analyzing
+                      ? analyzing.waitSeconds
+                        ? `한도로 잠시 쉬는 중 · ${analyzing.waitSeconds}초 뒤 이어서 (${analyzing.done}/${analyzing.total}) · 멈추기`
+                        : `분류 중 ${analyzing.done}/${analyzing.total} · 멈추기`
+                      : unanalyzed.length > 0
+                        ? `AI로 분류하기 (${unanalyzed.length}장)`
+                        : "모두 분류됨"}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="분류로 걸러 보기">
+                {([
+                  { key: "all", label: `전체 ${files.length}` },
+                  ...PHOTO_CATEGORIES.map((category) => ({
+                    key: category.key,
+                    label: `${category.label} ${categoryCounts.get(category.key) ?? 0}`,
+                  })),
+                  { key: "unclassified", label: `아직 분류 안 됨 ${unanalyzed.length}` },
+                ] as Array<{ key: CategoryFilter; label: string }>).map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    aria-pressed={categoryFilter === chip.key}
+                    onClick={() => setCategoryFilter(chip.key)}
+                    className={`cursor-pointer rounded-full border px-3 py-1 font-mulish text-xs transition-colors ${
+                      categoryFilter === chip.key
+                        ? "border-[#AF9083] bg-white font-semibold text-[#4A423C]"
+                        : "border-transparent bg-white/60 text-[#898787] hover:border-[#E8DDD5]"
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              {askConsent && (
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#E8DDD5] bg-white px-4 py-3 font-mulish text-sm text-[#4A423C]">
+                  <span className="flex-1">
+                    아직 분류 안 한 사진 {unanalyzed.length}장을 <b>작게 줄여 Google Gemini(AI)로 보내</b> 분류해요. 분류
+                    결과와 한 줄 설명만 저장하고, 사진은 따로 보관하지 않아요.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAskConsent(false)}
+                    className="cursor-pointer rounded-full border border-[#C0BDBD] bg-white px-3 py-1 text-sm text-[#666]"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void runAnalyze("new")}
+                    className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-3 py-1 text-sm text-white hover:bg-[#9a7d71]"
+                  >
+                    분류 시작
+                  </button>
+                </div>
+              )}
+              {analyzeMessage && <p className="font-mulish text-xs text-[#4A423C]">{analyzeMessage}</p>}
+              {characterId && aiReady && !analyzing && outdated.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void runAnalyze("redo")}
+                  className="self-start cursor-pointer border-0 bg-transparent p-0 font-mulish text-xs text-[#AF9083] underline underline-offset-2"
+                >
+                  예전 기준으로 분류한 {outdated.length}장을 새 기준(혼자·단체 포함)으로 다시 분류하기
+                </button>
+              )}
+              {!aiReady && characterId && (
+                <p className="font-mulish text-xs text-[#898787]">
+                  AI 분류는 Gemini API 키를 설정하면 쓸 수 있어요. 이름순·날짜순 정렬과 검색은 지금도 돼요.
+                </p>
+              )}
+            </div>
+          )}
+
+          {filesState === "ready" && files.length > 0 && visibleFiles.length === 0 && (
+            <p className="font-mulish text-sm text-[#898787]">조건에 맞는 사진이 없어요.</p>
           )}
 
           {filesState === "loading" && (
@@ -467,7 +825,7 @@ export function SectionPhotosModal({
 
           {filesState === "ready" && files.length > 0 && (
             <div className="grid min-h-0 flex-1 grid-cols-3 content-start gap-3 overflow-y-auto pr-1 sm:grid-cols-4 lg:grid-cols-6">
-              {files.map((file) => {
+              {visibleFiles.map((file) => {
                 const order = selectedIds.indexOf(file.id);
                 const isSelected = order !== -1;
                 const isCover = isSelected && file.id === effectiveCoverId;
@@ -503,6 +861,46 @@ export function SectionPhotosModal({
                       )}
                     </button>
 
+                    {/* AI 분류 (오른쪽 위) */}
+                    {(file.categories?.length ?? 0) > 0 && (
+                      <span
+                        title={file.description ?? undefined}
+                        className="pointer-events-none absolute right-2 top-2 flex max-w-[70%] flex-wrap justify-end gap-1"
+                      >
+                        {file.categories?.map((category) => (
+                          <span
+                            key={category}
+                            className={`rounded-full px-2 py-0.5 font-mulish text-[10px] font-semibold ${
+                              category === "hospital" ? "bg-[#9E2121]/85 text-white" : "bg-white/85 text-[#4A423C]"
+                            }`}
+                          >
+                            {photoCategoryShort(category)}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+
+                    {/* 태그 직접 고치기 (오른쪽 아래) */}
+                    {characterId && !file.thumbnailUrl?.startsWith("/api/") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTagError(null);
+                          setTagEditing({
+                            fileId: file.id,
+                            categories: (file.categories ?? []).filter((category) => category !== "video"),
+                          });
+                        }}
+                        aria-label={`${file.name} 태그 고치기`}
+                        title={file.manual ? "직접 고친 태그예요" : "태그 고치기"}
+                        className={`absolute bottom-2 right-2 cursor-pointer rounded-full border-0 px-2 py-1 font-mulish text-[11px] transition-colors ${
+                          file.manual ? "bg-[#AF9083] text-white" : "bg-white/85 text-[#4A423C] hover:bg-white"
+                        }`}
+                      >
+                        ✎{file.manual ? " 직접" : ""}
+                      </button>
+                    )}
+
                     {/* 고른 순서 */}
                     <span
                       aria-hidden="true"
@@ -535,6 +933,73 @@ export function SectionPhotosModal({
             </div>
           )}
         </div>
+
+        {tagEditing && (
+          <div
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/25"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !tagSaving) setTagEditing(null);
+            }}
+          >
+            <div role="dialog" aria-modal="true" aria-label="사진 태그 고치기" className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-6 shadow-lg">
+              {(() => {
+                const file = files.find((item) => item.id === tagEditing.fileId);
+                return (
+                  <div className="flex items-center gap-3">
+                    {file?.thumbnailUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={file.thumbnailUrl} alt="" referrerPolicy="no-referrer" className="h-16 w-16 rounded-lg object-cover" />
+                    )}
+                    <div className="flex min-w-0 flex-col">
+                      <span className="font-mulish text-sm font-semibold text-[#4A423C]">태그 고치기</span>
+                      <span className="truncate font-mulish text-xs text-[#898787]">{file?.description || file?.name}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+              <div className="flex flex-wrap gap-2">
+                {EDITABLE_PHOTO_CATEGORIES.map((category) => {
+                  const on = tagEditing.categories.includes(category);
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => toggleEditingTag(category)}
+                      className={`cursor-pointer rounded-full border px-3 py-1.5 font-mulish text-sm transition-colors ${
+                        on ? "border-[#AF9083] bg-[#FDD9BD]/50 text-[#4A423C]" : "border-[#E8DDD5] bg-white text-[#898787]"
+                      }`}
+                    >
+                      {PHOTO_CATEGORIES.find((item) => item.key === category)?.label ?? category}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="font-mulish text-xs text-[#898787]">
+                직접 고친 태그는 저장되고, AI로 다시 분류해도 바뀌지 않아요. 혼자·단체는 둘 중 하나만 고를 수 있어요.
+              </p>
+              {tagError && <p className="font-mulish text-xs text-[#9E2121]">{tagError}</p>}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTagEditing(null)}
+                  disabled={tagSaving}
+                  className="cursor-pointer rounded-full border border-[#C0BDBD] bg-white px-4 py-1.5 font-mulish text-sm text-[#666]"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveTags()}
+                  disabled={tagSaving}
+                  className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-1.5 font-mulish text-sm text-white hover:bg-[#9a7d71] disabled:opacity-60"
+                >
+                  {tagSaving ? "저장 중..." : "저장"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <p className="mt-2 font-mulish text-sm text-red-600">{error}</p>

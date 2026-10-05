@@ -337,8 +337,24 @@ async function driveList(accessToken: string, q: string, fields: string, pageTok
   if (!res.ok) throw new Error((await res.text()) || "Google Drive API request failed");
   return (await res.json()) as {
     nextPageToken?: string;
-    files?: Array<{ id: string; name: string; thumbnailLink?: string; iconLink?: string; mimeType?: string }>;
+    files?: Array<{
+      id: string;
+      name: string;
+      thumbnailLink?: string;
+      iconLink?: string;
+      mimeType?: string;
+      createdTime?: string;
+      imageMediaMetadata?: { time?: string };
+    }>;
   };
+}
+
+// 사진 정보의 찍은 시각 "2019:05:03 14:22:01" → ISO (형식이 다르면 null)
+function exifTimeToIso(value: string | undefined) {
+  const match = value ? /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(value) : null;
+  if (!match) return null;
+  const [, y, mo, d, h, mi, se] = match;
+  return `${y}-${mo}-${d}T${h}:${mi}:${se}`;
 }
 
 export async function fetchFolderTreeImages(accessToken: string, rootFolderId: string) {
@@ -364,15 +380,33 @@ export async function fetchFolderTreeImages(accessToken: string, rootFolderId: s
   }
 
   // 2) 모은 폴더 안의 사진을 여러 폴더씩 묶어서 검색
-  const files: Array<{ id: string; name: string; thumbnailUrl: string | null }> = [];
+  const files: Array<{
+    id: string;
+    name: string;
+    thumbnailUrl: string | null;
+    mimeType: string | null;
+    // 찍은 날짜(사진 정보) → 없으면 Drive 에 올린 날짜 (ISO)
+    takenAt: string | null;
+  }> = [];
   for (let i = 0; i < folderIds.length && files.length < TREE_MAX_IMAGES; i += PARENTS_PER_QUERY) {
     const parents = folderIds.slice(i, i + PARENTS_PER_QUERY).map((id) => `'${id}' in parents`).join(" or ");
     let pageToken: string | undefined;
     do {
-      const json = await driveList(accessToken, `(${parents}) and mimeType contains 'image/' and trashed = false`, "id,name,thumbnailLink,iconLink", pageToken);
+      const json = await driveList(
+        accessToken,
+        `(${parents}) and mimeType contains 'image/' and trashed = false`,
+        "id,name,thumbnailLink,iconLink,mimeType,createdTime,imageMediaMetadata(time)",
+        pageToken,
+      );
       for (const file of json.files ?? []) {
         if (files.length >= TREE_MAX_IMAGES) { truncated = true; break; }
-        files.push({ id: file.id, name: file.name, thumbnailUrl: file.thumbnailLink ?? file.iconLink ?? null });
+        files.push({
+          id: file.id,
+          name: file.name,
+          thumbnailUrl: file.thumbnailLink ?? file.iconLink ?? null,
+          mimeType: file.mimeType ?? null,
+          takenAt: exifTimeToIso(file.imageMediaMetadata?.time) ?? file.createdTime ?? null,
+        });
       }
       pageToken = files.length < TREE_MAX_IMAGES ? json.nextPageToken : undefined;
     } while (pageToken);
