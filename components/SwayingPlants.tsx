@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 // 메인 랜드 섬의 야자수 3그루(밑동을 축으로 살랑)와 꽃·덤불(바람에 아주 약하게 일렁),
-// 추모 커뮤니티 섬 돌기둥 아래 꽃밭(덩굴은 돌과 붙어 있어 그대로), 저장소 섬 집 아래 덤불과 벽 덩굴(계단은 그대로).
+// 추모 커뮤니티 섬 돌기둥 아래 꽃밭과 덩굴(돌 사이에 걸린 덩굴 줄은 조금 더 크게 흔들림), 저장소 섬 집 아래 덤불과 벽 덩굴(계단은 그대로).
 // 전체 지도 무대(16:9) 안에 넣어요. 위치·크기는 무대 기준 % (배경 그림에서 오려낸 자리 그대로).
 // 그림: public/scenes/palm-*.png, public/scenes/plants-*.webp
 // 야자수 움직임은 app/globals.css 의 palm-sway, 꽃·덤불은 아래 SVG 필터(물결 무늬로 살짝 밀기).
@@ -18,6 +18,7 @@ const PLANTS = [
   { src: "/scenes/plants-main.webp", left: 33.802, top: 44.722, width: 37.943 },
   { src: "/scenes/plants-community.webp", left: 1.328, top: 43.426, width: 23.958 },
   { src: "/scenes/plants-storage.webp", left: 86.432, top: 33.843, width: 12.214 },
+  { src: "/scenes/vines-community.webp", left: 5.365, top: 32.824, width: 19.583, filter: "vine-sway" },
 ];
 
 const REDUCE_QUERY = "(prefers-reduced-motion: reduce)";
@@ -49,6 +50,13 @@ export function SwayingPlants() {
           </feTurbulence>
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G" />
         </filter>
+        {/* 덩굴: 조금 더 크고 느리게 흔들림 */}
+        <filter id="vine-sway" x="-3%" y="-5%" width="106%" height="112%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02 0.03" numOctaves="1" seed="11" result="noise">
+            <animate attributeName="baseFrequency" dur="11s" values="0.02 0.03;0.024 0.036;0.02 0.03" repeatCount="indefinite" />
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
       </svg>
 
       {PLANTS.map((plants) => (
@@ -62,7 +70,7 @@ export function SwayingPlants() {
             left: `${plants.left}%`,
             top: `${plants.top}%`,
             width: `${plants.width}%`,
-            filter: reduceMotion ? undefined : "url(#plant-sway)",
+            filter: reduceMotion ? undefined : `url(#${"filter" in plants ? plants.filter : "plant-sway"})`,
           }}
         />
       ))}
