@@ -9,7 +9,7 @@ export type SceneMotionConfig = {
   palms?: PalmConfig[]; // 밑동을 축으로 살랑이는 나무
   plants?: PlantsConfig[]; // 바람에 일렁이는 꽃·덤불
   seagull?: SeagullConfig; // 모래밭을 걷는 갈매기
-  birds?: { sky: SkyRange; width: number; starts: Array<{ start: [number, number]; size: number }> }; // 하늘 새
+  birds?: { sky: SkyRange; width: number; src?: string; starts: Array<{ start: [number, number]; size: number }> }; // 하늘 새
 };
 
 // 마이랜드 (/myland): 메인 랜드 섬을 가까이서 본 화면
@@ -56,6 +56,21 @@ export const COMMUNITY_MOTION: SceneMotionConfig = {
     starts: [
       { start: [78, 18], size: 1 },
       { start: [22, 26], size: 0.8 },
+    ],
+  },
+};
+
+// 저장소 (/storage): 나무집이 있는 섬. 그림 속 새가 날아다니고, 집 아래 덤불과 벽 덩굴이 살랑 (계단은 그대로)
+export const STORAGE_MOTION: SceneMotionConfig = {
+  sea: { mask: "/scenes/storage-sea-mask.png", fade: [70, 80] },
+  plants: [{ src: "/scenes/storage-plants.webp", left: 54.661, top: 23.102, width: 37.109 }],
+  birds: {
+    sky: { left: 4, right: 96, top: 8, bottom: 42 },
+    width: 4.3,
+    src: "/scenes/storage-bird.png",
+    starts: [
+      { start: [54, 21.6], size: 1 },
+      { start: [20, 14], size: 0.8 },
     ],
   },
 };

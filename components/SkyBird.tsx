@@ -20,11 +20,13 @@ export function SkyBird({
   size = 1,
   sky = MAINLAND_SKY,
   width = 2.84,
+  src = "/scenes/sky-bird.png",
 }: {
   start?: [number, number];
   size?: number;
   sky?: SkyRange;
   width?: number;
+  src?: string; // 오른쪽을 보는 새 그림
 }) {
   const SKY = sky;
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -108,7 +110,7 @@ export function SkyBird({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={poseRef}
-        src="/scenes/sky-bird.png"
+        src={src}
         alt=""
         className="block w-full -translate-x-1/2 -translate-y-1/2"
         style={{ transform: start[0] > 50 ? "scaleX(-1)" : undefined }}

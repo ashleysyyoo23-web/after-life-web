@@ -16,7 +16,14 @@ export function SceneMotion({ config, className = "" }: { config: SceneMotionCon
       {config.sea && <SeaWaves mask={config.sea.mask} fade={config.sea.fade} />}
       {(config.palms || config.plants) && <SwayingPlants palms={config.palms ?? []} plants={config.plants ?? []} />}
       {config.birds?.starts.map((bird, index) => (
-        <SkyBird key={index} start={bird.start} size={bird.size} sky={config.birds!.sky} width={config.birds!.width} />
+        <SkyBird
+          key={index}
+          start={bird.start}
+          size={bird.size}
+          sky={config.birds!.sky}
+          width={config.birds!.width}
+          src={config.birds!.src}
+        />
       ))}
       {config.seagull && <IslandSeagull config={config.seagull} />}
     </div>

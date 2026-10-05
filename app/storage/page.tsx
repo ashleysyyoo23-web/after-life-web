@@ -1,5 +1,7 @@
 "use client";
 
+import { SceneMotion } from "@/components/SceneMotion";
+import { STORAGE_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import {
   DEFAULT_NOTIFICATIONS,
@@ -31,7 +33,8 @@ export default function StoragePage() {
         className="relative h-screen w-screen cursor-pointer overflow-hidden"
         onClick={() => router.push("/storageinside")}
       >
-        <MoodSkyBackground scene="storagefar" />
+        <MoodSkyBackground scene="storagefar" clouds />
+        <SceneMotion config={STORAGE_MOTION} />
         <h1 className="sr-only">저장소</h1>
       </div>
 
