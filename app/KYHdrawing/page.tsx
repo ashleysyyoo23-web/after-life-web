@@ -5,6 +5,7 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { KYH_MOTION } from "@/lib/scene-motion";
 import { BackgroundPageLayout } from "@/components/background-page-layout";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
 import { HoverMessageCard, useWallMessages } from "@/components/community/CommunityCards";
@@ -84,6 +85,7 @@ export default function KYHdrawingPage() {
         backgroundSrc="/KYHdrawing.jpg"
         skyScene="KYHdrawing"
         title="김영희 님의 섬"
+        motion={KYH_MOTION}
       />
 
       <div className="pointer-events-none fixed inset-0 z-30">

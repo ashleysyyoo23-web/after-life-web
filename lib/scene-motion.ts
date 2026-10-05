@@ -92,3 +92,17 @@ export const STORAGE_INSIDE_MOTION: SceneMotionConfig = {
     ],
   },
 };
+
+// 김영희님의 섬 (/KYHdrawing): 꽃이 그려진 큰 바위. 바위 면의 꽃은 그대로, 땅에서 자란 꽃·풀과 왼쪽 덤불이 살랑
+export const KYH_MOTION: SceneMotionConfig = {
+  sea: { mask: "/scenes/kyh-sea-mask.png", fade: [82, 88] },
+  plants: [{ src: "/scenes/kyh-plants.webp", left: 8.385, top: 56.713, width: 69.479 }],
+  birds: {
+    sky: { left: 4, right: 96, top: 6, bottom: 32 },
+    width: 3.6,
+    starts: [
+      { start: [82, 16], size: 1 },
+      { start: [14, 24], size: 0.8 },
+    ],
+  },
+};
