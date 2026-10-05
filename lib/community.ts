@@ -4,10 +4,27 @@ export const COMMUNITY_WALLS = {
   sewol: { title: "세월호 참사 추모공간", drawingPath: "/communitytwo", gridPath: "/communitytwogrid" },
 } as const;
 
-export type CommunityWall = keyof typeof COMMUNITY_WALLS;
+// 고정 추모 공간(kyh·sewol) + 고인별 기일 추모 섬의 벽("deceased-<고인 ID>")
+type FixedWall = keyof typeof COMMUNITY_WALLS;
+export type CommunityWall = FixedWall | `deceased-${string}`;
+
+const DECEASED_WALL_PATTERN = /^deceased-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
 export function isCommunityWall(value: unknown): value is CommunityWall {
-  return typeof value === "string" && Object.hasOwn(COMMUNITY_WALLS, value);
+  return typeof value === "string" && (Object.hasOwn(COMMUNITY_WALLS, value) || DECEASED_WALL_PATTERN.test(value));
+}
+
+// 고인별 벽이면 고인 ID, 아니면 null
+export function deceasedIdFromWall(wall: string) {
+  return DECEASED_WALL_PATTERN.exec(wall)?.[1] ?? null;
+}
+
+export const deceasedWall = (deceasedId: string): CommunityWall => `deceased-${deceasedId}`;
+
+// 메시지를 남긴 뒤 돌아갈 화면
+export function wallHomePath(wall: CommunityWall) {
+  const deceasedId = deceasedIdFromWall(wall);
+  return deceasedId ? `/island/${deceasedId}` : COMMUNITY_WALLS[wall as FixedWall].drawingPath;
 }
 
 export const COMMUNITY_NICKNAME_MAX = 10;

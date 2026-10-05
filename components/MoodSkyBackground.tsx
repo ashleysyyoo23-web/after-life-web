@@ -6,6 +6,7 @@ import { useMoodSky } from "@/lib/mood-sky";
 export type SkyScene =
   | "onboarding"
   | "mainland"
+  | "mainland-base"
   | "myland-empty"
   | "community"
   | "KYHdrawing"

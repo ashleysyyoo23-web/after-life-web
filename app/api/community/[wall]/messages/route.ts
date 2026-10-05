@@ -12,6 +12,7 @@ import {
 import {
   COMMUNITY_MESSAGE_COLUMNS,
   downloadDriveFile,
+  canUseWall,
   findDriveImageForUser,
   shrinkCommunityImage,
   toClientMessages,
@@ -39,6 +40,10 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   if (!isCommunityWall(wall)) {
     return NextResponse.json({ error: "Wall not found" }, { status: 404 });
   }
+  // 고인별 추모 섬 벽은 그 고인을 등록한 가족만
+  if (!(await canUseWall(supabase, userEmail, wall))) {
+    return NextResponse.json({ error: "이 추모 섬에 들어갈 수 없어요." }, { status: 403 });
+  }
 
   const { data, error } = await supabase
     .from("community_messages")
@@ -64,6 +69,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (!isCommunityWall(wall)) {
     return NextResponse.json({ error: "Wall not found" }, { status: 404 });
+  }
+  // 고인별 추모 섬 벽은 그 고인을 등록한 가족만
+  if (!(await canUseWall(supabase, userEmail, wall))) {
+    return NextResponse.json({ error: "이 추모 섬에 들어갈 수 없어요." }, { status: 403 });
   }
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;

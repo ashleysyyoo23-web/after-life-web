@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
+import { canUseWall } from "@/lib/community-server";
 
 type RouteParams = {
   params: Promise<{ messageId: string }>;
@@ -20,12 +21,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const { data: message } = await supabase
     .from("community_messages")
-    .select("id")
+    .select("id, wall")
     .eq("id", messageId)
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (!message) {
+  if (!message || !(await canUseWall(supabase, userEmail, message.wall))) {
     return NextResponse.json({ error: "Message not found" }, { status: 404 });
   }
 

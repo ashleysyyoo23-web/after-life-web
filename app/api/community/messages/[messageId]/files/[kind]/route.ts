@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { COMMUNITY_STORAGE_BUCKET } from "@/lib/community";
+import { canUseWall } from "@/lib/community-server";
 
 type RouteParams = {
   params: Promise<{ messageId: string; kind: string }>;
@@ -10,7 +11,7 @@ type RouteParams = {
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   const context = await getSessionContext();
   if (!context.ok) return context.response;
-  const { supabase } = context;
+  const { supabase, userEmail } = context;
   const { messageId, kind } = await params;
 
   if (kind !== "drawing" && kind !== "image") {
@@ -19,10 +20,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: row } = await supabase
     .from("community_messages")
-    .select("drawing_path, image_path, image_mime")
+    .select("wall, drawing_path, image_path, image_mime")
     .eq("id", messageId)
     .is("deleted_at", null)
     .maybeSingle();
+
+  if (row && !(await canUseWall(supabase, userEmail, row.wall))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const path = kind === "drawing" ? row?.drawing_path : row?.image_path;
   if (!path) {

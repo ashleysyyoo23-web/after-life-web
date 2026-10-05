@@ -8,3 +8,15 @@ body {
 .scrollbar-thin {
   scrollbar-width: thin;
 }
+
+/* 기일 추모 섬이 지도에 천천히 떠오르기 */
+@keyframes island-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

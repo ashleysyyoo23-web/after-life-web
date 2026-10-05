@@ -1,7 +1,7 @@
 "use client";
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
-import { COMMUNITY_WALLS, isCommunityWall } from "@/lib/community";
+import { isCommunityWall, wallHomePath } from "@/lib/community";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -11,7 +11,7 @@ export default function KYHLeavingPage() {
   useEffect(() => {
     // 메시지를 남긴 추모 공간으로 돌아가기 (?wall=…)
     const wall = new URLSearchParams(window.location.search).get("wall");
-    const backTo = isCommunityWall(wall) ? COMMUNITY_WALLS[wall].drawingPath : "/KYHdrawing";
+    const backTo = isCommunityWall(wall) ? wallHomePath(wall) : "/KYHdrawing";
     const timer = setTimeout(() => {
       router.push(backTo);
     }, 3000);
