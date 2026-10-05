@@ -27,6 +27,7 @@ import {
   SLIDE_SECONDS_MAX,
   SLIDE_SECONDS_MIN,
   sanitizeViewSettings,
+  VIEW_SETTINGS_UPDATED_EVENT,
   type RecapView,
 } from "@/lib/view-settings";
 import { useCallback, useEffect, useState } from "react";
@@ -256,7 +257,13 @@ export function SettingsModal({
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) throw new Error(json?.error ?? "저장하지 못했어요.");
 
-      setViewMessage("저장했어요. 다음에 리캡을 열 때부터 적용돼요.");
+      // 열려 있는 리캡에 넘김 속도를 바로 반영 (처음 화면은 다음에 열 때부터)
+      window.dispatchEvent(
+        new CustomEvent(VIEW_SETTINGS_UPDATED_EVENT, {
+          detail: { slideSeconds: sliderValue, recapView: selectedViewType },
+        }),
+      );
+      setViewMessage("저장했어요. 넘김 속도는 바로 적용되고, 처음 화면은 다음에 리캡을 열 때부터 적용돼요.");
     } catch (saveError) {
       setViewMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
     } finally {

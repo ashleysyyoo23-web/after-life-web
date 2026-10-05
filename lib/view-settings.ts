@@ -9,6 +9,9 @@ export const DEFAULT_RECAP_VIEW: RecapView = "slideshow";
 
 export type ViewSettings = { slideSeconds: number; recapView: RecapView };
 
+// 설정에서 저장하면 보내는 신호 → 열려 있는 리캡이 넘김 속도를 바로 바꿈 (detail: ViewSettings)
+export const VIEW_SETTINGS_UPDATED_EVENT = "afterlife:view-settings-updated";
+
 export function sanitizeViewSettings(raw: { slideSeconds?: unknown; recapView?: unknown } | null | undefined): ViewSettings {
   const seconds = Number(raw?.slideSeconds);
   return {

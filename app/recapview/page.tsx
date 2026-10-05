@@ -16,7 +16,7 @@ import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { DEFAULT_SLIDE_SECONDS, sanitizeViewSettings } from "@/lib/view-settings";
+import { DEFAULT_SLIDE_SECONDS, sanitizeViewSettings, VIEW_SETTINGS_UPDATED_EVENT } from "@/lib/view-settings";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 const FALLBACK_SLIDE_COUNT = 11;
@@ -110,6 +110,16 @@ function RecapviewPageContent() {
         // 못 불러오면 기본값(3초 · 슬라이드쇼) 그대로
       }
     })();
+  }, []);
+
+  // 보는 중에 설정에서 넘김 속도를 저장하면 바로 반영 (지금 사진부터 새 속도로)
+  useEffect(() => {
+    const handleUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<Parameters<typeof sanitizeViewSettings>[0]>).detail;
+      setSlideSeconds(sanitizeViewSettings(detail).slideSeconds);
+    };
+    window.addEventListener(VIEW_SETTINGS_UPDATED_EVENT, handleUpdated);
+    return () => window.removeEventListener(VIEW_SETTINGS_UPDATED_EVENT, handleUpdated);
   }, []);
 
   // 앨범(책) 안의 섹션에서 들어오면 ?section=… , 예전 여행 앨범은 ?bg=…
