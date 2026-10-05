@@ -7,6 +7,7 @@ import {
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { RecapBookView } from "@/components/RecapBookView";
+import { Pause, Play } from "lucide-react";
 import { ExposureControl } from "@/components/safety/ExposureControl";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { RevealOverlay } from "@/components/safety/RevealOverlay";
@@ -737,27 +738,46 @@ function RecapviewPageContent() {
                 </button>
               </div>
 
-              {slideCount > MAX_DOTS ? (
-                <p className="mt-3 font-mulish text-sm text-[#AF9083]">
-                  {currentIndex + 1} / {slideCount}
-                </p>
-              ) : (
-              <div className="mt-3 flex items-center justify-center gap-2">
-                {Array.from({ length: slideCount }, (_, index) => (
+              {/* 사진 아래: 멈춤/재생 + 몇 번째 사진인지 (스페이스바로도 멈춤/재생) */}
+              <div className="mt-3 flex items-center justify-center gap-4">
+                {slideCount > 1 && (
                   <button
-                    key={index}
                     type="button"
-                    onClick={() => setCurrentIndex(index)}
-                    aria-label={`${index + 1}번째 사진`}
-                    className={`h-2.5 w-2.5 cursor-pointer rounded-full border-0 p-0 ${
-                      index === currentIndex
-                        ? "bg-[#AF9083]"
-                        : "border border-[#AF9083] bg-white"
-                    }`}
-                  />
-                ))}
+                    onClick={() => setIsPlaying((playing) => !playing)}
+                    aria-label={isPlaying ? "자동 넘김 멈추기 (스페이스바)" : "자동 넘김 다시 재생 (스페이스바)"}
+                    className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[#AF9083] bg-white/90 px-4 font-mulish text-sm font-semibold text-[#AF9083] shadow-[0px_2px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#FDD9BD]"
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    ) : (
+                      <Play className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    )}
+                    {isPlaying ? "멈춤" : "재생"}
+                  </button>
+                )}
+
+                {slideCount > MAX_DOTS ? (
+                  <p className="font-mulish text-sm text-[#AF9083]">
+                    {currentIndex + 1} / {slideCount}
+                  </p>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    {Array.from({ length: slideCount }, (_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCurrentIndex(index)}
+                        aria-label={`${index + 1}번째 사진`}
+                        className={`h-2.5 w-2.5 cursor-pointer rounded-full border-0 p-0 ${
+                          index === currentIndex
+                            ? "bg-[#AF9083]"
+                            : "border border-[#AF9083] bg-white"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-              )}
 
               {slideCount > 0 && currentIndex === slideCount - 1 && (
                 <button
