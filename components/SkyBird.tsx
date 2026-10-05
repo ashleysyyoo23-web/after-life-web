@@ -6,14 +6,27 @@ import { useEffect, useRef } from "react";
 // 그림: public/scenes/sky-bird.png (배경에서 오려낸 것, 오른쪽을 봄)
 // 날개짓은 그림을 위아래로 접었다 펴는 것으로 흉내 내고, 가끔은 날개를 편 채 미끄러지듯 날아요.
 
-const SKY = { left: 4, right: 96, top: 12, bottom: 40 }; // 날아다니는 범위 (무대 %)
+export type SkyRange = { left: number; right: number; top: number; bottom: number }; // 날아다니는 범위 (무대 %)
+const MAINLAND_SKY: SkyRange = { left: 4, right: 96, top: 12, bottom: 40 };
 const SPEED = 3.2; // 무대 너비 % / 초 (size 가 작을수록 멀리 있는 새라 느리게)
 const TURN = 1.6; // 방향을 바꾸는 빠르기 (라디안 / 초)
 
 const randomIn = (min: number, max: number) => min + Math.random() * (max - min);
 
 // start: 처음 자리(무대 %), size: 1 = 원래 크기
-export function SkyBird({ start = [82.6, 31.7], size = 1 }: { start?: [number, number]; size?: number }) {
+// width: size 1 일 때 무대 너비 % (가까운 화면일수록 크게)
+export function SkyBird({
+  start = [82.6, 31.7],
+  size = 1,
+  sky = MAINLAND_SKY,
+  width = 2.84,
+}: {
+  start?: [number, number];
+  size?: number;
+  sky?: SkyRange;
+  width?: number;
+}) {
+  const SKY = sky;
   const bodyRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef<HTMLImageElement>(null);
 
@@ -25,7 +38,7 @@ export function SkyBird({ start = [82.6, 31.7], size = 1 }: { start?: [number, n
 
     let pos: [number, number] = [start[0], start[1]];
     let heading = start[0] > 50 ? Math.PI * 0.9 : Math.PI * 0.1; // 처음엔 화면 가운데 쪽으로
-    const speed = SPEED * (0.75 + 0.25 * size);
+    const speed = SPEED * (0.75 + 0.25 * size) * (width / 2.84);
     let target: [number, number] = [randomIn(SKY.left, SKY.right), randomIn(SKY.top, SKY.bottom)];
     let glideUntil = 0;
     let flapPhase = 0;
@@ -83,14 +96,14 @@ export function SkyBird({ start = [82.6, 31.7], size = 1 }: { start?: [number, n
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [start, size]);
+  }, [start, size, SKY, width]);
 
   return (
     <div
       ref={bodyRef}
       aria-hidden
       className="pointer-events-none absolute"
-      style={{ left: `${start[0]}%`, top: `${start[1]}%`, width: `${2.84 * size}%` }}
+      style={{ left: `${start[0]}%`, top: `${start[1]}%`, width: `${width * size}%` }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

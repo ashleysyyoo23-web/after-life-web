@@ -8,13 +8,16 @@ import { useSyncExternalStore } from "react";
 // 그림: public/scenes/palm-*.png, public/scenes/plants-*.webp
 // 야자수 움직임은 app/globals.css 의 palm-sway, 꽃·덤불은 아래 SVG 필터(물결 무늬로 살짝 밀기).
 
-const PALMS = [
+export type PalmConfig = { src: string; left: number; top: number; width: number; origin: string; duration: number; delay: number };
+export type PlantsConfig = { src: string; left: number; top: number; width: number; filter?: string };
+
+const MAINLAND_PALMS: PalmConfig[] = [
   { src: "/scenes/palm-left.png", left: 39.505, top: 40.231, width: 4.74, origin: "85.2% 99.6%", duration: 5.6, delay: -1.2 },
   { src: "/scenes/palm-mid.png", left: 45.286, top: 31.343, width: 5.599, origin: "91.2% 99.7%", duration: 6.4, delay: -3.1 },
   { src: "/scenes/palm-right.png", left: 54.297, top: 34.306, width: 5.573, origin: "17.8% 99.7%", duration: 7.1, delay: -0.4 },
 ];
 
-const PLANTS = [
+const MAINLAND_PLANTS: PlantsConfig[] = [
   { src: "/scenes/plants-main.webp", left: 33.802, top: 44.722, width: 37.943 },
   { src: "/scenes/plants-community.webp", left: 1.328, top: 43.426, width: 23.958 },
   { src: "/scenes/plants-storage.webp", left: 86.432, top: 33.843, width: 12.214 },
@@ -28,7 +31,13 @@ const subscribe = (callback: () => void) => {
   return () => media.removeEventListener("change", callback);
 };
 
-export function SwayingPlants() {
+export function SwayingPlants({
+  palms = MAINLAND_PALMS,
+  plants: plantLayers = MAINLAND_PLANTS,
+}: {
+  palms?: PalmConfig[];
+  plants?: PlantsConfig[];
+}) {
   const reduceMotion = useSyncExternalStore(
     subscribe,
     () => window.matchMedia(REDUCE_QUERY).matches,
@@ -59,7 +68,7 @@ export function SwayingPlants() {
         </filter>
       </svg>
 
-      {PLANTS.map((plants) => (
+      {plantLayers.map((plants) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={plants.src}
@@ -70,12 +79,12 @@ export function SwayingPlants() {
             left: `${plants.left}%`,
             top: `${plants.top}%`,
             width: `${plants.width}%`,
-            filter: reduceMotion ? undefined : `url(#${"filter" in plants ? plants.filter : "plant-sway"})`,
+            filter: reduceMotion ? undefined : `url(#${plants.filter ?? "plant-sway"})`,
           }}
         />
       ))}
 
-      {PALMS.map((palm) => (
+      {palms.map((palm) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={palm.src}

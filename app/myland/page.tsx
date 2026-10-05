@@ -1,5 +1,7 @@
 "use client";
 
+import { SceneMotion } from "@/components/SceneMotion";
+import { MYLAND_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { clampToSand } from "@/lib/myland-area";
@@ -768,7 +770,9 @@ function MylandPageContent() {
         className="relative h-screen w-screen overflow-hidden"
         onDoubleClick={() => setShowAnniversaryModal(true)}
       >
-        <MoodSkyBackground scene="myland-empty" />
+        <MoodSkyBackground scene="myland-empty" clouds />
+        {/* 바다 물결·살랑이는 야자수와 꽃·걷는 갈매기·하늘 새 (캐릭터 뒤) */}
+        <SceneMotion config={MYLAND_MOTION} className="z-10" />
         <h1 className="sr-only">메인 랜드</h1>
         {/* 배경(16:9)과 같은 크기의 무대 위에 캐릭터를 % 위치로 세움 */}
         <div

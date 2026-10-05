@@ -19,7 +19,9 @@ const TILE_B = waveTile(
   170,
 );
 
-const MASK = "url(/scenes/mainland-sea-mask.png), linear-gradient(to bottom, transparent 50%, black 64%)";
+// mask: 바다 자리만 흰색인 그림, fade: 수평선 근처를 흐리게 하는 범위 (무대 높이 %, [투명 시작, 진하게 끝])
+const maskFor = (mask: string, [from, to]: [number, number]) =>
+  `url(${mask}), linear-gradient(to bottom, transparent ${from}%, black ${to}%)`;
 
 function Layer({ tile, tileWidth, tileHeight, drift, bob, delay, opacity }: {
   tile: string;
@@ -49,7 +51,14 @@ function Layer({ tile, tileWidth, tileHeight, drift, bob, delay, opacity }: {
   );
 }
 
-export function SeaWaves() {
+export function SeaWaves({
+  mask = "/scenes/mainland-sea-mask.png",
+  fade = [50, 64],
+}: {
+  mask?: string;
+  fade?: [number, number];
+}) {
+  const MASK = maskFor(mask, fade);
   return (
     <div
       aria-hidden
