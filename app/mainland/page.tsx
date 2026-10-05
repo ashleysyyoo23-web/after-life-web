@@ -7,7 +7,8 @@ import {
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { daysUntilLabel } from "@/lib/anniversary";
-import { arrangeIslands, islandLook, islandSoloStyle } from "@/lib/islands";
+import { arrangeIslands, islandLook, islandSoloStyle, type IslandShape } from "@/lib/islands";
+import { IslandSign } from "@/components/IslandSign";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -21,6 +22,7 @@ type AnniversaryIsland = {
   status: "ask" | "open" | "later";
 };
 
+// 고정 섬의 클릭 영역(화면 기준)과 나무 팻말 자리(지도 무대 기준: 기둥이 땅에 닿는 곳)
 const mainlandIslands = [
   {
     label: "추모 커뮤니티",
@@ -29,14 +31,16 @@ const mainlandIslands = [
     top: "50.0%",
     width: "18%",
     height: "30%",
+    sign: { x: "26.5%", y: "50.8%" },
   },
   {
     label: "메인 랜드",
     href: "/myland",
     left: "51.0%",
-    top: "57.5%",
+    top: "61.2%",
     width: "22%",
     height: "32%",
+    sign: { x: "41.5%", y: "62.5%" },
   },
   {
     label: "저장소",
@@ -45,8 +49,15 @@ const mainlandIslands = [
     top: "48.0%",
     width: "18%",
     height: "30%",
+    sign: { x: "77.5%", y: "50.8%" },
   },
 ] as const;
+
+// 기일 추모 섬 그림 안에서 팻말 자리 (뒤집지 않은 그림 기준 %, 모래밭)
+const ANNIVERSARY_SIGN_SPOT: Record<IslandShape, { x: number; y: number }> = {
+  rock: { x: 25, y: 86 },
+  cairn: { x: 30, y: 89 },
+};
 
 
 export default function MainlandPage() {
@@ -141,13 +152,21 @@ function MainlandPageContent() {
                 className="block h-auto w-full transition-[filter] duration-200 group-hover:brightness-105"
                 style={placement.flip ? { transform: "scaleX(-1)" } : undefined}
               />
-              <span className="pointer-events-none absolute left-1/2 top-[20%] -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-white/85 px-4 py-2 text-center font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                {island.nickname}의 섬
-                <span className="block font-mulish text-xs text-[#AF9083]">{daysUntilLabel(island.daysUntil)}</span>
-              </span>
+              <IslandSign
+                label={`${island.nickname}의 섬`}
+                sub={daysUntilLabel(island.daysUntil)}
+                x={`${placement.flip ? 100 - ANNIVERSARY_SIGN_SPOT[placement.shape].x : ANNIVERSARY_SIGN_SPOT[placement.shape].x}%`}
+                y={`${ANNIVERSARY_SIGN_SPOT[placement.shape].y}%`}
+              />
             </Link>
           );
         })}
+
+        {/* 고정 섬 이름: 섬에 꽂힌 나무 팻말 (늘 보여요) */}
+        {/* 누르기는 아래의 섬 영역이 받아요 */}
+        {mainlandIslands.map((island) => (
+          <IslandSign key={island.label} label={island.label} x={island.sign.x} y={island.sign.y} />
+        ))}
       </div>
 
       <div className="absolute inset-0 z-[1]">
@@ -160,12 +179,6 @@ function MainlandPageContent() {
             borderRadius: "50%",
             transform: "translate(-50%, -50%)",
           };
-          const tooltip = (
-            <span className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-              {island.label}
-            </span>
-          );
-
           return (
             <Link
               key={island.label}
@@ -174,7 +187,6 @@ function MainlandPageContent() {
               className="group absolute cursor-pointer bg-transparent transition-all duration-200 hover:bg-white/10"
               style={islandStyle}
             >
-              {tooltip}
             </Link>
           );
         })}
