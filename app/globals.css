@@ -35,6 +35,33 @@ body {
   }
 }
 
+/* 전체 지도 하늘 구름 (components/DriftingClouds.tsx): 왼쪽 밖에서 오른쪽 밖으로 천천히 */
+@keyframes cloud-drift {
+  from {
+    transform: translateX(-35cqw);
+  }
+  to {
+    transform: translateX(105cqw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drifting-clouds svg {
+    animation-play-state: paused !important;
+  }
+}
+
+/* 메인 랜드 야자수 (components/SwayingPlants.tsx): 밑동을 축으로 살랑 */
+@keyframes palm-sway {
+  0%,
+  100% {
+    transform: rotate(-1.4deg);
+  }
+  50% {
+    transform: rotate(1.6deg);
+  }
+}
+
 /* 기일 추모 섬이 지도에 천천히 떠오르기 */
 @keyframes island-rise {
   from {
@@ -46,3 +73,4 @@ body {
     transform: translateY(0);
   }
 }
+

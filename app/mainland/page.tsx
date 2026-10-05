@@ -10,6 +10,9 @@ import { daysUntilLabel } from "@/lib/anniversary";
 import { arrangeIslands, islandLook, islandSoloStyle, type IslandShape } from "@/lib/islands";
 import { IslandSign } from "@/components/IslandSign";
 import { SeaWaves } from "@/components/SeaWaves";
+import { IslandSeagull } from "@/components/IslandSeagull";
+import { SkyBird } from "@/components/SkyBird";
+import { SwayingPlants } from "@/components/SwayingPlants";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -53,6 +56,12 @@ const mainlandIslands = [
     sign: { x: "77.5%", y: "50.8%" },
   },
 ] as const;
+
+// 하늘 새 두 마리의 처음 자리 (무대 %). 렌더마다 새 배열이 생기지 않게 밖에 둠
+const SKY_BIRD_STARTS: Array<[number, number]> = [
+  [82.6, 31.7],
+  [18, 16],
+];
 
 // 기일 추모 섬 그림 안에서 팻말 자리 (뒤집지 않은 그림 기준 %, 모래밭)
 const ANNIVERSARY_SIGN_SPOT: Record<IslandShape, { x: number; y: number }> = {
@@ -129,7 +138,7 @@ function MainlandPageContent() {
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       {/* 고정 섬 3개(추모 커뮤니티·메인 랜드·저장소)만 있는 바탕. 기일 추모 섬은 그 위에 따로 올려요 */}
-      <MoodSkyBackground scene="mainland-base" />
+      <MoodSkyBackground scene="mainland-base" clouds />
 
       {/* 기일 추모 섬: 배경(16:9)과 같은 크기의 무대 위, 예전 두 섬 자리(왼쪽 아래·오른쪽 아래) */}
       <div
@@ -139,6 +148,13 @@ function MainlandPageContent() {
         {/* 바다 물결 (섬들 아래) */}
         <SeaWaves />
 
+        {/* 메인 랜드의 살랑이는 야자수·꽃·덤불 */}
+        <SwayingPlants />
+
+        {/* 하늘을 날아다니는 새 두 마리 (한 마리는 조금 멀리, 작게) */}
+        <SkyBird start={SKY_BIRD_STARTS[0]} />
+        <SkyBird start={SKY_BIRD_STARTS[1]} size={0.8} />
+
         {arrangeIslands(openIslands.map((island) => island.deceasedId)).map((placement, index) => {
           const island = openIslands[index];
           return (
@@ -146,7 +162,7 @@ function MainlandPageContent() {
               key={island.deceasedId}
               href={`/island/${island.deceasedId}`}
               aria-label={`${island.nickname}의 섬 (${daysUntilLabel(island.daysUntil)})`}
-              className="group pointer-events-auto absolute block animate-[island-rise_1.4s_ease-out]"
+              className="group pointer-events-auto absolute z-[2] block animate-[island-rise_1.4s_ease-out]"
               style={placement.style}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -171,6 +187,9 @@ function MainlandPageContent() {
         {mainlandIslands.map((island) => (
           <IslandSign key={island.label} label={island.label} x={island.sign.x} y={island.sign.y} />
         ))}
+
+        {/* 메인 랜드 모래밭을 걸어다니는 갈매기 (팻말 앞, 기일 추모 섬 뒤) */}
+        <IslandSeagull />
       </div>
 
       <div className="absolute inset-0 z-[1]">
