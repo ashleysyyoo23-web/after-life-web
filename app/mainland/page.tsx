@@ -13,6 +13,7 @@ import { SeaWaves } from "@/components/SeaWaves";
 import { IslandSeagull } from "@/components/IslandSeagull";
 import { SkyBird } from "@/components/SkyBird";
 import { SwayingPlants } from "@/components/SwayingPlants";
+import { WavingFlag } from "@/components/WavingFlag";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -150,6 +151,8 @@ function MainlandPageContent() {
 
         {/* 메인 랜드의 살랑이는 야자수·꽃·덤불 */}
         <SwayingPlants />
+        {/* 저장소 섬 깃발 */}
+        <WavingFlag />
 
         {/* 하늘을 날아다니는 새 두 마리 (한 마리는 조금 멀리, 작게) */}
         <SkyBird start={SKY_BIRD_STARTS[0]} />
