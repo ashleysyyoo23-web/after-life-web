@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { sanitizeAppearance } from "@/lib/character-parts";
 import {
+  buildSpecialDateRows,
   CHARACTER_DESCRIPTION_MAX,
   CHARACTER_NICKNAME_MAX,
   CHARACTER_RELATIONS,
+  sanitizeExcludedTypes,
+  toSpecialDate,
 } from "@/lib/character-fields";
 import { clampToSand } from "@/lib/myland-area";
 
@@ -23,7 +26,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const { data: row } = await supabase
     .from("user_characters")
-    .select("id, nickname, relation, description, appearance, emotion_level, deceased(drive_folder_name)")
+    .select(
+      "id, nickname, relation, description, appearance, emotion_level, excluded_types, allow_recommendation, deceased_id, deceased(drive_folder_name)",
+    )
     .eq("id", characterId)
     .eq("owner_email", userEmail)
     .is("deleted_at", null)
@@ -40,6 +45,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const deceased = (Array.isArray(row.deceased) ? row.deceased[0] : row.deceased) as DeceasedJoin | null;
 
+  // 이 고인에 대해 내가 적은 특별한 날짜들
+  const { data: dateRows } = await supabase
+    .from("deceased_dates")
+    .select("kind, label, month, day, year, record_type")
+    .eq("deceased_id", row.deceased_id)
+    .eq("owner_email", userEmail)
+    .order("created_at", { ascending: true });
+
   return NextResponse.json({
     character: {
       id: row.id,
@@ -49,14 +62,20 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       appearance: sanitizeAppearance(row.appearance),
       folderName: deceased?.drive_folder_name ?? null,
       bookCount: bookCount ?? 0,
-      // 노출 강도 (0 = 아주 흐리게 … 100 = 거의 선명하게)
+      // 열람방식 설정하기 (캐릭터 만들기 4단계와 같은 항목)
+      // 노출 강도 (0 = 슬픔이 파도처럼 → 아주 흐리게 … 100 = 잔잔해요 → 거의 선명하게)
       emotionLevel: row.emotion_level,
+      excludedTypes: sanitizeExcludedTypes(row.excluded_types),
+      specialDates: (dateRows ?? []).map(toSpecialDate),
+      allowRecommendation: row.allow_recommendation !== false,
     },
   });
 }
 
 // 인물 고치기. 보낸 것만 바꿈.
-// body: { nickname?, relation?, description?, appearance?, emotionLevel?, positionX?, positionY? }
+// body: { nickname?, relation?, description?, appearance?, emotionLevel?,
+//         excludedTypes?, allowRecommendation?, specialDates? (보내면 이 인물의 내 날짜를 통째로 바꿈),
+//         positionX?, positionY? }
 // (positionX/Y 는 메인 랜드에서 끌어서 옮긴 발끝 위치 %, 모래밭 안으로 맞춤)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const context = await getSessionContext();
@@ -106,6 +125,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     changes.emotion_level = Math.max(0, Math.min(100, Math.round(body.emotionLevel)));
   }
 
+  if ("excludedTypes" in body) {
+    changes.excluded_types = sanitizeExcludedTypes(body.excludedTypes);
+  }
+
+  if ("allowRecommendation" in body) {
+    changes.allow_recommendation = body.allowRecommendation !== false;
+  }
+
+  const replaceDates = "specialDates" in body;
+
   if ("positionX" in body || "positionY" in body) {
     if (typeof body.positionX !== "number" || typeof body.positionY !== "number") {
       return NextResponse.json({ error: "Invalid position" }, { status: 400 });
@@ -115,7 +144,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     changes.position_y = y;
   }
 
-  if (Object.keys(changes).length === 0) {
+  if (Object.keys(changes).length === 0 && !replaceDates) {
     return NextResponse.json({ error: "바꿀 내용이 없어요." }, { status: 400 });
   }
 
@@ -125,7 +154,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .eq("id", characterId)
     .eq("owner_email", userEmail)
     .is("deleted_at", null)
-    .select("id, nickname, relation, description, appearance, emotion_level, position_x, position_y")
+    .select(
+      "id, deceased_id, nickname, relation, description, appearance, emotion_level, excluded_types, allow_recommendation, position_x, position_y",
+    )
     .maybeSingle();
 
   if (error) {
@@ -133,6 +164,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
   if (!data) {
     return NextResponse.json({ error: "캐릭터를 찾을 수 없어요." }, { status: 404 });
+  }
+
+  // 특별한 날짜: 이 고인에 대한 내 날짜를 새로 적은 것으로 통째로 바꿈 (날짜가 틀린 줄은 빠짐)
+  if (replaceDates) {
+    const rows = buildSpecialDateRows(body.specialDates).map((row) => ({
+      ...row,
+      deceased_id: data.deceased_id,
+      owner_email: userEmail,
+    }));
+    const { error: deleteError } = await supabase
+      .from("deceased_dates")
+      .delete()
+      .eq("deceased_id", data.deceased_id)
+      .eq("owner_email", userEmail);
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase.from("deceased_dates").insert(rows);
+      if (insertError) {
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+    }
   }
 
   return NextResponse.json({
@@ -143,6 +197,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       description: data.description ?? "",
       appearance: sanitizeAppearance(data.appearance),
       emotionLevel: data.emotion_level,
+      excludedTypes: sanitizeExcludedTypes(data.excluded_types),
+      allowRecommendation: data.allow_recommendation !== false,
     },
     positionX: data.position_x,
     positionY: data.position_y,

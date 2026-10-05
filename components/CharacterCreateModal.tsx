@@ -2,18 +2,16 @@
 
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
-import { CHARACTER_RELATIONS } from "@/lib/character-fields";
+import { CHARACTER_RELATIONS, emptySpecialDate, type SpecialDate } from "@/lib/character-fields";
+import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { useCallback, useEffect, useState } from "react";
 
 const RELATIONS = CHARACTER_RELATIONS;
-const EXCLUDED_TYPE_OPTIONS = ["작별 직전의 순간", "투병, 아픔이 담긴 사진", "채팅 대화 내역", "영상", "음성녹음", "괜찮아요. 모두 볼게요."] as const;
-const RECORD_TYPE_OPTIONS = ["사진", "영상", "음성녹음", "대화 내역", "전체"] as const;
 const STEPS = ["정보 입력하기", "캐릭터 꾸미기", "기록 불러오기", "열람방식 설정하기"];
 
 // Google 계정을 새로 연결하러 다녀오는 동안 적던 내용을 잠깐 보관 (돌아오면 이어서)
 const DRAFT_KEY = "afterlife:character-draft";
 
-type SpecialDate = { label: string; date: string; recordType: string };
 
 export type CharacterDraft = {
   step: number;
@@ -42,7 +40,6 @@ export type CreatedCharacter = {
 type Connection = { id: string; googleEmail: string; needsReconnect: boolean };
 type Folder = { id: string; name: string };
 
-const emptyDate = (): SpecialDate => ({ label: "", date: "", recordType: "" });
 
 export function readCharacterDraft(): CharacterDraft | null {
   try {
@@ -83,7 +80,7 @@ export function CharacterCreateModal({
   const [appearance, setAppearance] = useState<CharacterAppearance>(initialDraft?.appearance ?? DEFAULT_APPEARANCE);
   const [emotionLevel, setEmotionLevel] = useState(initialDraft?.emotionLevel ?? 50);
   const [excludedTypes, setExcludedTypes] = useState<string[]>(initialDraft?.excludedTypes ?? []);
-  const [specialDates, setSpecialDates] = useState<SpecialDate[]>(initialDraft?.specialDates ?? [emptyDate()]);
+  const [specialDates, setSpecialDates] = useState<SpecialDate[]>(initialDraft?.specialDates ?? [emptySpecialDate()]);
   const [allowRecommendation, setAllowRecommendation] = useState(initialDraft?.allowRecommendation ?? true);
 
   // Drive 계정·폴더
@@ -365,84 +362,17 @@ export function CharacterCreateModal({
           {step === 4 && (
             <div>
               <h2 className="font-newsreader text-3xl text-[#1a1a1a]">기록을 어떻게 마주하고 싶으신가요?</h2>
-              <section className="mt-6">
-                <p className="mb-4 font-mulish text-sm text-[#666]">1&nbsp;&nbsp;고인을 떠올릴 때 마음이 어떠신가요?</p>
-                <div className="flex items-center justify-between gap-4 font-mulish text-sm text-[#666]">
-                  <span>슬픔이 파도처럼 밀려와요</span>
-                  <span>감정이 잔잔해요</span>
-                </div>
-                <input
-                  type="range" min={0} max={100} value={emotionLevel}
-                  onChange={(e) => setEmotionLevel(Number(e.target.value))}
-                  className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-[#E8DDD5] accent-[#9BB073] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#9BB073]"
-                  style={{ background: `linear-gradient(to right, #9BB073 0%, #9BB073 ${emotionLevel}%, #E8DDD5 ${emotionLevel}%, #E8DDD5 100%)` }}
+              <div className="mt-6">
+                <ViewingPreferencesFields
+                  value={{ emotionLevel, excludedTypes, specialDates, allowRecommendation }}
+                  onChange={(next) => {
+                    setEmotionLevel(next.emotionLevel);
+                    setExcludedTypes(next.excludedTypes);
+                    setSpecialDates(next.specialDates);
+                    setAllowRecommendation(next.allowRecommendation);
+                  }}
                 />
-              </section>
-              <div className="my-6 border-t border-[#E8DDD5]" />
-              <section>
-                <p className="mb-4 font-mulish text-sm text-[#666]">2&nbsp;&nbsp;고인과 관련해서 보고싶지 않은 기록이 있나요? 선택하신 기록은 언제든 바꿀 수 있어요.</p>
-                <div className="grid grid-cols-3 gap-3">
-                  {EXCLUDED_TYPE_OPTIONS.map((type) => {
-                    const isSelected = excludedTypes.includes(type);
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setExcludedTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]))}
-                        className={`cursor-pointer rounded-lg border px-4 py-3 font-mulish text-sm font-medium transition-colors ${
-                          isSelected ? "border-[#9BB073] bg-[#f0f5e8] text-[#9BB073]" : "border-[#E8DDD5] bg-white text-[#666]"
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-              <div className="my-6 border-t border-[#E8DDD5]" />
-              <section>
-                <p className="mb-4 font-mulish text-sm text-[#666]">3&nbsp;&nbsp;특별히 기억하고 싶은 날짜가 있나요?</p>
-                <div className="mb-3 grid grid-cols-3 gap-3 font-mulish text-sm text-[#666]">
-                  <span>어떤 날인가요?</span><span>며칠인가요?</span><span>어떤 기록을 보고싶으신가요?</span>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {specialDates.map((specialDate, index) => {
-                    const setField = (field: keyof SpecialDate, value: string) =>
-                      setSpecialDates((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
-                    return (
-                      <div key={index} className="grid grid-cols-3 gap-3">
-                        <input type="text" value={specialDate.label} onChange={(e) => setField("label", e.target.value)} placeholder="예시: 기일" className="rounded-lg border border-[#E8DDD5] px-4 py-2 font-mulish text-sm text-[#1a1a1a] outline-none placeholder:text-[#AF9083]" />
-                        <input type="text" value={specialDate.date} onChange={(e) => setField("date", e.target.value)} placeholder="YYYY.MM.DD" className="rounded-lg border border-[#E8DDD5] px-4 py-2 font-mulish text-sm text-[#1a1a1a] outline-none placeholder:text-[#AF9083]" />
-                        <select value={specialDate.recordType} onChange={(e) => setField("recordType", e.target.value)} className="rounded-lg border border-[#E8DDD5] bg-white px-4 py-2 font-mulish text-sm text-[#1a1a1a] outline-none">
-                          <option value="">선택하기</option>
-                          {RECORD_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button type="button" onClick={() => setSpecialDates((prev) => [...prev, emptyDate()])} className="mt-4 cursor-pointer rounded-lg border border-[#AF9083] bg-white px-4 py-2 font-mulish text-sm text-[#AF9083]">
-                  + 날짜 추가하기
-                </button>
-              </section>
-              <div className="my-6 border-t border-[#E8DDD5]" />
-              <section>
-                <p className="mb-4 font-mulish text-sm text-[#666]">4&nbsp;&nbsp;위의 날짜가 다가오면 적절한 기록을 열람하시도록 추천해도 될까요?</p>
-                <div className="flex gap-3">
-                  {[true, false].map((value) => (
-                    <button
-                      key={String(value)}
-                      type="button"
-                      onClick={() => setAllowRecommendation(value)}
-                      className={`flex-1 rounded-lg border py-3 font-mulish text-sm font-medium transition-colors ${
-                        allowRecommendation === value ? "border-[#9BB073] bg-[#f0f5e8] text-[#9BB073]" : "border-[#E8DDD5] bg-white text-[#666]"
-                      }`}
-                    >
-                      {value ? "네, 좋아요." : "원치 않아요."}
-                    </button>
-                  ))}
-                </div>
-              </section>
+              </div>
             </div>
           )}
         </div>

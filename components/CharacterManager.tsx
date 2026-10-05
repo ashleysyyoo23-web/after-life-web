@@ -2,13 +2,15 @@
 
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
-import { ExposureControl } from "@/components/safety/ExposureControl";
+import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { DEFAULT_EXPOSURE } from "@/lib/exposure";
 import type { CreatedCharacter } from "@/components/CharacterCreateModal";
 import {
   CHARACTER_DESCRIPTION_MAX,
   CHARACTER_NICKNAME_MAX,
   CHARACTER_RELATIONS,
+  emptySpecialDate,
+  type SpecialDate,
 } from "@/lib/character-fields";
 import type { CharacterAppearance } from "@/lib/character-parts";
 import { useEffect, useState } from "react";
@@ -24,8 +26,11 @@ type Detail = {
   appearance: CharacterAppearance;
   folderName: string | null;
   bookCount: number;
-  // 노출 강도 (기록 사진을 얼마나 흐리게 볼지)
-  emotionLevel: number | null;
+  // 열람방식 설정하기 (캐릭터 만들기 4단계와 같은 항목)
+  emotionLevel: number | null; // 노출 강도 (기록 사진을 얼마나 흐리게 볼지)
+  excludedTypes: string[];
+  specialDates: SpecialDate[];
+  allowRecommendation: boolean;
 };
 
 const chip = (selected: boolean) =>
@@ -75,7 +80,11 @@ export function CharacterManager() {
       const res = await fetch(`/api/characters/${encodeURIComponent(id)}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as { character?: Detail; error?: string } | null;
       if (!res.ok || !data?.character) throw new Error(data?.error ?? "인물 정보를 불러오지 못했어요.");
-      setEditing(data.character);
+      // 날짜가 하나도 없으면 만들 때처럼 빈 줄 하나
+      setEditing({
+        ...data.character,
+        specialDates: data.character.specialDates.length > 0 ? data.character.specialDates : [emptySpecialDate()],
+      });
     } catch (openError) {
       setMessage(openError instanceof Error ? openError.message : "인물 정보를 불러오지 못했어요.");
     } finally {
@@ -115,6 +124,10 @@ export function CharacterManager() {
           description: editing.description,
           appearance: editing.appearance,
           emotionLevel: editing.emotionLevel ?? DEFAULT_EXPOSURE,
+          excludedTypes: editing.excludedTypes,
+          // 빈 줄·날짜가 틀린 줄은 서버에서 빠져요
+          specialDates: editing.specialDates,
+          allowRecommendation: editing.allowRecommendation,
         }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -264,22 +277,25 @@ export function CharacterManager() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <span className="font-mulish text-sm text-[#898787]">
-            노출 강도 — 이 분의 기록 사진을 얼마나 흐리게 볼까요? (리캡을 보는 중에도 바꿀 수 있어요)
-          </span>
-          <ExposureControl
-            className="self-start"
-            value={editing.emotionLevel ?? DEFAULT_EXPOSURE}
-            onChange={(emotionLevel) => setEditing({ ...editing, emotionLevel })}
-          />
-        </section>
-
-        <section className="flex flex-col gap-3">
           <span className="font-mulish text-sm text-[#898787]">모습</span>
           <CharacterPartsPicker
             appearance={editing.appearance}
             onChange={(appearance) => setEditing({ ...editing, appearance })}
             previewLabel={editing.nickname || "인물"}
+          />
+        </section>
+
+        {/* 캐릭터 만들기 4단계 "열람방식 설정하기"와 같은 항목 */}
+        <section className="flex flex-col gap-4">
+          <h3 className="font-newsreader text-2xl text-[#1a1a1a]">기록을 어떻게 마주하고 싶으신가요?</h3>
+          <ViewingPreferencesFields
+            value={{
+              emotionLevel: editing.emotionLevel ?? DEFAULT_EXPOSURE,
+              excludedTypes: editing.excludedTypes,
+              specialDates: editing.specialDates,
+              allowRecommendation: editing.allowRecommendation,
+            }}
+            onChange={(next) => setEditing({ ...editing, ...next })}
           />
         </section>
 

@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { sanitizeAppearance } from "@/lib/character-parts";
 import {
+  buildSpecialDateRows,
   CHARACTER_DESCRIPTION_MAX,
   CHARACTER_NICKNAME_MAX,
   CHARACTER_RELATIONS,
+  sanitizeExcludedTypes,
 } from "@/lib/character-fields";
 import {
   CHARACTER_ROOT_FOLDER_NAME,
@@ -18,8 +20,6 @@ import {
 const NICKNAME_MAX_LENGTH = CHARACTER_NICKNAME_MAX;
 const DESCRIPTION_MAX_LENGTH = CHARACTER_DESCRIPTION_MAX;
 const RELATIONS: readonly string[] = CHARACTER_RELATIONS;
-const EXCLUDED_TYPES = ["작별 직전의 순간", "투병, 아픔이 담긴 사진", "채팅 대화 내역", "영상", "음성녹음", "괜찮아요. 모두 볼게요."];
-const RECORD_TYPES = ["사진", "영상", "음성녹음", "대화 내역", "전체"];
 
 // 메인 랜드(캐릭터 없는 섬) 모래 위 기본 자리. 발끝 위치, 화면(16:9) 기준 %.
 // 새 캐릭터는 비어 있는 첫 자리에 서요. (드래그 배치는 다음 단계)
@@ -106,14 +106,6 @@ export async function GET() {
   });
 }
 
-// "YYYY.MM.DD" (또는 MM.DD) → 월·일·년
-function parseDate(value: string) {
-  const parts = value.trim().split(/[.\-/\s]+/).filter(Boolean).map(Number);
-  const [year, month, day] = parts.length >= 3 ? parts : [null, parts[0], parts[1]];
-  if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { year: year && year > 1000 && year < 3000 ? year : null, month, day };
-}
-
 // 캐릭터 만들기: 기본 정보 + 꾸미기 + Drive 연결·폴더 + 열람 방식
 export async function POST(request: NextRequest) {
   const context = await getSessionContext();
@@ -137,9 +129,7 @@ export async function POST(request: NextRequest) {
   const description = typeof body.description === "string" ? body.description.trim().slice(0, DESCRIPTION_MAX_LENGTH) : "";
   const appearance = sanitizeAppearance(body.appearance);
   const emotionLevel = typeof body.emotionLevel === "number" ? Math.max(0, Math.min(100, Math.round(body.emotionLevel))) : null;
-  const excludedTypes = Array.isArray(body.excludedTypes)
-    ? body.excludedTypes.filter((type): type is string => typeof type === "string" && EXCLUDED_TYPES.includes(type))
-    : [];
+  const excludedTypes = sanitizeExcludedTypes(body.excludedTypes);
   const allowRecommendation = body.allowRecommendation !== false;
   const connectionId = typeof body.driveConnectionId === "string" ? body.driveConnectionId : "";
   const folderId = typeof body.folderId === "string" ? body.folderId : "";
@@ -253,33 +243,11 @@ export async function POST(request: NextRequest) {
   }
 
   // 4) 의미 있는 날짜 (내 날짜로 저장, 기일은 한 개만)
-  const specialDates = Array.isArray(body.specialDates) ? body.specialDates.slice(0, 20) : [];
-  const dateRows: Array<Record<string, unknown>> = [];
-  let hasAnniversary = false;
-
-  for (const raw of specialDates) {
-    const item = raw as { label?: unknown; date?: unknown; recordType?: unknown };
-    const label = typeof item.label === "string" ? item.label.trim().slice(0, 20) : "";
-    const parsed = typeof item.date === "string" ? parseDate(item.date) : null;
-    if (!parsed) continue;
-
-    let kind = label.includes("기일") ? "death_anniversary" : label.includes("생일") || label.includes("생신") ? "birthday" : "custom";
-    if (kind === "death_anniversary") {
-      if (hasAnniversary) kind = "custom";
-      hasAnniversary = true;
-    }
-
-    dateRows.push({
-      deceased_id: deceased.id,
-      owner_email: userEmail,
-      kind,
-      label: label || null,
-      month: parsed.month,
-      day: parsed.day,
-      year: parsed.year,
-      record_type: typeof item.recordType === "string" && RECORD_TYPES.includes(item.recordType) ? item.recordType : null,
-    });
-  }
+  const dateRows = buildSpecialDateRows(body.specialDates).map((row) => ({
+    ...row,
+    deceased_id: deceased.id,
+    owner_email: userEmail,
+  }));
 
   if (dateRows.length > 0) {
     // 같은 고인에 대해 전에 넣은 내 날짜는 새로 입력한 것으로 바꿈
