@@ -5,6 +5,7 @@ import {
   TopNav,
 } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { COMMUNITY_MOTION } from "@/lib/scene-motion";
 import { BackgroundPageLayout } from "@/components/background-page-layout";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -52,7 +53,7 @@ export default function CommunityPage() {
 
   return (
     <>
-      <BackgroundPageLayout backgroundSrc="/community.jpg" skyScene="community" title="" />
+      <BackgroundPageLayout backgroundSrc="/community.jpg" skyScene="community" title="" motion={COMMUNITY_MOTION} />
 
       <h1 className="pointer-events-none fixed left-1/2 top-[160px] z-20 flex -translate-x-1/2 items-baseline gap-0 whitespace-nowrap text-black">
         <span className="font-mulish text-[52px] font-semibold leading-none">

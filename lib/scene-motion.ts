@@ -45,3 +45,17 @@ export const MYLAND_MOTION: SceneMotionConfig = {
     ],
   },
 };
+
+// 추모 커뮤니티 (/community): 꽃이 그려진 돌탑 섬. 돌에 그려진 꽃은 그대로, 돌 사이 꽃과 풀만 살랑
+export const COMMUNITY_MOTION: SceneMotionConfig = {
+  sea: { mask: "/scenes/community-sea-mask.png", fade: [79, 86] },
+  plants: [{ src: "/scenes/community-plants.webp", left: 20.208, top: 60.509, width: 65.677 }],
+  birds: {
+    sky: { left: 4, right: 96, top: 8, bottom: 34 },
+    width: 3.6,
+    starts: [
+      { start: [78, 18], size: 1 },
+      { start: [22, 26], size: 0.8 },
+    ],
+  },
+};
