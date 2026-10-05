@@ -78,7 +78,7 @@
 | 순서 | 화면 | 파일 | 상태 |
 |---|---|---|---|
 | 1 | 온보딩(로고) `/` | `app/page.tsx` | [동작함] 로그인 안 했으면 로고 + 한 줄 소개("소중한 분의 기억을 다시 만나는 곳") + "Google로 시작하기"·"먼저 둘러볼게요". 로그인했으면 로고 3초 → 전체 지도 |
-| 2 | 전체 지도 `/mainland` | `app/mainland/page.tsx` | [동작함] 고정 섬 3개(추모 커뮤니티·메인 랜드·저장소), 섬마다 이름이 적힌 **나무 팻말**이 늘 보임 (`components/IslandSign.tsx`). 바다에는 물결이 천천히 일렁임 (`components/SeaWaves.tsx`). 메인 랜드 모래밭을 갈매기가 걸어다니며 바닥을 쪼고(`IslandSeagull.tsx`), 하늘엔 새 두 마리가 날고(`SkyBird.tsx`), 손그림 구름이 흘러가고(`DriftingClouds.tsx`, 기분 하늘마다 구름 색이 다름), 메인 랜드의 야자수·꽃·덤불과 추모 커뮤니티 섬 돌기둥 아래 꽃밭이 살랑임(`SwayingPlants.tsx`). 컴퓨터의 "동작 줄이기" 설정이면 모두 멈춤. 기일 기간이면 고인의 섬이 더 떠오름(아래 2-4) |
+| 2 | 전체 지도 `/mainland` | `app/mainland/page.tsx` | [동작함] 고정 섬 3개(추모 커뮤니티·메인 랜드·저장소), 섬마다 이름이 적힌 **나무 팻말**이 늘 보임 (`components/IslandSign.tsx`). 바다에는 물결이 천천히 일렁임 (`components/SeaWaves.tsx`). 메인 랜드 모래밭을 갈매기가 걸어다니며 바닥을 쪼고(`IslandSeagull.tsx`), 하늘엔 새 두 마리가 날고(`SkyBird.tsx`), 손그림 구름이 흘러가고(`DriftingClouds.tsx`, 기분 하늘마다 구름 색이 다름), 메인 랜드의 야자수·꽃·덤불과 추모 커뮤니티 섬 돌기둥 아래 꽃밭, 저장소 섬 집 아래 덤불·벽 덩굴이 살랑임(`SwayingPlants.tsx`). 컴퓨터의 "동작 줄이기" 설정이면 모두 멈춤. 기일 기간이면 고인의 섬이 더 떠오름(아래 2-4) |
 | 2-1 | └ 추모 커뮤니티 섬 → `/community` | `app/community/page.tsx` | [UI만 있음] 목록 4개 중 세월호만 들어가짐, 인원수(278·190)는 예시 숫자 |
 | 2-2 | └ 메인 랜드 섬 → `/myland` | `app/myland/page.tsx` | [동작함] (Task 3 참고) |
 | 2-3 | └ 저장소 섬 → `/storage` | `app/storage/`, `app/storageinside/`, `app/storagemanual/` | [UI만 있음] 예시 검색 결과·사진 |
