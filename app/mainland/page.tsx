@@ -9,6 +9,7 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { daysUntilLabel } from "@/lib/anniversary";
 import { arrangeIslands, islandLook, islandSoloStyle, type IslandShape } from "@/lib/islands";
 import { IslandSign } from "@/components/IslandSign";
+import { SeaWaves } from "@/components/SeaWaves";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -135,6 +136,9 @@ function MainlandPageContent() {
         className="pointer-events-none absolute left-1/2 top-1/2 z-[2] -translate-x-1/2 -translate-y-1/2"
         style={{ width: "max(100vw, 177.78vh)", height: "max(56.25vw, 100vh)", containerType: "size" }}
       >
+        {/* 바다 물결 (섬들 아래) */}
+        <SeaWaves />
+
         {arrangeIslands(openIslands.map((island) => island.deceasedId)).map((placement, index) => {
           const island = openIslands[index];
           return (

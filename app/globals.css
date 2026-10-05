@@ -9,6 +9,32 @@ body {
   scrollbar-width: thin;
 }
 
+/* 전체 지도 바다 물결 (components/SeaWaves.tsx): 한 칸(--tile)만큼 옆으로 흐르고, 위아래로 살짝 일렁임 */
+@keyframes sea-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--tile)));
+  }
+}
+
+@keyframes sea-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(0.35cqw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sea-waves * {
+    animation: none !important;
+  }
+}
+
 /* 기일 추모 섬이 지도에 천천히 떠오르기 */
 @keyframes island-rise {
   from {
