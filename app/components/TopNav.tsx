@@ -64,7 +64,8 @@ export function TopNav({
     if (typeof window === "undefined") return;
 
     if (!globalBgm) {
-      globalBgm = new Audio("/sounds/bgm1.mp3");
+      // 배경음악: 원본(bgm1.mp3, 136MB)은 GitHub 한도를 넘어 올리지 않고, 64kbps 로 줄인 파일(약 27MB)을 써요
+      globalBgm = new Audio("/sounds/bgm1.m4a");
       globalBgm.loop = true;
       globalBgm.volume = 0.4;
       globalBgm.play().catch(() => {});
