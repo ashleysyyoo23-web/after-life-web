@@ -378,7 +378,7 @@ function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowSto
         )}
       </div>
 
-      <KYHMessageModal isOpen={showMessageModal} onClose={() => setShowMessageModal(false)} wall={wall} />
+      <KYHMessageModal isOpen={showMessageModal} onClose={() => setShowMessageModal(false)} wall={wall} returnView="cards" />
     </div>
   );
 }

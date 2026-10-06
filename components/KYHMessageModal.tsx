@@ -15,6 +15,8 @@ type KYHMessageModalProps = {
   onClose: () => void;
   // 어느 추모 공간에 남기는지 (kyh = 김영희 님의 섬, sewol = 세월호 참사 추모공간)
   wall: CommunityWall;
+  // 남긴 뒤 돌아갈 화면 (추모 커뮤니티: "cards" 면 메시지 카드 화면, 없으면 돌 확대 화면)
+  returnView?: "cards";
 };
 
 type DrivePreview = { name: string; previewUrl: string };
@@ -81,7 +83,7 @@ function toolButtonClass(isActive: boolean) {
   ].join(" ");
 }
 
-export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps) {
+export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessageModalProps) {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
@@ -207,7 +209,7 @@ export function KYHMessageModal({ isOpen, onClose, wall }: KYHMessageModalProps)
 
       resetForm();
       onClose();
-      router.push(`/KYHleaving?wall=${wall}`);
+      router.push(`/KYHleaving?wall=${wall}${returnView ? `&view=${returnView}` : ""}`);
     } catch (uploadError) {
       setSubmitError(uploadError instanceof Error ? uploadError.message : "메시지를 남기지 못했어요.");
     } finally {
