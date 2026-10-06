@@ -48,7 +48,14 @@
    - **공유 링크: https://after-life-web-sable.vercel.app** — 링크만 있으면 누구나 들어올 수 있어요 (Vercel 접근 보호 꺼짐, 10/6 확인).
    - 10/6에 GitHub에 push해서 **배포 사이트 = 최신 코드**예요. 이후 고친 내용도 **GitHub Desktop → Push origin**을 해야 배포 사이트에 반영돼요 (push 후 1~2분).
    - 배포 사이트와 로컬은 **같은 데이터베이스(Supabase)**를 써요. 어느 쪽에서 남긴 기록이든 서로 보여요.
-   - 환경변수를 바꾸면 Vercel **Deployments → 맨 위 ⋯ → Redeploy**를 해야 적용돼요. Google 클라이언트 ID·시크릿은 `.env.local`과 **같은 값**이어야 로그인·Drive 연결이 돼요.
+   - **Vercel 환경변수는 `.env.local`과 같은 값이어야 해요.** (10/6~7에 6월 값이 남아 있어서 로그인 실패·저장 실패·계정 목록 안 뜸이 생겼고, 모두 맞춰서 해결)
+     - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` → 다르면 로그인이 "Google 로그인 중 문제가 생겼어요"로 실패
+     - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` → 다르면 인물·기록·Drive 연결이 저장/불러오기 안 됨 (`/api/drive/connections` 를 열면 `fetch failed` 등이 보임)
+     - `NEXTAUTH_URL` 은 예외로 배포 주소(`https://after-life-web-sable.vercel.app`), `NEXTAUTH_SECRET`, `GEMINI_API_KEY` 도 등록
+     - `NEXT_PUBLIC_`으로 시작하는 값은 **Config** 형식으로, 나머지 비밀 키는 **Secret** 형식으로 저장 (Secret 으로 저장된 `NEXT_PUBLIC_` 값은 고칠 수 없어서 지우고 새로 만들어야 해요)
+   - 환경변수를 바꾸면 Vercel **Deployments → 맨 위 ⋯ → Redeploy**를 해야 적용돼요.
+   - 배포 사이트 점검: 로그인한 브라우저에서 `https://after-life-web-sable.vercel.app/api/drive/connections` 를 열어 `{"connections":[...]}` 가 나오면 데이터베이스 연결 정상.
+   - 배경음악은 64kbps로 줄인 `public/sounds/bgm1.m4a`(약 27MB)를 써요. 원본 `bgm1.mp3`(136MB)는 GitHub 한도를 넘어 올리지 않아요.
    - 로컬(`localhost:3000`)은 개발할 때만 쓰면 돼요.
    - **참가자에게 보낼 안내 (예시)**
      1. 링크(https://after-life-web-sable.vercel.app)를 열고 **Google로 시작하기**를 눌러 내 Google 계정으로 로그인해요.
