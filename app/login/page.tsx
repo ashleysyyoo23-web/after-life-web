@@ -85,13 +85,13 @@ function LoginPageContent() {
         <ol className="flex w-full flex-col gap-2 rounded-xl border border-[#E8DDD5] bg-white px-4 py-3 text-left font-mulish text-sm leading-relaxed text-[#4A423C]">
           <li className="font-semibold text-[#AF9083]">처음 오셨나요? 이렇게 시작해요</li>
           <li>
-            <b>1.</b> 위 버튼으로 <b>내 Google 계정</b>에 로그인해요.
+            <b>1.</b> 위 버튼으로 <b>내 Google 계정</b>에 로그인해요. 이때 내 Google Drive도 함께 연결돼요.
           </li>
           <li>
             <b>2.</b> 메인 랜드 오른쪽 위 <b>+ 고인 불러오기</b>로 기억하고 싶은 사람을 추가해요.
           </li>
           <li>
-            <b>3.</b> <b>내 Google Drive</b>를 연결하고, 그 사람의 사진이 담긴 <b>폴더</b>를 골라요. 그 사진으로 리캡이 만들어져요.
+            <b>3.</b> 그 사람의 사진이 담긴 <b>폴더</b>를 내 Google Drive에서 골라요. 그 사진으로 리캡이 만들어져요.
           </li>
         </ol>
 
@@ -101,7 +101,7 @@ function LoginPageContent() {
             · 아직 시험 중인 서비스라 Google이 &lsquo;확인되지 않은 앱&rsquo;이라고 알려 줄 수 있어요. 그럴 땐 &lsquo;고급&rsquo; →
             &lsquo;After Life(으)로 이동&rsquo;을 눌러 주세요.
           </span>
-          <span>· Drive를 연결할 때 &lsquo;Google Drive 파일 보기&rsquo;에 꼭 체크해 주세요. 빠지면 사진을 불러올 수 없어요.</span>
+          <span>· 로그인할 때 &lsquo;Google Drive 파일 보기&rsquo;에 꼭 체크해 주세요. 빠지면 사진을 불러올 수 없어요.</span>
           <span>
             · 내 기록은 나만 볼 수 있어요.{" "}
             <Link href="/privacy" className="underline underline-offset-2">
