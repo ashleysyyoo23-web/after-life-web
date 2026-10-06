@@ -41,6 +41,23 @@ type Connection = { id: string; googleEmail: string; needsReconnect: boolean };
 type Folder = { id: string; name: string };
 
 
+// Drive 연결이 실패하고 돌아왔을 때(/myland?drive_error=…) 보여 줄 말
+export function driveErrorMessage(code: string): string {
+  switch (code) {
+    case "access_denied":
+      return "Google 연결을 취소했어요. 다시 연결하려면 '연결하기'를 눌러 주세요.";
+    case "missing_scope":
+      return "권한 화면에서 'Google Drive 파일 보기'에 체크하지 않아서 사진을 불러올 수 없어요. 다시 연결하면서 꼭 체크해 주세요.";
+    case "session_mismatch":
+      return "로그인 정보가 바뀌었어요. 새로고침한 뒤 다시 연결해 주세요.";
+    case "save_failed":
+    case "supabase_not_configured":
+      return "Drive는 연결됐지만 연결 정보를 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요. 계속되면 진행자에게 알려 주세요.";
+    default:
+      return "Google Drive 연결을 마치지 못했어요. 권한 화면에서 'Google Drive 파일 보기'에 체크했는지 확인하고 다시 연결해 주세요.";
+  }
+}
+
 export function readCharacterDraft(): CharacterDraft | null {
   try {
     const raw = window.sessionStorage.getItem(DRAFT_KEY);
@@ -65,11 +82,14 @@ const sectionLabel = "flex gap-2 font-mulish text-sm text-[#AF9083]";
 export function CharacterCreateModal({
   initialDraft,
   resumeGoogleEmail,
+  driveError,
   onClose,
   onCreated,
 }: {
   initialDraft?: CharacterDraft | null;
   resumeGoogleEmail?: string | null;
+  // 방금 Drive 연결이 실패하고 돌아왔으면 그 이유 (계정 고르기 위에 보여 줌)
+  driveError?: string | null;
   onClose: () => void;
   onCreated: (character: CreatedCharacter) => void;
 }) {
@@ -275,6 +295,11 @@ export function CharacterCreateModal({
 
               <div className="flex flex-col gap-[18px]">
                 <p className={sectionLabel}><span>2</span><span>기록을 불러올 Google 계정을 골라주세요.</span></p>
+                {driveError && (
+                  <p role="alert" className="rounded-xl border border-[#E8B4A0] bg-[#FDF0EA] px-4 py-3 font-mulish text-sm leading-relaxed text-[#9E2121]">
+                    {driveError}
+                  </p>
+                )}
                 <div className="flex flex-col gap-2 rounded-xl bg-[#FAF6F0] p-3">
                   {connections === null && <p className="px-2 py-2 font-mulish text-sm text-[#898787]">연결된 계정을 불러오는 중이에요...</p>}
                   {connections?.map((connection) => (

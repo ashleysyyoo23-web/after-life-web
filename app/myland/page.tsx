@@ -11,6 +11,7 @@ import type { CharacterAppearance } from "@/lib/character-parts";
 import {
   CharacterCreateModal,
   readCharacterDraft,
+  driveErrorMessage,
   type CharacterDraft,
   type CreatedCharacter,
 } from "@/components/CharacterCreateModal";
@@ -425,6 +426,7 @@ function MylandPageContent() {
   // Google 계정을 연결하고 돌아왔을 때 이어서 쓸 내용
   const [resumeDraft, setResumeDraft] = useState<CharacterDraft | null>(null);
   const [resumeGoogleEmail, setResumeGoogleEmail] = useState<string | null>(null);
+  const [resumeDriveError, setResumeDriveError] = useState<string | null>(null);
   const [characters, setCharacters] = useState<CreatedCharacter[]>([]);
   const [charactersLoaded, setCharactersLoaded] = useState(false);
   const [showHint, setShowHint] = useState(true);
@@ -490,6 +492,27 @@ function MylandPageContent() {
     setResumeDraft(draft);
     setResumeGoogleEmail(searchParams.get("drive_email"));
     setShowAddModal(true);
+
+    router.replace("/myland?from=moodcheck");
+  }, [router, searchParams]);
+
+  // Drive 연결이 실패하고 돌아왔을 때: 이유를 보여 주고, 고인 불러오기 중이었으면 적던 창을 다시 열어 바로 다시 연결
+  useEffect(() => {
+    const code = searchParams.get("drive_error");
+    if (!code) {
+      return;
+    }
+
+    const message = driveErrorMessage(code);
+    const draft = readCharacterDraft();
+    if (draft) {
+      setResumeDraft(draft);
+      setResumeGoogleEmail(null);
+      setResumeDriveError(message);
+      setShowAddModal(true);
+    } else {
+      setDriveNotice(message);
+    }
 
     router.replace("/myland?from=moodcheck");
   }, [router, searchParams]);
@@ -969,14 +992,17 @@ function MylandPageContent() {
         <CharacterCreateModal
           initialDraft={resumeDraft}
           resumeGoogleEmail={resumeGoogleEmail}
+          driveError={resumeDriveError}
           onClose={() => {
             setShowAddModal(false);
             setResumeDraft(null);
+            setResumeDriveError(null);
           }}
           onCreated={(character) => {
             setCharacters((prev) => [...prev, character]);
             setShowAddModal(false);
             setResumeDraft(null);
+            setResumeDriveError(null);
           }}
         />
       )}

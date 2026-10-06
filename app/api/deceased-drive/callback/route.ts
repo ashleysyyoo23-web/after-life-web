@@ -52,6 +52,14 @@ export async function GET(request: NextRequest) {
     }
 
     const tokens = await exchangeCodeForTokens(code);
+
+    // 권한 화면에서 "Google Drive 파일 보기" 체크를 빼고 계속하면 사진을 읽을 수 없어요 → 다시 연결 안내
+    if (tokens.scope && !tokens.scope.includes("drive")) {
+      return NextResponse.redirect(
+        buildMylandRedirect(request, { drive_error: "missing_scope" }),
+      );
+    }
+
     const driveEmail = await fetchDriveEmail(tokens.access_token);
 
     let supabase;

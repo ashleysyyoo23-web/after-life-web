@@ -134,6 +134,7 @@ export async function exchangeCodeForTokens(code: string) {
   return response.json() as Promise<{
     access_token: string;
     refresh_token?: string;
+    scope?: string; // 사용자가 실제로 허락한 권한 (Drive 체크를 빼면 drive.readonly 가 없음)
   }>;
 }
 
