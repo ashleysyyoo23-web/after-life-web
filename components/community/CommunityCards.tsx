@@ -136,8 +136,9 @@ function CardHeader({ message, onDelete }: { message: CommunityMessage; onDelete
 }
 
 // 카드 위쪽 그림: 공유한 사진이 있으면 사진, 없으면 직접 그린 그림
-function CardPicture({ message, className }: { message: CommunityMessage; className: string }) {
-  const src = message.imageUrl ?? message.drawingUrl;
+// photoOnly: 공유한 사진만 보여주고 펜 그림은 숨김 (추모 커뮤니티 돌)
+function CardPicture({ message, className, photoOnly = false }: { message: CommunityMessage; className: string; photoOnly?: boolean }) {
+  const src = photoOnly ? message.imageUrl : (message.imageUrl ?? message.drawingUrl);
   if (!src) return null;
 
   return (
@@ -152,11 +153,16 @@ function CardPicture({ message, className }: { message: CommunityMessage; classN
 }
 
 // 섬 화면: 자리에 마우스를 올리면 뜨는 카드
-export function HoverMessageCard({ message, onToggle, onDelete }: { message: CommunityMessage } & CardActions) {
+export function HoverMessageCard({
+  message,
+  onToggle,
+  onDelete,
+  photoOnly,
+}: { message: CommunityMessage; photoOnly?: boolean } & CardActions) {
   return (
     <div className="flex w-64 flex-col gap-3 rounded-2xl bg-white p-4 shadow-lg transition-opacity duration-200">
       <CardHeader message={message} onDelete={onDelete} />
-      <CardPicture message={message} className="h-32 w-full rounded-lg" />
+      <CardPicture message={message} className="h-32 w-full rounded-lg" photoOnly={photoOnly} />
       <p className="font-mulish text-sm text-[#4A423C]">{message.message}</p>
       <ReactionButtons message={message} onToggle={onToggle} />
     </div>
@@ -164,10 +170,15 @@ export function HoverMessageCard({ message, onToggle, onDelete }: { message: Com
 }
 
 // 그리드 화면 카드
-export function GridMessageCard({ message, onToggle, onDelete }: { message: CommunityMessage } & CardActions) {
+export function GridMessageCard({
+  message,
+  onToggle,
+  onDelete,
+  photoOnly,
+}: { message: CommunityMessage; photoOnly?: boolean } & CardActions) {
   return (
     <article className="overflow-hidden rounded bg-white shadow-[0px_2px_4px_0px_rgba(0,0,0,0.14),0px_0px_2px_0px_rgba(0,0,0,0.12)]">
-      <CardPicture message={message} className="h-[169px] w-full" />
+      <CardPicture message={message} className="h-[169px] w-full" photoOnly={photoOnly} />
       <div className="flex flex-col gap-3 p-3">
         <CardHeader message={message} onDelete={onDelete} />
         <p className="font-mulish text-sm leading-relaxed text-[#4A423C]">{message.message}</p>

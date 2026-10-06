@@ -74,3 +74,12 @@ body {
   }
 }
 
+/* 추모 커뮤니티: 돌을 확대한 뒤 꽃 자리가 천천히 나타나기 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
