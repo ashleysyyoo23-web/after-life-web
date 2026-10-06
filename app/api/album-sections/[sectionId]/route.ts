@@ -102,6 +102,17 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     }
   }
 
+  // 저장소에 저장(🔖)한 사진 (표가 아직 없으면 아무것도 저장 안 된 것으로)
+  const savedIds = new Set<string>();
+  {
+    const { data: savedRows, error: savedError } = await supabase
+      .from("saved_photos")
+      .select("drive_file_id")
+      .eq("owner_email", userEmail)
+      .eq("section_id", section.id);
+    if (!savedError) for (const row of savedRows ?? []) savedIds.add(row.drive_file_id as string);
+  }
+
   return NextResponse.json({
     section: {
       id: section.id,
@@ -120,6 +131,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       caption: photo.caption ?? "",
       // 한 번 "눌러서 보기"로 본 사진은 계속 선명하게
       revealed: Boolean(photo.revealed_at),
+      // 저장소에 저장했는지
+      saved: savedIds.has(photo.drive_file_id),
       // 보고 싶지 않다고 한 기록에 해당하면 그 항목 이름 (예: "투병, 아픔이 담긴 사진")
       hiddenReason: excludedTypesMatching(excludedTypes, photoCategories.get(photo.drive_file_id) ?? [])[0] ?? null,
       mediaUrl: `/api/album-sections/${section.id}/photos/${encodeURIComponent(

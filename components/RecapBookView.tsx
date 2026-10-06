@@ -11,6 +11,7 @@ import {
   type DrawingStroke,
 } from "@/lib/album-sections";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { SavePhotoButton } from "@/components/SavePhotoButton";
 
 export type BookPhoto = {
   driveFileId: string;
@@ -62,6 +63,9 @@ type RecapBookViewProps = {
   blurPx: number;
   revealedIds: Set<string>;
   onReveal: (driveFileId: string) => void;
+  // 사진마다 저장(🔖)
+  savedIds: Set<string>;
+  onToggleSave: (driveFileId: string) => void;
   // 마지막 쪽의 "감상 마치기"
   onFinish: () => void;
 };
@@ -75,6 +79,8 @@ export function RecapBookView({
   blurPx,
   revealedIds,
   onReveal,
+  savedIds,
+  onToggleSave,
   onFinish,
 }: RecapBookViewProps) {
   const [spreadIndex, setSpreadIndex] = useState(0);
@@ -173,6 +179,24 @@ export function RecapBookView({
             }
           };
           const revealed = revealedIds.has(photo.driveFileId);
+          // 저장 버튼: 사진(자리 안에 통째로 들어간 실제 크기)의 오른쪽 위 모서리에
+          const slotHeightInWidth = PHOTO_HEIGHT * STAGE_HEIGHT_TO_WIDTH;
+          const fitted =
+            ratio === undefined
+              ? { w: 100, h: 100 }
+              : ratio >= PHOTO_WIDTH / slotHeightInWidth
+                ? { w: 100, h: ((PHOTO_WIDTH / ratio) / slotHeightInWidth) * 100 }
+                : { w: ((slotHeightInWidth * ratio) / PHOTO_WIDTH) * 100, h: 100 };
+          const saveButton = (corner: { left: string; top: string }) => (
+            <SavePhotoButton
+              size="sm"
+              saved={savedIds.has(photo.driveFileId)}
+              onToggle={() => onToggleSave(photo.driveFileId)}
+              disabled={isDrawing}
+              className="absolute z-[3] -translate-x-[70%] -translate-y-[30%]"
+              style={corner}
+            />
+          );
           const image = (
             <>
               {/* 본인만 볼 수 있는 API 주소라 일반 img 사용 */}
@@ -220,6 +244,7 @@ export function RecapBookView({
                   }}
                 >
                   {image}
+                  {saveButton({ left: "100%", top: "0%" })}
                 </div>
                 {caption({
                   side: true,
@@ -248,6 +273,7 @@ export function RecapBookView({
                 }}
               >
                 {image}
+                {saveButton({ left: `${50 + fitted.w / 2}%`, top: `${50 - fitted.h / 2}%` })}
               </div>
               {caption({
                 style: {

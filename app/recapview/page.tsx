@@ -8,6 +8,7 @@ import { Pause, Play } from "lucide-react";
 import { ExposureControl } from "@/components/safety/ExposureControl";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { RevealOverlay } from "@/components/safety/RevealOverlay";
+import { SavePhotoButton } from "@/components/SavePhotoButton";
 import { DEFAULT_EXPOSURE, exposureBlurPx, exposureBlurStyle } from "@/lib/exposure";
 import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
@@ -46,6 +47,8 @@ type AlbumPhoto = {
   revealed?: boolean;
   // 보고 싶지 않다고 한 기록에 해당 (예: "투병, 아픔이 담긴 사진") → 기본으로 빼고 보여줌
   hiddenReason?: string | null;
+  // 저장소에 저장(🔖)한 사진
+  saved?: boolean;
 };
 
 export default function RecapviewPage() {
@@ -70,8 +73,6 @@ function RecapviewPageContent() {
   const [memoError, setMemoError] = useState<string | null>(null);
   const [characterNickname, setCharacterNickname] = useState<string | null>(null);
   const [pensActive, setPenActive] = useState(false);
-  const [shareActive, setShareActive] = useState(false);
-  const [bookmarkActive, setBookmarkActive] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [albumTitle, setAlbumTitle] = useState("");
   const [albumSubtitle, setAlbumSubtitle] = useState("");
@@ -98,6 +99,8 @@ function RecapviewPageContent() {
   const [exposure, setExposure] = useState(DEFAULT_EXPOSURE);
   const [characterId, setCharacterId] = useState<string | null>(null);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  // 사진마다 저장(🔖) → 저장소 섬 액자에서 고인별로 모아 보기
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const exposureSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 아직 저장 안 된 노출 강도 (바꾸자마자 화면을 떠나도 잃지 않게)
   const pendingExposureRef = useRef<{ characterId: string; value: number } | null>(null);
@@ -180,6 +183,7 @@ function RecapviewPageContent() {
         setShowHiddenRecords(false);
         // 전에 본 사진은 선명하게, 나머지는 흐리게
         setRevealedIds(new Set(data.photos.filter((photo) => photo.revealed).map((photo) => photo.driveFileId)));
+        setSavedIds(new Set(data.photos.filter((photo) => photo.saved).map((photo) => photo.driveFileId)));
       } catch {
         setSectionError(true);
         setAlbumPhotos([]);
@@ -391,6 +395,42 @@ function RecapviewPageContent() {
     }
   };
 
+  // 사진 저장/저장 취소 (먼저 화면에 반영하고, 실패하면 되돌림)
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const toggleSavePhoto = (driveFileId: string) => {
+    if (!sectionId) return;
+    const saved = !savedIds.has(driveFileId);
+    const apply = (on: boolean) =>
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        if (on) next.add(driveFileId);
+        else next.delete(driveFileId);
+        return next;
+      });
+    apply(saved);
+    setSaveNotice(saved ? "저장소에 저장했어요" : "저장을 취소했어요");
+    void fetch(
+      `/api/album-sections/${encodeURIComponent(sectionId)}/photos/${encodeURIComponent(driveFileId)}/save`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ saved }) },
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(data?.error ?? "저장하지 못했어요");
+        }
+      })
+      .catch((saveError: unknown) => {
+        apply(!saved);
+        setSaveNotice(saveError instanceof Error ? saveError.message : "저장하지 못했어요");
+      });
+  };
+
+  useEffect(() => {
+    if (!saveNotice) return;
+    const timer = setTimeout(() => setSaveNotice(null), 2200);
+    return () => clearTimeout(timer);
+  }, [saveNotice]);
+
   // 저장 안 된 노출 강도를 지금 바로 저장. keepalive → 화면을 떠나는 중에도 요청이 끝까지 감
   const flushExposure = () => {
     if (exposureSaveTimerRef.current) {
@@ -472,6 +512,8 @@ function RecapviewPageContent() {
             }
             blurPx={blurPx}
             revealedIds={revealedIds}
+            savedIds={savedIds}
+            onToggleSave={toggleSavePhoto}
             onReveal={revealPhoto}
             onFinish={handleStop}
           />
@@ -598,46 +640,6 @@ function RecapviewPageContent() {
                       height={25}
                     />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShareActive((prev) => !prev)}
-                    className={`cursor-pointer border-0 p-1 ${
-                      shareActive ? "bg-[#AF9083]" : "bg-[#FDD9BD]"
-                    }`}
-                    aria-label="공유"
-                    aria-pressed={shareActive}
-                  >
-                    <img
-                      src={
-                        shareActive
-                          ? "/icons/recap-action-share-filled.svg"
-                          : "/icons/recap-action-share.svg"
-                      }
-                      alt=""
-                      width={27}
-                      height={20}
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBookmarkActive((prev) => !prev)}
-                    className={`cursor-pointer border-0 p-1 ${
-                      bookmarkActive ? "bg-[#AF9083]" : "bg-[#FDD9BD]"
-                    }`}
-                    aria-label="북마크"
-                    aria-pressed={bookmarkActive}
-                  >
-                    <img
-                      src={
-                        bookmarkActive
-                          ? "/icons/recap-action-bookmark-filled.svg"
-                          : "/icons/recap-action-bookmark.svg"
-                      }
-                      alt=""
-                      width={19}
-                      height={25}
-                    />
-                  </button>
                 </div>
                 {/* 중단하기: 언제든 한 번에 빠져나오기 (Esc) */}
                 <QuickExitButton
@@ -734,6 +736,11 @@ function RecapviewPageContent() {
                               {!revealedIds.has(photo.driveFileId) && (
                                 <RevealOverlay onReveal={() => revealPhoto(photo.driveFileId)} />
                               )}
+                              <SavePhotoButton
+                                saved={savedIds.has(photo.driveFileId)}
+                                onToggle={() => toggleSavePhoto(photo.driveFileId)}
+                                className="absolute right-4 top-4 z-[3]"
+                              />
                             </>
                           )}
                         </div>
@@ -830,6 +837,16 @@ function RecapviewPageContent() {
           )}
         </div>
       </div>
+
+      {/* 사진 저장 안내 */}
+      {saveNotice && (
+        <p
+          role="status"
+          className="pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#4A423C]/85 px-5 py-2 font-mulish text-sm text-white shadow"
+        >
+          {saveNotice}
+        </p>
+      )}
 
       <TopNav
         onSettingsClick={() => setShowSettings(true)}
