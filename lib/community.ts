@@ -39,6 +39,7 @@ export function wallHomePath(wall: CommunityWall) {
 
 export const COMMUNITY_NICKNAME_MAX = 10;
 export const COMMUNITY_MESSAGE_MAX = 100;
+export const COMMUNITY_COMMENT_MAX = 200;
 export const COMMUNITY_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 // 그림(PNG) 은 캔버스 크기가 작아서 이 정도면 충분
 export const COMMUNITY_DRAWING_MAX_BYTES = 2 * 1024 * 1024;
@@ -56,6 +57,7 @@ export type CommunityMessage = {
   drawingUrl: string | null;
   imageUrl: string | null;
   likeCount: number;
+  commentCount: number;
   liked: boolean;
   bookmarked: boolean;
   isMine: boolean;
@@ -83,3 +85,12 @@ export function formatCommunityDate(iso: string) {
     time: `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? "am" : "pm"}`,
   };
 }
+
+// 메시지에 달린 댓글 (작성자 이메일은 보내지 않음)
+export type CommunityComment = {
+  id: string;
+  nickname: string;
+  body: string;
+  createdAt: string;
+  isMine: boolean;
+};

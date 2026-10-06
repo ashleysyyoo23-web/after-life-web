@@ -1,7 +1,168 @@
 "use client";
 
-import { formatCommunityDate, type CommunityMessage, type CommunityReaction } from "@/lib/community";
+import {
+  COMMUNITY_COMMENT_MAX,
+  COMMUNITY_NICKNAME_MAX,
+  formatCommunityDate,
+  type CommunityComment,
+  type CommunityMessage,
+  type CommunityReaction,
+} from "@/lib/community";
 import { useEffect, useState } from "react";
+
+// 댓글 닉네임은 그 컴퓨터에 기억해 두고 다음에 채워 줌
+const COMMENT_NICKNAME_KEY = "afterlife:comment-nickname";
+
+// 메시지 카드 아래 댓글: "댓글 n" 을 누르면 펼쳐서 보고 달 수 있어요
+function CommentSection({ message }: { message: CommunityMessage }) {
+  const [open, setOpen] = useState(false);
+  const [comments, setComments] = useState<CommunityComment[] | null>(null);
+  const [count, setCount] = useState(message.commentCount);
+  const [nickname, setNickname] = useState("");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setError(null);
+    const res = await fetch(`/api/community/messages/${message.id}/comments`, { cache: "no-store" });
+    const data = (await res.json().catch(() => null)) as { comments?: CommunityComment[]; error?: string } | null;
+    if (!res.ok) {
+      setError(data?.error ?? "댓글을 불러오지 못했어요.");
+      setComments([]);
+      return;
+    }
+    setComments(data?.comments ?? []);
+    setCount(data?.comments?.length ?? 0);
+  };
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && comments === null) {
+      try {
+        setNickname(window.localStorage.getItem(COMMENT_NICKNAME_KEY) ?? "");
+      } catch {
+        // 저장소를 못 쓰면 빈 칸으로
+      }
+      void load();
+    }
+  };
+
+  const submit = async () => {
+    if (!nickname.trim() || !body.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/community/messages/${message.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname: nickname.trim(), body: body.trim() }),
+      });
+      const data = (await res.json().catch(() => null)) as { comment?: CommunityComment; error?: string } | null;
+      if (!res.ok || !data?.comment) throw new Error(data?.error ?? "댓글을 남기지 못했어요.");
+      setComments((prev) => [...(prev ?? []), data.comment as CommunityComment]);
+      setCount((prev) => prev + 1);
+      setBody("");
+      try {
+        window.localStorage.setItem(COMMENT_NICKNAME_KEY, nickname.trim());
+      } catch {
+        // 기억 못 해도 괜찮음
+      }
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "댓글을 남기지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    if (!window.confirm("이 댓글을 지울까요?")) return;
+    const res = await fetch(`/api/community/comments/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setComments((prev) => (prev ?? []).filter((comment) => comment.id !== id));
+      setCount((prev) => Math.max(0, prev - 1));
+    } else {
+      window.alert("댓글을 지우지 못했어요.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="self-start cursor-pointer border-0 bg-transparent p-0 font-mulish text-xs font-semibold text-[#AF9083] hover:underline"
+      >
+        💬 댓글 {count > 0 ? count : ""} {open ? "접기" : count > 0 ? "보기" : "달기"}
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-2 rounded-lg bg-[#FAF6F0] p-2">
+          {comments === null && <p className="font-mulish text-xs text-[#898787]">불러오는 중...</p>}
+          {comments && comments.length === 0 && !error && (
+            <p className="font-mulish text-xs text-[#898787]">아직 댓글이 없어요. 첫 마음을 남겨 주세요.</p>
+          )}
+          {comments && comments.length > 0 && (
+            <ul className="scrollbar-thin flex max-h-40 flex-col gap-1.5 overflow-y-auto">
+              {comments.map((comment) => (
+                <li key={comment.id} className="rounded-md bg-white px-2 py-1.5 font-mulish text-xs text-[#4A423C]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-semibold">{comment.nickname}</span>
+                    <span className="flex shrink-0 items-center gap-2 text-[10px] text-[#898787]">
+                      {formatCommunityDate(comment.createdAt).date}
+                      {comment.isMine && (
+                        <button
+                          type="button"
+                          onClick={() => void remove(comment.id)}
+                          className="cursor-pointer border-0 bg-transparent p-0 text-[#9E2121] hover:underline"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words leading-relaxed">{comment.body}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {error && <p className="font-mulish text-xs text-[#9E2121]">{error}</p>}
+          <div className="flex flex-col gap-1.5">
+            <input
+              value={nickname}
+              onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_NICKNAME_MAX))}
+              placeholder="닉네임"
+              aria-label="댓글 닉네임"
+              className="h-8 rounded-md border border-[#E8DDD5] bg-white px-2 font-mulish text-xs text-[#1a1a1a] outline-none focus:border-[#AF9083]"
+            />
+            <div className="flex gap-1.5">
+              <input
+                value={body}
+                onChange={(event) => setBody(event.target.value.slice(0, COMMUNITY_COMMENT_MAX))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing) void submit();
+                }}
+                placeholder="따뜻한 한마디를 남겨 주세요"
+                aria-label="댓글 내용"
+                className="h-8 min-w-0 flex-1 rounded-md border border-[#E8DDD5] bg-white px-2 font-mulish text-xs text-[#1a1a1a] outline-none focus:border-[#AF9083]"
+              />
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={busy || !nickname.trim() || !body.trim()}
+                className="h-8 shrink-0 cursor-pointer rounded-md border-0 bg-[#AF9083] px-3 font-mulish text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy ? "..." : "등록"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ProfileSilhouette() {
   return (
@@ -165,6 +326,7 @@ export function HoverMessageCard({
       <CardPicture message={message} className="h-32 w-full rounded-lg" photoOnly={photoOnly} />
       <p className="font-mulish text-sm text-[#4A423C]">{message.message}</p>
       <ReactionButtons message={message} onToggle={onToggle} />
+      <CommentSection message={message} />
     </div>
   );
 }
@@ -183,6 +345,7 @@ export function GridMessageCard({
         <CardHeader message={message} onDelete={onDelete} />
         <p className="font-mulish text-sm leading-relaxed text-[#4A423C]">{message.message}</p>
         <ReactionButtons message={message} onToggle={onToggle} />
+        <CommentSection message={message} />
       </div>
     </article>
   );

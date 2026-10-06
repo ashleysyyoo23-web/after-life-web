@@ -154,6 +154,21 @@ export async function toClientMessages(
     }
   }
 
+  // 댓글 수 (댓글 표를 아직 만들지 않았으면 0)
+  const commentCounts = new Map<string, number>();
+  if (ids.length > 0) {
+    const { data, error } = await supabase
+      .from("community_comments")
+      .select("message_id")
+      .in("message_id", ids)
+      .is("deleted_at", null);
+    if (!error) {
+      for (const comment of data ?? []) {
+        commentCounts.set(comment.message_id, (commentCounts.get(comment.message_id) ?? 0) + 1);
+      }
+    }
+  }
+
   return rows.map((row) => {
     const reaction = reactions.get(row.id) ?? { likeCount: 0, liked: false, bookmarked: false };
     return {
@@ -165,6 +180,7 @@ export async function toClientMessages(
       drawingUrl: row.drawing_path ? `/api/community/messages/${row.id}/files/drawing` : null,
       imageUrl: row.image_path ? `/api/community/messages/${row.id}/files/image` : null,
       ...reaction,
+      commentCount: commentCounts.get(row.id) ?? 0,
       isMine: row.author_email === userEmail,
     };
   });
