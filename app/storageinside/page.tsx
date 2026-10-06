@@ -6,12 +6,52 @@ import { STORAGE_INSIDE_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import {
+  CHARACTER_FRAME_SPOTS,
+  COMMUNITY_FRAME,
+  COMMUNITY_FRAME_SPOT,
+  type FrameSpot,
+  type FrameSummary,
+} from "@/lib/storage-frames";
+import { loginUrl } from "@/lib/login";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+// 저장소 안: 벽의 액자 = 고인마다 하나 + 추모 커뮤니티 하나. 누르면 그 액자에 저장한 사진·메시지
 export default function StorageInsidePage() {
   const router = useRouter();
+  const { status } = useSession();
   const [showSettings, setShowSettings] = useState(false);
+  const [frames, setFrames] = useState<FrameSummary[] | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+    fetch("/api/storage/frames", { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ frames: FrameSummary[] }>) : null))
+      .then((data) => {
+        if (!cancelled && data) setFrames(data.frames);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  // 액자 자리: 추모 커뮤니티는 고정, 고인은 정해 둔 자리에 차례로 (8명까지)
+  const placed: Array<{ summary: FrameSummary; spot: FrameSpot }> = [];
+  if (frames) {
+    const people = frames.filter((frame) => frame.frame !== COMMUNITY_FRAME);
+    people.slice(0, CHARACTER_FRAME_SPOTS.length).forEach((summary, index) => {
+      placed.push({ summary, spot: CHARACTER_FRAME_SPOTS[index] });
+    });
+    const community = frames.find((frame) => frame.frame === COMMUNITY_FRAME);
+    if (community) placed.push({ summary: community, spot: COMMUNITY_FRAME_SPOT });
+  }
+  const totalPhotos = frames?.reduce((sum, frame) => sum + frame.photoCount, 0) ?? 0;
+  const totalMessages = frames?.reduce((sum, frame) => sum + frame.messageCount, 0) ?? 0;
 
   return (
     <>
@@ -20,20 +60,42 @@ export default function StorageInsidePage() {
         <SceneMotion config={STORAGE_INSIDE_MOTION} />
         <h1 className="sr-only">저장소</h1>
 
-        <button
-          type="button"
-          onClick={() => router.push("/storagemanual")}
-          className="absolute z-20 cursor-pointer border-0 bg-transparent"
-          style={{ left: "35%", top: "40%", width: "15%", height: "20%" }}
-          aria-label="왼쪽 액자"
-        />
-        <button
-          type="button"
-          onClick={() => router.push("/storagemanual")}
-          className="absolute z-20 cursor-pointer border-0 bg-transparent"
-          style={{ left: "55%", top: "38%", width: "15%", height: "20%" }}
-          aria-label="오른쪽 액자"
-        />
+        {/* 액자: 배경(16:9)과 같은 무대 위에 액자 모양대로 */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 z-[25] -translate-x-1/2 -translate-y-1/2"
+          style={{ width: "max(100vw, 177.78vh)", height: "max(56.25vw, 100vh)" }}
+        >
+          {placed.map(({ summary, spot }) => {
+            const active = hovered === summary.frame;
+            return (
+              <button
+                key={summary.frame}
+                type="button"
+                onClick={() => router.push(`/storage/${summary.frame}`)}
+                onMouseEnter={() => setHovered(summary.frame)}
+                onMouseLeave={() => setHovered(null)}
+                onFocus={() => setHovered(summary.frame)}
+                onBlur={() => setHovered(null)}
+                aria-label={`${summary.title} 액자 열기 (사진 ${summary.photoCount}장, 메시지 ${summary.messageCount}개)`}
+                className={`pointer-events-auto absolute cursor-pointer rounded-sm border-0 transition-colors duration-200 ${
+                  active ? "bg-white/30 shadow-[0_0_14px_rgba(255,255,255,0.9)]" : "bg-transparent"
+                }`}
+                style={{ left: `${spot.left}%`, top: `${spot.top}%`, width: `${spot.width}%`, height: `${spot.height}%` }}
+              >
+                {active && (
+                  <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2">
+                    <WoodPlank as="span" size="sm">
+                      {summary.title}
+                      <span className="block font-mulish text-[11px] text-[#6B5240]">
+                        사진 {summary.photoCount}장 · 메시지 {summary.messageCount}개
+                      </span>
+                    </WoodPlank>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 top-[128px] z-20 flex flex-col items-center gap-4 px-8 pt-8">
@@ -42,11 +104,24 @@ export default function StorageInsidePage() {
           저장한 기록을 열어보아요.
         </h1>
         <p className="font-mulish text-2xl font-normal leading-[17px] text-[#7F7B7B]">
-          리캡 27개 · 메시지 15개가 조용히 기다리고 있어요
+          {status === "unauthenticated"
+            ? "로그인하면 저장한 기록을 볼 수 있어요"
+            : frames === null
+              ? "액자를 걸고 있어요..."
+              : `사진 ${totalPhotos}장 · 메시지 ${totalMessages}개가 조용히 기다리고 있어요`}
         </p>
         <p className="font-mulish text-2xl font-normal leading-[17px] text-[#1a1a1a]">
-          기억을 꺼내보고 싶으면, 액자를 눌러보아요
+          액자마다 한 분의 기록이 담겨 있어요. 액자를 눌러보아요
         </p>
+        {status === "unauthenticated" && (
+          <button
+            type="button"
+            onClick={() => router.push(loginUrl("/storageinside"))}
+            className="pointer-events-auto cursor-pointer rounded-full border border-[#AF9083] bg-white/90 px-5 py-2 font-mulish text-base font-semibold text-[#AF9083] hover:bg-[#FDD9BD]"
+          >
+            로그인하기
+          </button>
+        )}
       </div>
 
       <TopNav
