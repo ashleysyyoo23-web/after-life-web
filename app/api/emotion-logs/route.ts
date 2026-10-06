@@ -69,3 +69,41 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+// 감정 기록 돌아보기: 내가 남긴 기분 전체 (오래된 순, 최근 2000개까지)
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  const userEmail = session?.user?.email;
+
+  if (!userEmail) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let supabase;
+
+  try {
+    supabase = getSupabaseServerClient();
+  } catch (configError) {
+    const message =
+      configError instanceof Error ? configError.message : "Supabase misconfigured";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
+  const { data, error } = await supabase
+    .from("emotion_logs")
+    .select("mood, created_at")
+    .eq("user_email", userEmail)
+    .order("created_at", { ascending: false })
+    .limit(2000);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const logs = (data ?? [])
+    .filter((row) => ALLOWED_MOODS.includes(row.mood as (typeof ALLOWED_MOODS)[number]))
+    .map((row) => ({ mood: row.mood as string, createdAt: row.created_at as string }))
+    .reverse();
+
+  return NextResponse.json({ logs });
+}
