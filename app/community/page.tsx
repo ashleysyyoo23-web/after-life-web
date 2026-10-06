@@ -14,8 +14,16 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-// 추모 커뮤니티 7곳 (메시지 벽 이름 = lib/community.ts 의 COMMUNITY_WALLS). count 는 예시 숫자 (없으면 표시 안 함)
-const COUNTS: Partial<Record<CommunityStoneWall, string>> = { itaewon: "278", sewol: "190", dog: "278", friend: "278" };
+// 추모 커뮤니티 7곳 (메시지 벽 이름 = lib/community.ts 의 COMMUNITY_WALLS). 함께하는 사람 수는 예시 숫자
+const COUNTS: Record<CommunityStoneWall, number> = {
+  itaewon: 278,
+  sewol: 190,
+  dog: 412,
+  baby: 86,
+  friend: 153,
+  parents: 327,
+  teacher: 64,
+};
 const LIST_ORDER: CommunityStoneWall[] = ["itaewon", "sewol", "dog", "baby", "friend", "parents", "teacher"];
 
 type Box = { left: number; top: number; width: number; height: number };
@@ -122,19 +130,22 @@ function CommunityContent() {
   const stoneParam = searchParams.get("stone");
   const selected = isStoneWall(stoneParam) ? stoneParam : null;
   const selectedStone = STONES.find((stone) => stone.wall === selected) ?? null;
+  // 목록에서 들어오면 메시지 카드 전체화면(?view=cards), 돌을 누르면 그 돌로 확대
+  const cardsView = selectedStone !== null && searchParams.get("view") === "cards";
+  const zoomStone = cardsView ? null : selectedStone;
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [hoveredStone, setHoveredStone] = useState<number | null>(null);
   const [isListOpen, setIsListOpen] = useState(false);
   const viewport = useViewport();
-  const zoom = selectedStone ? zoomFor(selectedStone, viewport.width, viewport.height) : { scale: 1, x: 0, y: 0 };
+  const zoom = zoomStone ? zoomFor(zoomStone, viewport.width, viewport.height) : { scale: 1, x: 0, y: 0 };
 
   // 돌·목록을 누르면 주소에 ?stone= 을 남겨서, 뒤로 가기나 메시지를 남긴 뒤에도 그 돌로 돌아와요
-  const openStone = (wall: CommunityStoneWall | null) => {
+  const openStone = (wall: CommunityStoneWall | null, view?: "cards") => {
     setHoveredStone(null);
     setIsListOpen(false);
-    router.push(wall ? `/community?stone=${wall}` : "/community", { scroll: false });
+    router.push(wall ? `/community?stone=${wall}${view ? `&view=${view}` : ""}` : "/community", { scroll: false });
   };
 
   useEffect(() => {
@@ -164,7 +175,7 @@ function CommunityContent() {
           <BackgroundPageLayout backgroundSrc="/community.jpg" skyScene="community" title="" motion={COMMUNITY_MOTION} />
 
           {/* 확대: 고른 돌 말고는 회색으로, 고른 돌은 선명한 그림으로 */}
-          {selectedStone && <StoneFocus key={selectedStone.wall} stone={selectedStone} />}
+          {zoomStone && <StoneFocus key={zoomStone.wall} stone={zoomStone} />}
 
           {/* 돌마다 커뮤니티 이름 (섬 전체를 볼 때만) */}
           <div
@@ -202,9 +213,14 @@ function CommunityContent() {
       </div>
 
       {/* 고른 돌: 꽃마다 메시지 (돌이 바뀌면 새로 불러오도록 key) */}
-      {selectedStone && <StoneMessages key={selectedStone.wall} stone={selectedStone} zoom={zoom} viewport={viewport} />}
+      {zoomStone && <StoneMessages key={zoomStone.wall} stone={zoomStone} zoom={zoom} viewport={viewport} />}
 
-      {selectedStone ? (
+      {/* 목록에서 들어온 경우: 메시지 카드를 스크롤해서 보는 전체화면 */}
+      {cardsView && selectedStone && (
+        <StoneCards key={selectedStone.wall} wall={selectedStone.wall} onShowStone={() => openStone(selectedStone.wall)} />
+      )}
+
+      {cardsView ? null : selectedStone ? (
         <h1 className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2 whitespace-nowrap font-jeju-myeongjo text-[48px] leading-none text-[#2F2622] drop-shadow-[0_1px_6px_rgba(255,255,255,0.8)]">
           {COMMUNITY_WALLS[selectedStone.wall].title}
         </h1>
@@ -249,7 +265,7 @@ function CommunityContent() {
                 <button
                   key={wall}
                   type="button"
-                  onClick={() => openStone(wall)}
+                  onClick={() => openStone(wall, "cards")}
                   className={`flex w-full cursor-pointer flex-col gap-[13px] rounded-[10px] px-4 py-[13px] text-left shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] ${
                     isSelected
                       ? "bg-[#AF9083] text-white"
@@ -264,8 +280,7 @@ function CommunityContent() {
                       {COMMUNITY_WALLS[wall].title}
                     </span>
                   </div>
-                  {count && (
-                    <div className="flex justify-end">
+                  <div className="flex justify-end">
                       <div className="flex items-center gap-1">
                         <Image
                           src="/icons/community/community-flame-3286d5.png"
@@ -280,11 +295,10 @@ function CommunityContent() {
                             isSelected ? "text-white" : "text-[#938B8B]"
                           }`}
                         >
-                          {count}
+                          {count.toLocaleString("ko-KR")}명
                         </span>
                       </div>
                     </div>
-                  )}
                 </button>
               );
             })}
@@ -313,6 +327,59 @@ function CommunityContent() {
         onClose={() => setShowSettings(false)}
       />
     </>
+  );
+}
+
+// 목록에서 들어온 커뮤니티: 전체화면에 메시지 카드를 여러 줄로, 아래로 스크롤 (사진만, 그림은 숨김)
+function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowStone: () => void }) {
+  const { messages, loaded, error, onToggle, onDelete } = useWallMessages(wall);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-[25] bg-[#FAF6F0]">
+      <div className="pointer-events-none absolute inset-x-0 top-[160px] flex items-center gap-3 pl-[236px]">
+        <button
+          type="button"
+          onClick={onShowStone}
+          className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-white px-4 font-mulish text-lg font-semibold text-[#4B3F39] hover:bg-[#FDD9BD]"
+        >
+          돌에서 보기
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowMessageModal(true)}
+          className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 font-mulish text-lg font-semibold text-white"
+        >
+          <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
+          메시지 남기기
+        </button>
+      </div>
+
+      <div className="absolute inset-x-0 top-[232px] flex flex-col items-center gap-1 text-center">
+        <h1 className="font-jeju-myeongjo text-[44px] leading-tight text-[#2F2622]">{COMMUNITY_WALLS[wall].title}</h1>
+        <p className="font-mulish text-sm text-[#AF9083]">
+          함께하는 사람 {COUNTS[wall].toLocaleString("ko-KR")}명{loaded && !error ? ` · 남겨진 마음 ${messages.length}개` : ""}
+        </p>
+      </div>
+
+      <div className="scrollbar-thin absolute inset-x-0 bottom-0 top-[330px] overflow-y-auto px-12 pb-16 pt-2">
+        {loaded && (error || messages.length === 0) ? (
+          <p className="mt-16 text-center font-mulish text-base text-[#898787]">
+            {error ?? "아직 남겨진 메시지가 없어요. '메시지 남기기'로 첫 메시지를 남겨 주세요."}
+          </p>
+        ) : (
+          <div className="mx-auto max-w-[1400px] columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
+            {messages.map((message) => (
+              <div key={message.id} className="mb-5 break-inside-avoid">
+                <GridMessageCard message={message} onToggle={onToggle} onDelete={onDelete} photoOnly />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <KYHMessageModal isOpen={showMessageModal} onClose={() => setShowMessageModal(false)} wall={wall} />
+    </div>
   );
 }
 
