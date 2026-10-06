@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -40,8 +37,6 @@ export default function ArchiveroomPage() {
         공간을 클릭해 기록을 살펴보세요.
       </p>
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

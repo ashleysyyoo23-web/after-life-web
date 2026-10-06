@@ -1,10 +1,7 @@
 "use client";
 
 import { WoodPlank } from "@/components/WoodPlank";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { COMMUNITY_MOTION } from "@/lib/scene-motion";
 import { COMMUNITY_WALLS, type CommunityStoneWall } from "@/lib/community";
@@ -314,8 +311,6 @@ function CommunityContent() {
       )}
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

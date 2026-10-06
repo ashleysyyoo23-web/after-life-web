@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { SectionPhotosModal, type CreatedSection } from "@/components/AlbumModals";
 import { BookTitleForm } from "@/components/BookTitleForm";
@@ -259,8 +256,6 @@ function ArchivebookPageContent() {
       <QuickExitButton className="fixed top-[200px] right-12 z-40" />
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

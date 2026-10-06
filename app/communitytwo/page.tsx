@@ -1,10 +1,7 @@
 "use client";
 
 import { WoodPlank } from "@/components/WoodPlank";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { BackgroundPageLayout } from "@/components/background-page-layout";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
@@ -173,8 +170,6 @@ export default function CommunityTwoPage() {
       </div>
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

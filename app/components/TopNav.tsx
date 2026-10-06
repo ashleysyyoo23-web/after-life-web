@@ -3,36 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { loginUrl } from "@/lib/login";
+import { timeAgoLabel, type AppNotification } from "@/lib/notifications";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 let globalBgm: HTMLAudioElement | null = null;
 let globalIsPlaying = true;
-
-export type TopNavNotification = {
-  id: number;
-  message: string;
-  time: string;
-};
-
-export const DEFAULT_NOTIFICATIONS: TopNavNotification[] = [
-  {
-    id: 1,
-    message: "메인랜드에 '김영희'님의 섬이 생성되었습니다.",
-    time: "1시간 전",
-  },
-  {
-    id: 2,
-    message: "커뮤니티에서 남긴 댓글에 공감이 달렸습니다.",
-    time: "3시간 전",
-  },
-  {
-    id: 3,
-    message: "새로운 기록 추천이 있습니다.",
-    time: "5시간 전",
-  },
-];
 
 const navTextClass =
   "inline-flex h-[42px] items-center justify-center px-3 py-1 font-mulish text-2xl font-semibold text-[#4B3F39] transition-opacity hover:opacity-70";
@@ -41,15 +18,11 @@ const navIconFrameClass =
   "inline-flex h-12 w-12 items-center justify-center p-1 transition-opacity hover:opacity-70";
 
 type TopNavProps = {
-  notificationCount: number;
-  notifications: TopNavNotification[];
   onSettingsClick: () => void;
   settingsExpanded?: boolean;
 };
 
 export function TopNav({
-  notificationCount,
-  notifications,
   onSettingsClick,
   settingsExpanded = false,
 }: TopNavProps) {
@@ -87,8 +60,56 @@ export function TopNav({
     setIsMusicPlaying(globalIsPlaying);
   };
 
+  // 알림함: 기일 추모 섬 · 내 메시지의 좋아요 · 댓글 (/api/notifications). 연 뒤에 생긴 것만 빨간 숫자로
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [seenAt, setSeenAt] = useState<string | null>(null);
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
+
+  const loadNotifications = async () => {
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { notifications: AppNotification[]; seenAt: string | null };
+      setNotifications(data.notifications);
+      setSeenAt(data.seenAt);
+    } catch {
+      // 못 불러오면 빈 알림함
+    } finally {
+      setNotificationsLoaded(true);
+    }
+  };
+
+  // 로그인 상태가 되면 한 번 불러오기 (열 때마다 다시 불러와요)
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    let cancelled = false;
+    fetch("/api/notifications", { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ notifications: AppNotification[]; seenAt: string | null }>) : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setNotifications(data.notifications);
+        setSeenAt(data.seenAt);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setNotificationsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus]);
+
+  const unreadCount = notifications.filter((item) => !seenAt || item.createdAt > seenAt).length;
+
   const toggleNotifications = () => {
-    setShowNotifications((open) => !open);
+    const opening = !showNotifications;
+    setShowNotifications(opening);
+    if (opening && sessionStatus === "authenticated") {
+      void loadNotifications();
+      // 열면 지금까지의 알림은 읽음 (목록의 "새 알림" 표시는 이번에 열어 둔 동안 그대로)
+      void fetch("/api/notifications/seen", { method: "POST" }).catch(() => {});
+    }
+    if (!opening && unreadCount > 0) setSeenAt(new Date().toISOString());
   };
 
   const handleSettingsClick = () => {
@@ -189,9 +210,9 @@ export function TopNav({
                 height={24}
                 className="block h-[24px] w-[34px]"
               />
-              {notificationCount > 0 && (
+              {!showNotifications && unreadCount > 0 && (
                 <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
-                  {notificationCount}
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </span>
@@ -204,34 +225,44 @@ export function TopNav({
                   className="absolute -top-2 right-4 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-[#AF9083]"
                   aria-hidden
                 />
-                <ul className="flex flex-col gap-2">
-                  {notifications.map((notification) => (
-                    <li key={notification.id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (notification.id === 1) {
-                            router.push("/mainland");
-                          } else if (notification.id === 3) {
-                            router.push(
-                              "/myland?from=moodcheck&anniversary=true",
-                            );
-                          } else {
-                            console.log(notification.id);
-                          }
-                        }}
-                        className="w-full cursor-pointer rounded-lg border-0 bg-white px-3 py-2 text-left transition-colors hover:bg-gray-50"
-                      >
-                        <p className="font-mulish text-sm text-text-brown">
-                          {notification.message}
-                        </p>
-                        <p className="mt-1 text-right text-xs text-gray-400">
-                          {notification.time}
-                        </p>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                {sessionStatus !== "authenticated" ? (
+                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-text-brown">
+                    로그인하면 알림을 볼 수 있어요.
+                  </p>
+                ) : !notificationsLoaded ? (
+                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">알림을 불러오는 중이에요...</p>
+                ) : notifications.length === 0 ? (
+                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">새 알림이 없어요.</p>
+                ) : (
+                  <ul className="scrollbar-thin flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
+                    {notifications.map((notification) => {
+                      const isNew = !seenAt || notification.createdAt > seenAt;
+                      return (
+                        <li key={notification.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNotifications(false);
+                              router.push(notification.href);
+                            }}
+                            className="w-full cursor-pointer rounded-lg border-0 bg-white px-3 py-2 text-left transition-colors hover:bg-gray-50"
+                          >
+                            <p className="font-mulish text-sm text-text-brown">
+                              <span className="mr-1" aria-hidden>
+                                {notification.kind === "anniversary" ? "🏝️" : notification.kind === "like" ? "♥" : "💬"}
+                              </span>
+                              {notification.message}
+                            </p>
+                            <p className="mt-1 flex items-center justify-end gap-2 text-xs text-gray-400">
+                              {isNew && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">새 알림</span>}
+                              {timeAgoLabel(notification.createdAt)}
+                            </p>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             </div>
           )}

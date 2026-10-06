@@ -1,10 +1,7 @@
 "use client";
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { useMoodSky } from "@/lib/mood-sky";
 import Image from "next/image";
@@ -168,8 +165,6 @@ export default function RecapfeedbackPage() {
       )}
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

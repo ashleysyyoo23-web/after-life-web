@@ -1,10 +1,7 @@
 "use client";
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { RecapBookView } from "@/components/RecapBookView";
 import { Pause, Play } from "lucide-react";
@@ -835,8 +832,6 @@ function RecapviewPageContent() {
       </div>
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

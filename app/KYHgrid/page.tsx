@@ -1,7 +1,7 @@
 "use client";
 
 import { WoodPlank } from "@/components/WoodPlank";
-import { DEFAULT_NOTIFICATIONS, TopNav } from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
 import { GridMessageCard, useWallMessages } from "@/components/community/CommunityCards";
@@ -81,8 +81,6 @@ export default function KYHgridPage() {
       </div>
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

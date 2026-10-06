@@ -15,10 +15,7 @@ import {
   type CharacterDraft,
   type CreatedCharacter,
 } from "@/components/CharacterCreateModal";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
@@ -955,8 +952,6 @@ function MylandPageContent() {
         </p>
       )}
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

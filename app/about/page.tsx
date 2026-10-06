@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { useEffect, useRef, useState } from "react";
 
@@ -37,8 +34,6 @@ export default function AboutPage() {
   return (
     <div className="relative h-screen bg-[#FAF6F0]">
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

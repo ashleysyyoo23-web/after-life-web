@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { saveMoodSky } from "@/lib/mood-sky";
 import { useSession } from "next-auth/react";
@@ -89,8 +86,6 @@ export default function MoodcheckPage() {
       ))}
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

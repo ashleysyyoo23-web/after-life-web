@@ -1,10 +1,7 @@
 "use client";
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { daysUntilLabel } from "@/lib/anniversary";
 import { arrangeIslands, islandLook, islandSoloStyle, type IslandShape } from "@/lib/islands";
@@ -86,7 +83,6 @@ function MainlandPageContent() {
     "view-method" | "profile" | "legacy" | "edit-person" | null
   >(null);
 
-  const notificationCount = DEFAULT_NOTIFICATIONS.length;
   // 기일 추모 섬: 기일 7일 전~3일 후에 "섬을 열까요?"를 한 번 묻고, 연 섬만 지도에 (최대 2개)
   const [islands, setIslands] = useState<AnniversaryIsland[]>([]);
   const [maxOpen, setMaxOpen] = useState(2);
@@ -290,8 +286,6 @@ function MainlandPageContent() {
       )}
 
       <TopNav
-        notificationCount={notificationCount}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

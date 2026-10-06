@@ -1,7 +1,7 @@
 "use client";
 
 import { WoodPlank } from "@/components/WoodPlank";
-import { DEFAULT_NOTIFICATIONS, TopNav } from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { GridMessageCard, useWallMessages } from "@/components/community/CommunityCards";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
@@ -103,8 +103,6 @@ export default function IslandPage() {
       </div>
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

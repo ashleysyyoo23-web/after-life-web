@@ -4,10 +4,7 @@ import { WoodPlank } from "@/components/WoodPlank";
 import { SceneMotion } from "@/components/SceneMotion";
 import { STORAGE_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -56,8 +53,6 @@ export default function StoragePage() {
       )}
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

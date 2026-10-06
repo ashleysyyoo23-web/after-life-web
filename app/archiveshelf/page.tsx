@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { CreateAlbumModal, type CreatedBook } from "@/components/AlbumModals";
 import { BookSketchFilterDefs, ShelfBook } from "@/components/ShelfBook";
@@ -202,8 +199,6 @@ function ArchiveshelfPageContent() {
       <QuickExitButton className="fixed top-[200px] right-12 z-40" />
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />

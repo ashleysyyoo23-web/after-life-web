@@ -1,10 +1,7 @@
 "use client";
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
-import {
-  DEFAULT_NOTIFICATIONS,
-  TopNav,
-} from "@/app/components/TopNav";
+import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -397,8 +394,6 @@ export default function StorageManualPage() {
       </div>
 
       <TopNav
-        notificationCount={DEFAULT_NOTIFICATIONS.length}
-        notifications={DEFAULT_NOTIFICATIONS}
         onSettingsClick={() => setShowSettings(true)}
         settingsExpanded={showSettings}
       />
