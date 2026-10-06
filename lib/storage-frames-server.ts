@@ -78,14 +78,15 @@ export async function loadBookmarkedMessageIds(supabase: SupabaseClient, userEma
     .eq("kind", "bookmark")
     .order("created_at", { ascending: false });
   const ids = (marks ?? []).map((mark) => mark.message_id as string);
-  if (ids.length === 0) return [] as Array<{ id: string; wall: string }>;
+  const markedAt = new Map((marks ?? []).map((mark) => [mark.message_id as string, mark.created_at as string]));
+  if (ids.length === 0) return [] as Array<{ id: string; wall: string; createdAt: string }>;
   const { data: messages } = await supabase
     .from("community_messages")
     .select("id, wall")
     .in("id", ids)
     .is("deleted_at", null);
   const walls = new Map((messages ?? []).map((message) => [message.id as string, message.wall as string]));
-  return ids.filter((id) => walls.has(id)).map((id) => ({ id, wall: walls.get(id)! }));
+  return ids.filter((id) => walls.has(id)).map((id) => ({ id, wall: walls.get(id)!, createdAt: markedAt.get(id)! }));
 }
 
 // 메시지가 어느 액자에 들어가는지: 기일 추모 섬 메시지는 그 고인의 인물 액자, 나머지는 추모 커뮤니티 액자

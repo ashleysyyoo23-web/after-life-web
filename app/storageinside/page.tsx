@@ -40,14 +40,16 @@ export default function StorageInsidePage() {
     };
   }, [status]);
 
-  // 액자 자리: 추모 커뮤니티는 고정, 고인은 정해 둔 자리에 차례로 (8명까지)
+  // 저장한 기록이 있는 액자만 걸기. 추모 커뮤니티는 고정 자리, 고인은 처음 저장한 순서대로 다음 빈자리에 (8명까지)
   const placed: Array<{ summary: FrameSummary; spot: FrameSpot }> = [];
   if (frames) {
-    const people = frames.filter((frame) => frame.frame !== COMMUNITY_FRAME);
+    const people = frames
+      .filter((frame) => frame.frame !== COMMUNITY_FRAME && frame.firstSavedAt)
+      .sort((a, b) => (a.firstSavedAt ?? "").localeCompare(b.firstSavedAt ?? ""));
     people.slice(0, CHARACTER_FRAME_SPOTS.length).forEach((summary, index) => {
       placed.push({ summary, spot: CHARACTER_FRAME_SPOTS[index] });
     });
-    const community = frames.find((frame) => frame.frame === COMMUNITY_FRAME);
+    const community = frames.find((frame) => frame.frame === COMMUNITY_FRAME && frame.firstSavedAt);
     if (community) placed.push({ summary: community, spot: COMMUNITY_FRAME_SPOT });
   }
   const totalPhotos = frames?.reduce((sum, frame) => sum + frame.photoCount, 0) ?? 0;
@@ -77,19 +79,23 @@ export default function StorageInsidePage() {
                 onFocus={() => setHovered(summary.frame)}
                 onBlur={() => setHovered(null)}
                 aria-label={`${summary.title} 액자 열기 (사진 ${summary.photoCount}장, 메시지 ${summary.messageCount}개)`}
-                className={`pointer-events-auto absolute cursor-pointer rounded-sm border-0 transition-colors duration-200 ${
-                  active ? "bg-white/30 shadow-[0_0_14px_rgba(255,255,255,0.9)]" : "bg-transparent"
-                }`}
+                className="pointer-events-auto absolute cursor-pointer border-0 bg-transparent p-0"
                 style={{ left: `${spot.left}%`, top: `${spot.top}%`, width: `${spot.width}%`, height: `${spot.height}%` }}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={spot.src}
+                  alt=""
+                  className={`block h-full w-full transition-[filter,transform] duration-200 ${
+                    active ? "-translate-y-0.5 drop-shadow-[0_0_10px_rgba(255,255,255,0.95)]" : ""
+                  }`}
+                />
                 {active && (
-                  <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2">
-                    <WoodPlank as="span" size="sm">
-                      {summary.title}
-                      <span className="block font-mulish text-[11px] text-[#6B5240]">
-                        사진 {summary.photoCount}장 · 메시지 {summary.messageCount}개
-                      </span>
-                    </WoodPlank>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-white/70 px-2.5 py-1 text-center shadow-sm backdrop-blur-sm">
+                    <span className="block font-jeju-myeongjo text-[13px] leading-tight text-[#3F2F24]">{summary.title}</span>
+                    <span className="block font-mulish text-[10px] leading-tight text-[#6B5240]">
+                      사진 {summary.photoCount}장 · 메시지 {summary.messageCount}개
+                    </span>
                   </span>
                 )}
               </button>
@@ -108,11 +114,15 @@ export default function StorageInsidePage() {
             ? "로그인하면 저장한 기록을 볼 수 있어요"
             : frames === null
               ? "액자를 걸고 있어요..."
-              : `사진 ${totalPhotos}장 · 메시지 ${totalMessages}개가 조용히 기다리고 있어요`}
+              : placed.length === 0
+                ? "리캡에서 🔖 저장하거나 메시지를 북마크하면 액자가 생겨요"
+                : `사진 ${totalPhotos}장 · 메시지 ${totalMessages}개가 조용히 기다리고 있어요`}
         </p>
-        <p className="font-mulish text-2xl font-normal leading-[17px] text-[#1a1a1a]">
-          액자마다 한 분의 기록이 담겨 있어요. 액자를 눌러보아요
-        </p>
+        {placed.length > 0 && (
+          <p className="font-mulish text-2xl font-normal leading-[17px] text-[#1a1a1a]">
+            액자마다 한 분의 기록이 담겨 있어요. 액자를 눌러보아요
+          </p>
+        )}
         {status === "unauthenticated" && (
           <button
             type="button"
