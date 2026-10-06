@@ -1,5 +1,6 @@
 "use client";
 
+import { WoodPlank } from "@/components/WoodPlank";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
@@ -201,8 +202,10 @@ function CommunityContent() {
                     style={{ left: `${stone.left}%`, top: `${stone.top}%`, width: `${stone.width}%`, height: `${stone.height}%` }}
                   >
                     {hovered && (
-                      <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white px-4 py-2 font-mulish text-sm font-medium text-[#1a1a1a] shadow-md">
-                        {COMMUNITY_WALLS[stone.wall].title}
+                      <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2">
+                        <WoodPlank as="span" size="sm">
+                          {COMMUNITY_WALLS[stone.wall].title}
+                        </WoodPlank>
                       </span>
                     )}
                   </button>
@@ -221,19 +224,13 @@ function CommunityContent() {
       )}
 
       {cardsView ? null : selectedStone ? (
-        <h1 className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2 whitespace-nowrap font-jeju-myeongjo text-[48px] leading-none text-[#2F2622] drop-shadow-[0_1px_6px_rgba(255,255,255,0.8)]">
+        <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
           {COMMUNITY_WALLS[selectedStone.wall].title}
-        </h1>
+        </WoodPlank>
       ) : (
-        <h1 className="pointer-events-none fixed left-1/2 top-[160px] z-20 flex -translate-x-1/2 items-baseline gap-0 whitespace-nowrap text-black">
-          <span className="font-mulish text-[52px] font-semibold leading-none">
-            추모
-          </span>
-          <span className="font-newsreader text-[36px] leading-none">
-            {" "}
-            커뮤니티
-          </span>
-        </h1>
+        <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
+          추모 커뮤니티
+        </WoodPlank>
       )}
 
       <div ref={dropdownRef} className="fixed right-12 top-[160px] z-30 w-[338px]">
@@ -356,7 +353,7 @@ function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowSto
       </div>
 
       <div className="absolute inset-x-0 top-[232px] flex flex-col items-center gap-1 text-center">
-        <h1 className="font-jeju-myeongjo text-[44px] leading-tight text-[#2F2622]">{COMMUNITY_WALLS[wall].title}</h1>
+        <WoodPlank as="h1">{COMMUNITY_WALLS[wall].title}</WoodPlank>
         <p className="font-mulish text-sm text-[#AF9083]">
           함께하는 사람 {COUNTS[wall].toLocaleString("ko-KR")}명{loaded && !error ? ` · 남겨진 마음 ${messages.length}개` : ""}
         </p>

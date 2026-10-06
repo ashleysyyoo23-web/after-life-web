@@ -1,5 +1,6 @@
 "use client";
 
+import { WoodPlank } from "@/components/WoodPlank";
 import {
   DEFAULT_NOTIFICATIONS,
   TopNav,
@@ -152,15 +153,9 @@ export default function CommunityTwoPage() {
           </button>
         </div>
 
-        <h1 className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-0 whitespace-nowrap text-black">
-          <span className="font-newsreader text-[52px] leading-none">
-            세월호 참사
-          </span>
-          <span className="font-newsreader text-[36px] leading-none">
-            {" "}
-            추모공간
-          </span>
-        </h1>
+        <WoodPlank as="h1" className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+          세월호 참사 추모공간
+        </WoodPlank>
 
         <button
           type="button"

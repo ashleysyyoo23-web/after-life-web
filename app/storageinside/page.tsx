@@ -1,5 +1,6 @@
 "use client";
 
+import { WoodPlank } from "@/components/WoodPlank";
 import { SceneMotion } from "@/components/SceneMotion";
 import { STORAGE_INSIDE_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
@@ -39,6 +40,7 @@ export default function StorageInsidePage() {
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 top-[128px] z-20 flex flex-col items-center gap-4 px-8 pt-8">
+        <WoodPlank className="mb-2">저장소</WoodPlank>
         <h1 className="whitespace-nowrap font-newsreader text-[40px] text-[#1a1a1a]">
           저장한 기록을 열어보아요.
         </h1>

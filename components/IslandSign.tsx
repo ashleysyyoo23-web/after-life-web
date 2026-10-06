@@ -1,3 +1,5 @@
+import { WOOD_BACKGROUND, WOOD_BORDER_RADIUS } from "@/components/WoodPlank";
+
 // 섬에 꽂힌 나무 팻말 (전체 지도의 섬 이름). 부모 기준 x·y(%) 가 팻말 기둥이 땅에 닿는 자리.
 // 크기는 지도 무대(container) 너비를 따라가요 (cqw).
 export function IslandSign({
@@ -20,10 +22,9 @@ export function IslandSign({
         className="relative block whitespace-nowrap border-2 border-[#5A4636] text-center font-jeju-myeongjo text-[#3F2F24]"
         style={{
           padding: "0.45cqw 1.1cqw 0.5cqw",
-          borderRadius: "7px 11px 8px 10px / 10px 7px 11px 8px",
-          // 나뭇결 + 위가 밝은 나무색
-          background:
-            "repeating-linear-gradient(176deg, rgba(90,60,40,0) 0 9px, rgba(90,60,40,0.18) 9px 10px, rgba(90,60,40,0) 10px 17px), linear-gradient(#D8B48C, #C29A72)",
+          borderRadius: WOOD_BORDER_RADIUS,
+          // 나뭇결 + 위가 밝은 나무색 (components/WoodPlank.tsx 와 같은 나무)
+          background: WOOD_BACKGROUND,
           boxShadow: "0 2px 0 rgba(70,50,35,0.35)",
           fontSize: "clamp(12px, 1.05cqw, 22px)",
           transform: "rotate(-2deg)",

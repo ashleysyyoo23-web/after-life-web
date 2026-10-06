@@ -1,5 +1,6 @@
 "use client";
 
+import { WoodPlank } from "@/components/WoodPlank";
 import { DEFAULT_NOTIFICATIONS, TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
@@ -52,10 +53,9 @@ export default function KYHgridPage() {
           </button>
         </div>
 
-        <h1 className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-0 whitespace-nowrap text-black">
-          <span className="font-newsreader text-[52px] leading-none">김영희</span>
-          <span className="font-newsreader text-[36px] leading-none">님의 섬</span>
-        </h1>
+        <WoodPlank as="h1" className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+          김영희 님의 섬
+        </WoodPlank>
 
         <button
           type="button"

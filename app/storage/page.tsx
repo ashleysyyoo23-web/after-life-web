@@ -1,5 +1,6 @@
 "use client";
 
+import { WoodPlank } from "@/components/WoodPlank";
 import { SceneMotion } from "@/components/SceneMotion";
 import { STORAGE_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
@@ -35,8 +36,11 @@ export default function StoragePage() {
       >
         <MoodSkyBackground scene="storagefar" clouds />
         <SceneMotion config={STORAGE_MOTION} />
-        <h1 className="sr-only">저장소</h1>
       </div>
+
+      <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
+        저장소
+      </WoodPlank>
 
       {renderHint && (
         <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center">

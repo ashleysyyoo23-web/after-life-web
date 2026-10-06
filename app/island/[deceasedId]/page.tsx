@@ -1,5 +1,6 @@
 "use client";
 
+import { WoodPlank } from "@/components/WoodPlank";
 import { DEFAULT_NOTIFICATIONS, TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { GridMessageCard, useWallMessages } from "@/components/community/CommunityCards";
@@ -68,10 +69,9 @@ export default function IslandPage() {
           <img src={look.src} alt="" className="h-auto w-[min(640px,80vw)]" style={islandSoloStyle(look.shape)} />
           {info && (
             <div className="flex flex-col items-center gap-1 text-center">
-              <h1 className="flex items-baseline gap-1 text-black">
-                <span className="font-newsreader text-[44px] leading-none">{info.nickname}</span>
-                <span className="font-newsreader text-[30px] leading-none">의 섬</span>
-              </h1>
+              <WoodPlank as="h1" className="mb-2">
+                {info.nickname}의 섬
+              </WoodPlank>
               {info.daysUntil !== null && (
                 <p className="font-mulish text-sm text-[#AF9083]">
                   {info.anniversaryDate?.replace(/-/g, ".")} · {daysUntilLabel(info.daysUntil)}
