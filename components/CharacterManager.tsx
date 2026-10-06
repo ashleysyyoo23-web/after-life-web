@@ -4,7 +4,7 @@ import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { DEFAULT_EXPOSURE } from "@/lib/exposure";
-import type { CreatedCharacter } from "@/components/CharacterCreateModal";
+import { CharacterCreateModal, type CreatedCharacter } from "@/components/CharacterCreateModal";
 import {
   CHARACTER_DESCRIPTION_MAX,
   CHARACTER_NICKNAME_MAX,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/character-fields";
 import type { CharacterAppearance } from "@/lib/character-parts";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 // 메인 랜드가 열려 있으면 인물을 다시 불러오게 알림
 export const CHARACTERS_UPDATED_EVENT = "afterlife:characters-updated";
@@ -51,6 +52,8 @@ export function CharacterManager() {
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nickname: string; bookCount: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // "+ 인물 추가": 메인 랜드의 "+ 고인 불러오기"와 같은 만들기 창
+  const [creating, setCreating] = useState(false);
 
   const loadList = async () => {
     try {
@@ -327,6 +330,22 @@ export function CharacterManager() {
   return (
     <div className="flex flex-col gap-8 px-6">
       {confirmDialog}
+      {/* 설정 창은 transform 이 걸려 있어서, 만들기 창은 body 에 바로 띄움 (설정 창보다 위) */}
+      {creating &&
+        createPortal(
+          <div className="relative z-[90]">
+            <CharacterCreateModal
+              onClose={() => setCreating(false)}
+              onCreated={(character) => {
+                setCreating(false);
+                setCharacters((prev) => [...(prev ?? []), character]);
+                setMessage(`'${character.nickname}' 인물을 추가했어요. 메인 랜드에서 만날 수 있어요.`);
+                notifyMyland();
+              }}
+            />
+          </div>,
+          document.body,
+        )}
       <h2 className="font-newsreader text-[32px] leading-tight text-black">마이랜드의 인물을 편집해보세요.</h2>
 
       {message && <p className="font-mulish text-sm text-[#4A423C]">{message}</p>}
@@ -334,12 +353,26 @@ export function CharacterManager() {
       {!listError && characters === null && <p className="font-mulish text-sm text-[#898787]">불러오는 중...</p>}
       {characters?.length === 0 && (
         <p className="font-mulish text-sm text-[#898787]">
-          아직 인물이 없어요. 메인 랜드의 &lsquo;+ 고인 불러오기&rsquo;로 인물을 만들어 주세요.
+          아직 인물이 없어요. &lsquo;+ 인물 추가&rsquo;를 눌러 만들어 보세요.
         </p>
       )}
 
-      {characters && characters.length > 0 && (
+      {characters && (
         <ul className="grid grid-cols-2 gap-4">
+          <li>
+            <button
+              type="button"
+              onClick={() => {
+                setMessage(null);
+                setCreating(true);
+              }}
+              className="flex h-full min-h-[130px] w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#D9C9BC] bg-[#FAF6F0] p-4 font-mulish text-[#AF9083] transition-colors hover:border-[#AF9083] hover:bg-[#FDD9BD]/30"
+            >
+              <span className="text-2xl leading-none">+</span>
+              <span className="text-base font-semibold">인물 추가</span>
+              <span className="text-xs text-[#898787]">기억하고 싶은 사람이나 반려동물</span>
+            </button>
+          </li>
           {characters.map((character) => (
             <li key={character.id} className="flex items-center gap-4 rounded-xl border border-[#E9E0D3] bg-white p-4">
               <div className="flex h-24 w-20 shrink-0 items-end justify-center rounded-lg bg-[#FAF6F0]">
