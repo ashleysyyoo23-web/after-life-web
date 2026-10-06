@@ -78,15 +78,19 @@ export async function getValidAccessTokenForConnection(
   row: DriveConnectionRow,
 ): Promise<{ accessToken: string; driveEmail: string; connectionId: string } | null> {
   const tryToken = async (accessToken: string) => {
-    const probe = await fetch(
-      "https://www.googleapis.com/drive/v3/about?fields=user",
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      },
-    );
-
-    return probe.ok;
+    try {
+      const probe = await fetch(
+        "https://www.googleapis.com/drive/v3/about?fields=user",
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        },
+      );
+      return probe.ok;
+    } catch {
+      // 인터넷이 잠깐 끊긴 경우 등: 아래에서 새 토큰을 받아 봄
+      return false;
+    }
   };
 
   const markNeedsReconnect = async () => {
@@ -114,9 +118,12 @@ export async function getValidAccessTokenForConnection(
   try {
     refreshed = await refreshDriveAccessToken(row.refresh_token);
   } catch (refreshError) {
-    // 테스트 모드에서는 refresh token 이 약 7일 뒤 만료될 수 있음 → 다시 연결 안내
     console.error("[drive-token] refresh failed", refreshError);
-    await markNeedsReconnect();
+    // Google 이 "만료·취소됨(invalid_grant)"이라고 확실히 답한 경우에만 끊김으로 표시 → 다시 연결 안내.
+    // (사용자가 Google 계정에서 권한을 끊었거나, 비밀번호를 바꿨거나, 예전 테스트 모드의 7일 만료)
+    // 인터넷 오류·Google 서버 오류처럼 잠깐의 실패는 표시하지 않고, 다음 요청 때 다시 시도해요.
+    const revoked = refreshError instanceof Error && refreshError.message.includes("invalid_grant");
+    if (revoked) await markNeedsReconnect();
     return null;
   }
 
