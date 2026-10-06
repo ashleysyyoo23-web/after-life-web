@@ -98,7 +98,7 @@ export async function findMyDataRootForUser(
   }
 
   return anyToken
-    ? { ok: false, status: 404, error: "연결한 계정에서 'afterlife_my data' 폴더를 찾을 수 없어요." }
+    ? { ok: false, status: 404, error: "연결한 계정의 Google Drive 폴더를 불러오지 못했어요." }
     : { ok: false, status: 401, error: "Drive 연결이 만료됐어요. 설정에서 다시 연결해 주세요." };
 }
 

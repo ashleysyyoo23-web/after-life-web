@@ -458,10 +458,12 @@ export async function getCharacterDriveAccess(
   };
 }
 
-// ───────── 캐릭터 폴더는 "afterlife_my data" 폴더 안에서만 고르기 ─────────
+// ───────── 캐릭터 폴더를 고르는 시작 폴더 ─────────
+// "afterlife_my data" 폴더가 보이면(공유받았거나 직접 만든 것) 그 안에서, 없으면 그 계정의 "내 드라이브" 전체에서 골라요.
+// (다른 사람도 링크로 들어와 자기 Drive 사진으로 테스트할 수 있게)
 export const CHARACTER_ROOT_FOLDER_NAME = "afterlife_my data";
+export const MY_DRIVE_ROOT_NAME = "내 드라이브";
 
-// 이 계정이 볼 수 있는 "afterlife_my data" 폴더 (공유 문서함에 있거나, 이 계정이 직접 만든 것)
 export async function findCharacterRootFolder(accessToken: string): Promise<DriveFolder | null> {
   const json = await driveList(
     accessToken,
@@ -469,7 +471,16 @@ export async function findCharacterRootFolder(accessToken: string): Promise<Driv
     "id,name",
   );
   const folder = json.files?.[0];
-  return folder ? { id: folder.id, name: folder.name } : null;
+  if (folder) return { id: folder.id, name: folder.name };
+
+  // 내 드라이브의 실제 폴더 ID ("root" 대신 진짜 ID 를 써야 부모 따라가기 확인이 맞아요)
+  const res = await fetch("https://www.googleapis.com/drive/v3/files/root?fields=id", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const root = (await res.json()) as { id?: string };
+  return root.id ? { id: root.id, name: MY_DRIVE_ROOT_NAME } : null;
 }
 
 // folderId 가 rootId 폴더 "안"(하위, 자기 자신 제외)에 있는지 부모를 따라 올라가며 확인
@@ -491,7 +502,7 @@ export async function isFolderInside(accessToken: string, folderId: string, root
   return false;
 }
 
-// ───────── 내가 남길 기록: "afterlife_my data" 안의 주인공 폴더 ─────────
+// ───────── 내가 남길 기록: 시작 폴더("afterlife_my data" 또는 내 드라이브) 바로 안의 주인공 폴더 ─────────
 export const LEGACY_OWNER_FOLDER_NAME = "주인공(민경)";
 
 // root 바로 안에서 주인공 폴더 찾기 (이름이 정확히 같은 것 → 없으면 "주인공"으로 시작하는 것)

@@ -150,11 +150,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "이 계정으로 열 수 있는 폴더를 골라 주세요." }, { status: 400 });
   }
 
-  // 캐릭터 폴더는 "afterlife_my data" 폴더 안의 폴더만 쓸 수 있어요
+  // 캐릭터 폴더는 시작 폴더("afterlife_my data" 또는 내 드라이브) 안의 폴더만 쓸 수 있어요
   const root = await findCharacterRootFolder(token.accessToken);
   if (!root || !(await isFolderInside(token.accessToken, folder.id, root.id))) {
     return NextResponse.json(
-      { error: `'${CHARACTER_ROOT_FOLDER_NAME}' 폴더 안의 폴더를 골라 주세요.` },
+      { error: `'${root?.name ?? CHARACTER_ROOT_FOLDER_NAME}' 안의 폴더를 골라 주세요.` },
       { status: 400 },
     );
   }

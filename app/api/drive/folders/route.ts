@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import {
-  CHARACTER_ROOT_FOLDER_NAME,
   findCharacterRootFolder,
   getDriveConnectionById,
   getValidAccessTokenForConnection,
@@ -9,7 +8,7 @@ import {
   listDriveFolders,
 } from "@/lib/deceased-drive-token";
 
-// 캐릭터 폴더 고르기용 목록. "afterlife_my data" 폴더 안에서만 볼 수 있어요.
+// 캐릭터 폴더 고르기용 목록. "afterlife_my data" 폴더가 있으면 그 안, 없으면 내 드라이브 안에서만 볼 수 있어요.
 // ?connectionId=…  (필수, 내 연결만)
 // &parent=…        (afterlife_my data 안의 폴더 ID, 없으면 afterlife_my data 바로 안)
 export async function GET(request: NextRequest) {
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest) {
     if (!root) {
       return NextResponse.json(
         {
-          error: `이 계정에서 '${CHARACTER_ROOT_FOLDER_NAME}' 폴더를 찾을 수 없어요. 공유받은 계정인지 확인해 주세요.`,
+          error: "이 계정의 Google Drive 폴더를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.",
           code: "root_not_found",
         },
         { status: 404 },

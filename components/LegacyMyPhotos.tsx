@@ -193,7 +193,7 @@ export function LegacyMyPhotos() {
         </div>
         {folderName && (
           <p className="pl-4 font-mulish text-xs text-[#AF9083]">
-            &lsquo;afterlife_my data / {folderName}&rsquo; 폴더(하위 폴더 포함)의 사진이에요.
+            &lsquo;{folderName}&rsquo; 폴더(하위 폴더 포함)의 사진이에요.
           </p>
         )}
       </div>

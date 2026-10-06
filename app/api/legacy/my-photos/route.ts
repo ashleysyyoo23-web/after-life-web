@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import {
-  CHARACTER_ROOT_FOLDER_NAME,
   LEGACY_OWNER_FOLDER_NAME,
   fetchFolderTreeImages,
   findCharacterRootFolder,
@@ -38,7 +37,7 @@ export async function GET() {
     const root = await findCharacterRootFolder(token.accessToken);
     if (!root) {
       return NextResponse.json(
-        { error: `이 계정에서 '${CHARACTER_ROOT_FOLDER_NAME}' 폴더를 찾을 수 없어요.`, code: "root_not_found" },
+        { error: "이 계정의 Google Drive 폴더를 불러오지 못했어요.", code: "root_not_found" },
         { status: 404 },
       );
     }
@@ -46,7 +45,10 @@ export async function GET() {
     const folder = await findLegacyOwnerFolder(token.accessToken, root.id);
     if (!folder) {
       return NextResponse.json(
-        { error: `'${CHARACTER_ROOT_FOLDER_NAME}' 안에 '${LEGACY_OWNER_FOLDER_NAME}' 폴더가 없어요.`, code: "folder_not_found" },
+        {
+          error: `'${root.name}' 바로 안에 '주인공'으로 시작하는 폴더(예: ${LEGACY_OWNER_FOLDER_NAME})를 만들고 남길 사진을 넣어 주세요.`,
+          code: "folder_not_found",
+        },
         { status: 404 },
       );
     }
