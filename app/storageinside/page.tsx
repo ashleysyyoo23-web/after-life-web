@@ -14,6 +14,7 @@ import {
   type FrameSummary,
 } from "@/lib/storage-frames";
 import { loginUrl } from "@/lib/login";
+import { StorageSearch } from "@/components/StorageSearch";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -133,6 +134,9 @@ export default function StorageInsidePage() {
           </button>
         )}
       </div>
+
+      {/* 저장한 기록 찾기 (글·날짜) → 누르면 그 액자에서 열어 줘요 */}
+      {status === "authenticated" && <StorageSearch className="fixed right-12 top-[128px] z-30" />}
 
       <TopNav
         onSettingsClick={() => setShowSettings(true)}

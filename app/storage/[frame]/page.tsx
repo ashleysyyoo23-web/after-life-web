@@ -12,8 +12,8 @@ import type { SavedPhoto } from "@/lib/storage-frames";
 import { loginUrl } from "@/lib/login";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 type FrameDetail = {
   frame: string;
@@ -28,6 +28,14 @@ const isBlurred = (photo: SavedPhoto) => photo.hidden && !photo.revealed;
 
 // 액자 속: 이 고인(또는 추모 커뮤니티)과 관련해 저장한 리캡 사진 + 북마크한 메시지
 export default function StorageFramePage() {
+  return (
+    <Suspense fallback={null}>
+      <StorageFrameContent />
+    </Suspense>
+  );
+}
+
+function StorageFrameContent() {
   const router = useRouter();
   const { frame } = useParams<{ frame: string }>();
   const { status } = useSession();
@@ -35,6 +43,10 @@ export default function StorageFramePage() {
   const [detail, setDetail] = useState<FrameDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<SavedPhoto | null>(null);
+  // 저장소 찾기에서 왔으면 그 사진을 열고(?photo=섹션:파일) 그 메시지를 짚어 줌(?message=ID)
+  const searchParams = useSearchParams();
+  const focusPhoto = searchParams.get("photo");
+  const focusMessage = searchParams.get("message");
   const blurPx = exposureBlurPx(null);
 
   useEffect(() => {
@@ -49,6 +61,7 @@ export default function StorageFramePage() {
           return;
         }
         setDetail(data);
+        if (focusPhoto) setOpened(data.photos.find((photo) => photoKey(photo) === focusPhoto) ?? null);
       })
       .catch(() => {
         if (!cancelled) setError("액자를 열지 못했어요.");
@@ -56,7 +69,14 @@ export default function StorageFramePage() {
     return () => {
       cancelled = true;
     };
-  }, [status, frame]);
+  }, [status, frame, focusPhoto]);
+
+  // 찾기에서 고른 메시지로 한 번 스크롤
+  const messagesLoaded = Boolean(detail);
+  useEffect(() => {
+    if (!focusMessage || !messagesLoaded) return;
+    document.getElementById(`message-${focusMessage}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusMessage, messagesLoaded]);
 
   const updatePhotos = (change: (photos: SavedPhoto[]) => SavedPhoto[]) =>
     setDetail((prev) => (prev ? { ...prev, photos: change(prev.photos) } : prev));
@@ -207,12 +227,17 @@ export default function StorageFramePage() {
                 ) : (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                     {messages.map((message) => (
-                      <GridMessageCard
+                      <div
                         key={message.id}
-                        message={message}
-                        onToggle={(id, kind) => void toggleReaction(id, kind)}
-                        onDelete={(id) => void deleteMessage(id)}
-                      />
+                        id={`message-${message.id}`}
+                        className={message.id === focusMessage ? "rounded ring-4 ring-[#FDD9BD] ring-offset-2" : ""}
+                      >
+                        <GridMessageCard
+                          message={message}
+                          onToggle={(id, kind) => void toggleReaction(id, kind)}
+                          onDelete={(id) => void deleteMessage(id)}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}

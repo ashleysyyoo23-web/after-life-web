@@ -14,7 +14,6 @@ export type SkyScene =
   | "KYHleavingconfirm"
   | "storagefar"
   | "storageinside"
-  | "storagemanual"
   | "recapfeedback"
   | "recapauto"
   | "recapmanual-empty";

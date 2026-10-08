@@ -43,3 +43,15 @@ export type SavedPhoto = {
   hidden: boolean; // 보고 싶지 않다고 한 기록에 해당 → 흐리게 (눌러야 선명)
   savedAt: string;
 };
+
+// 저장소 찾기: 저장한 사진·북마크한 메시지 한 줄 (/api/storage/search)
+export type StorageSearchItem = {
+  kind: "photo" | "message";
+  frame: string; // 이 기록이 걸린 액자
+  frameTitle: string;
+  key: string; // 사진: "섹션ID:파일ID", 메시지: 메시지 ID
+  title: string; // 결과 카드 제목 (사진 글·섹션 이름 / 메시지 앞부분)
+  detail: string; // 작은 글씨 (섹션 이름 / "닉네임 · 추모 공간")
+  searchText: string; // 검색할 글 모두
+  date: string; // 사진: 저장한 날, 메시지: 남긴 날 (ISO)
+};
