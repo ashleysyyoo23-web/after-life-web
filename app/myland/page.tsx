@@ -20,7 +20,7 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EmotionReviewModal } from "@/components/EmotionReviewModal";
-import type { UpcomingAnniversary } from "@/lib/anniversary";
+import { ANNIVERSARY_SHOWN_KEY_PREFIX, ISLAND_DAYS_BEFORE, seoulToday, type UpcomingAnniversary } from "@/lib/anniversary";
 import { isPetRelation } from "@/lib/character-fields";
 import { Suspense, useEffect, useRef, useState } from "react";
 
@@ -176,6 +176,33 @@ function MylandPageContent() {
       .then((data) => setAnniversaries(data.anniversaries))
       .catch(() => setAnniversaries([]));
   };
+  // 기일 7일 전~3일 후(지난 건 목록에 사흘까지만 와요)인 분이 있으면, 메인 랜드에 들어올 때 하루 한 번 안내 창을 띄움
+  const anniversarySoon = Boolean(anniversaries?.some((item) => item.daysUntil <= ISLAND_DAYS_BEFORE));
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    let cancelled = false;
+    fetch("/api/anniversaries", { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ anniversaries: UpcomingAnniversary[] }>) : { anniversaries: [] }))
+      .then((data) => {
+        if (cancelled) return;
+        setAnniversaries(data.anniversaries);
+        if (!data.anniversaries.some((item) => item.daysUntil <= ISLAND_DAYS_BEFORE)) return;
+        const key = `${ANNIVERSARY_SHOWN_KEY_PREFIX}${seoulToday()}`;
+        try {
+          if (window.localStorage.getItem(key)) return;
+          window.localStorage.setItem(key, "1");
+        } catch {
+          // 기억하지 못하는 브라우저면 이번엔 띄우지 않음 (버튼으로 열 수 있어요)
+          return;
+        }
+        setAnniversaryIndex(0);
+        setShowAnniversaryModal(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus]);
   const [showRecordTypeModal, setShowRecordTypeModal] = useState(false);
   const [showEmotionModal, setShowEmotionModal] = useState(false);
   const [selectedRecordTypes, setSelectedRecordTypes] = useState<string[]>([]);
@@ -705,6 +732,17 @@ function MylandPageContent() {
       >
         📄 감정 기록 돌아보기
       </button>
+      {/* 기일 안내 창 열기 (기일을 적은 분이 있을 때만). 기일이 가까우면 점으로 알려 줌 */}
+      {anniversaries && anniversaries.length > 0 && (
+        <button
+          type="button"
+          onClick={openAnniversaryModal}
+          className="fixed top-[calc(128px+57px+12px+57px+12px)] right-12 z-40 flex cursor-pointer items-center gap-2 rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
+        >
+          🕯 다가오는 기일
+          {anniversarySoon && <span className="h-2.5 w-2.5 rounded-full bg-[#FDD9BD]" aria-label="기일이 가까워요" />}
+        </button>
+      )}
       {showAddModal && (
         <CharacterCreateModal
           initialDraft={resumeDraft}

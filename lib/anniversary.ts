@@ -3,6 +3,8 @@
 export const ISLAND_DAYS_BEFORE = 7;
 export const ISLAND_DAYS_AFTER = 3;
 export const MAX_ANNIVERSARY_ISLANDS = 2;
+// 메인 랜드 기일 안내 창을 "오늘 이미 띄웠는지" 브라우저에 기억하는 이름 (뒤에 날짜)
+export const ANNIVERSARY_SHOWN_KEY_PREFIX = "afterlife:anniversary-shown:";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
