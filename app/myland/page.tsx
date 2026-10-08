@@ -20,6 +20,8 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EmotionReviewModal } from "@/components/EmotionReviewModal";
+import type { UpcomingAnniversary } from "@/lib/anniversary";
+import { isPetRelation } from "@/lib/character-fields";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 // 캐릭터를 끌어서 옮기기: 이만큼(px) 이상 움직여야 "끌기"로 봄 (그보다 적으면 그냥 클릭)
@@ -91,6 +93,42 @@ const RECORD_TYPE_CARDS = [
   },
 ] as const;
 
+// 기일 안내 창의 글 (반려동물이면 "님" 없이, "기일" 대신 "그날")
+function anniversaryTexts(item: UpcomingAnniversary) {
+  const isPet = isPetRelation(item.relation);
+  const dayWord = isPet ? "그날" : "기일";
+  const dayName = item.label?.trim() || (isPet ? "무지개다리 건넌 날" : "기일");
+  return {
+    who: isPet ? `'${item.nickname}'` : `'${item.nickname}' 님`,
+    when: `${dayName} ${item.month}월 ${item.day}일`,
+    headline:
+      item.daysUntil === 0
+        ? `오늘이 ${dayWord}이에요.`
+        : item.daysUntil > 0
+          ? `${item.daysUntil} 일 후 ${dayWord}이에요.`
+          : `${dayWord}이 ${-item.daysUntil}일 지났어요.`,
+  };
+}
+
+// 기일 안내 창 · 기록 유형 창 위쪽: 'OO' 님 | 기일 5월 26일
+function AnniversaryBadge({ item }: { item: UpcomingAnniversary }) {
+  const { who, when } = anniversaryTexts(item);
+  return (
+    <div className="flex items-center gap-[13px] rounded-[7px] px-[19px] py-3">
+      <div className="flex items-center gap-[11px] px-0.5 py-px">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8DDD5]">
+          <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#AF9083]" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+          </svg>
+        </div>
+        <span className="font-mulish text-base font-normal text-black">{who}</span>
+      </div>
+      <span className="font-mulish text-[17px] font-normal text-black">|</span>
+      <span className="font-mulish text-base font-normal text-black">{when}</span>
+    </div>
+  );
+}
+
 export default function MylandPage() {
   return (
     <Suspense fallback={null}>
@@ -126,6 +164,18 @@ function MylandPageContent() {
   const [driveMenu, setDriveMenu] = useState<DriveMenu | null>(null);
   const [driveNotice, setDriveNotice] = useState<string | null>(null);
   const [showAnniversaryModal, setShowAnniversaryModal] = useState(false);
+  // 기일 안내 창: 기일을 적은 인물들 (가까운 순) · 지금 보여 주는 인물
+  const [anniversaries, setAnniversaries] = useState<UpcomingAnniversary[] | null>(null);
+  const [anniversaryIndex, setAnniversaryIndex] = useState(0);
+  const anniversary = anniversaries?.[anniversaryIndex] ?? null;
+  const openAnniversaryModal = () => {
+    setShowAnniversaryModal(true);
+    setAnniversaryIndex(0);
+    fetch("/api/anniversaries", { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ anniversaries: UpcomingAnniversary[] }>) : { anniversaries: [] }))
+      .then((data) => setAnniversaries(data.anniversaries))
+      .catch(() => setAnniversaries([]));
+  };
   const [showRecordTypeModal, setShowRecordTypeModal] = useState(false);
   const [showEmotionModal, setShowEmotionModal] = useState(false);
   const [selectedRecordTypes, setSelectedRecordTypes] = useState<string[]>([]);
@@ -439,7 +489,7 @@ function MylandPageContent() {
 
   useEffect(() => {
     if (searchParams.get("anniversary") === "true") {
-      setShowAnniversaryModal(true);
+      openAnniversaryModal();
       router.replace("/myland?from=moodcheck");
     }
   }, [router, searchParams]);
@@ -460,7 +510,7 @@ function MylandPageContent() {
     <>
       <div
         className="relative h-screen w-screen overflow-hidden"
-        onDoubleClick={() => setShowAnniversaryModal(true)}
+        onDoubleClick={openAnniversaryModal}
       >
         <MoodSkyBackground scene="myland-empty" clouds />
         {/* 바다 물결·살랑이는 야자수와 꽃·걷는 갈매기·하늘 새 (캐릭터 뒤) */}
@@ -687,38 +737,36 @@ function MylandPageContent() {
               </button>
             </div>
 
+            {anniversaries === null ? (
+              <p className="py-24 text-center font-mulish text-base text-[#898787]">기일을 불러오는 중이에요...</p>
+            ) : !anniversary ? (
+              <div className="flex flex-col items-center gap-10 px-[74px] py-10 text-center">
+                <p className="font-newsreader text-3xl font-normal text-black">아직 기일을 적은 분이 없어요.</p>
+                <p className="font-mulish text-base leading-normal text-black">
+                  설정 → 마이랜드의 인물 편집에서
+                  <br />
+                  특별한 날짜에 기일을 넣어 보세요.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAnniversaryModal(false)}
+                  className="flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#776257] bg-white font-mulish text-base font-normal text-[#898787] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+                >
+                  닫기
+                </button>
+              </div>
+            ) : (
             <div className="flex flex-col items-center gap-[119px]">
               <div className="flex flex-col items-center justify-center gap-[18px]">
-                <div className="flex items-center gap-[13px] rounded-[7px] px-[19px] py-3">
-                  <div className="flex items-center gap-[11px] px-0.5 py-px">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8DDD5]">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5 fill-[#AF9083]"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                      </svg>
-                    </div>
-                    <span className="font-mulish text-base font-normal text-black">
-                      &apos;김영희&apos; 님
-                    </span>
-                  </div>
-                  <span className="font-mulish text-[17px] font-normal text-black">
-                    |
-                  </span>
-                  <span className="font-mulish text-base font-normal text-black">
-                    기일 5월 26일
-                  </span>
-                </div>
+                <AnniversaryBadge item={anniversary} />
               </div>
 
               <div className="flex w-full flex-col items-center gap-7 px-[74px]">
                 <p className="whitespace-nowrap font-newsreader text-4xl font-normal text-black">
-                  7 일 후 기일이에요.
+                  {anniversaryTexts(anniversary).headline}
                 </p>
                 <p className="text-center font-mulish text-base font-normal leading-normal text-black">
-                  어머니께서 남기신 기록이 있어요.
+                  {anniversary.nickname}의 기록이 기다리고 있어요.
                   <br />
                   마음의 준비가 되셨다면 기록 유형을 선택해주세요.
                 </p>
@@ -742,8 +790,18 @@ function MylandPageContent() {
                 >
                   오늘은 넘어가기
                 </button>
+                {anniversaries.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setAnniversaryIndex((index) => (index + 1) % anniversaries.length)}
+                    className="cursor-pointer self-center border-0 bg-transparent font-mulish text-sm text-[#AF9083] underline underline-offset-2 hover:opacity-70"
+                  >
+                    다른 분 보기 ›
+                  </button>
+                )}
               </div>
             </div>
+            )}
           </div>
         </div>
       )}
@@ -763,30 +821,11 @@ function MylandPageContent() {
 
             <div className="flex min-h-0 flex-1 flex-col items-center gap-[60px] overflow-y-auto">
               <div className="flex flex-col items-center gap-12">
-                <div className="flex flex-col items-center justify-center gap-[18px]">
-                  <div className="flex items-center gap-[13px] rounded-[7px] px-[19px] py-3">
-                    <div className="flex items-center gap-[11px] px-0.5 py-px">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8DDD5]">
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-5 w-5 fill-[#AF9083]"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                        </svg>
-                      </div>
-                      <span className="font-mulish text-base font-normal text-black">
-                        &apos;김영희&apos; 님
-                      </span>
-                    </div>
-                    <span className="font-mulish text-[17px] font-normal text-black">
-                      |
-                    </span>
-                    <span className="font-mulish text-base font-normal text-black">
-                      기일 5월 26일
-                    </span>
+                {anniversary && (
+                  <div className="flex flex-col items-center justify-center gap-[18px]">
+                    <AnniversaryBadge item={anniversary} />
                   </div>
-                </div>
+                )}
 
                 <div className="flex flex-col items-center gap-4 text-center">
                   <h2 className="font-newsreader text-[36px] font-normal text-black">
@@ -858,7 +897,12 @@ function MylandPageContent() {
                   type="button"
                   onClick={() => {
                     setShowRecordTypeModal(false);
-                    router.push("/archiveshelf");
+                    setShowAnniversaryModal(false);
+                    router.push(
+                      anniversary
+                        ? `/archiveshelf?character=${encodeURIComponent(anniversary.characterId)}`
+                        : "/archiveshelf",
+                    );
                   }}
                   className="flex h-14 flex-1 cursor-pointer items-center justify-center gap-1 rounded-xl border border-[#D99B82] bg-[#FDD9BD] font-mulish text-base font-normal text-black shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
                 >
