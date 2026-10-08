@@ -35,6 +35,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       caption: photo.caption,
       mediaUrl: photo.mediaUrl,
       revealed: photo.revealed,
+      hidden: photo.hidden,
       savedAt: photo.savedAt,
     }));
 

@@ -40,5 +40,6 @@ export type SavedPhoto = {
   caption: string;
   mediaUrl: string;
   revealed: boolean;
+  hidden: boolean; // 보고 싶지 않다고 한 기록에 해당 → 흐리게 (눌러야 선명)
   savedAt: string;
 };

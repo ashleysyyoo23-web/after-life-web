@@ -34,7 +34,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: sectionsError.message }, { status: 500 });
   }
 
-  // 대표 사진이 "보고 싶지 않은 기록"(AI 분류·직접 고친 태그)에 해당하면 책 화면에서 가림
+  // 대표 사진이 "보고 싶지 않은 기록"(AI 분류·직접 고친 태그)에 해당하면 책 화면에서 흐리게
   const bookCharacter = Array.isArray(book.user_characters) ? book.user_characters[0] : book.user_characters;
   const excludedTypes = sanitizeExcludedTypes(bookCharacter?.excluded_types);
   const hiddenCovers = new Set<string>();

@@ -23,6 +23,8 @@ type FrameDetail = {
 };
 
 const photoKey = (photo: SavedPhoto) => `${photo.sectionId}:${photo.driveFileId}`;
+// 보고 싶지 않다고 한 기록만 흐리게 (눌러서 본 사진은 선명)
+const isBlurred = (photo: SavedPhoto) => photo.hidden && !photo.revealed;
 
 // 액자 속: 이 고인(또는 추모 커뮤니티)과 관련해 저장한 리캡 사진 + 북마크한 메시지
 export default function StorageFramePage() {
@@ -182,10 +184,10 @@ export default function StorageFramePage() {
                               alt={photo.caption || photo.fileName || "저장한 사진"}
                               loading="lazy"
                               className="h-full w-full object-cover"
-                              style={exposureBlurStyle(blurPx, photo.revealed)}
+                              style={exposureBlurStyle(blurPx, !isBlurred(photo))}
                             />
                           </button>
-                          {!photo.revealed && <RevealOverlay size="sm" onReveal={() => revealPhoto(photo)} />}
+                          {isBlurred(photo) && <RevealOverlay size="sm" onReveal={() => revealPhoto(photo)} />}
                           <span className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] truncate bg-gradient-to-t from-black/50 to-transparent px-2 pb-1.5 pt-4 font-mulish text-xs text-white">
                             {photo.sectionTitle}
                           </span>
@@ -239,9 +241,9 @@ export default function StorageFramePage() {
                 src={opened.mediaUrl}
                 alt={opened.caption || opened.fileName || "저장한 사진"}
                 className="mx-auto max-h-[65vh] w-auto object-contain"
-                style={exposureBlurStyle(blurPx, opened.revealed)}
+                style={exposureBlurStyle(blurPx, !isBlurred(opened))}
               />
-              {!opened.revealed && <RevealOverlay onReveal={() => revealPhoto(opened)} />}
+              {isBlurred(opened) && <RevealOverlay onReveal={() => revealPhoto(opened)} />}
               <SavePhotoButton
                 saved
                 onToggle={() => void unsavePhoto(opened)}

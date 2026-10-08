@@ -45,7 +45,7 @@ type AlbumPhoto = {
   caption?: string;
   // 전에 "눌러서 보기"로 본 사진 (계속 선명하게)
   revealed?: boolean;
-  // 보고 싶지 않다고 한 기록에 해당 (예: "투병, 아픔이 담긴 사진") → 기본으로 빼고 보여줌
+  // 보고 싶지 않다고 한 기록에 해당 (예: "투병, 아픔이 담긴 사진") → 이 사진만 흐리게, 눌러야 선명
   hiddenReason?: string | null;
   // 저장소에 저장(🔖)한 사진
   saved?: boolean;
@@ -77,15 +77,9 @@ function RecapviewPageContent() {
   const [albumTitle, setAlbumTitle] = useState("");
   const [albumSubtitle, setAlbumSubtitle] = useState("");
   // 섹션의 모든 사진 (글·그림 저장은 이 목록 기준)
-  const [allAlbumPhotos, setAlbumPhotos] = useState<AlbumPhoto[]>([]);
-  // 보고 싶지 않은 기록도 함께 볼지 (기본: 빼고 보기)
-  const [showHiddenRecords, setShowHiddenRecords] = useState(false);
-  // 화면에 보여줄 사진: 보고 싶지 않은 기록은 기본으로 뺌
-  const albumPhotos = useMemo(
-    () => (showHiddenRecords ? allAlbumPhotos : allAlbumPhotos.filter((photo) => !photo.hiddenReason)),
-    [allAlbumPhotos, showHiddenRecords],
-  );
-  const hiddenRecords = useMemo(() => allAlbumPhotos.filter((photo) => photo.hiddenReason), [allAlbumPhotos]);
+  const [albumPhotos, setAlbumPhotos] = useState<AlbumPhoto[]>([]);
+  // 보고 싶지 않다고 한 기록: 빼지 않고 흐리게 보여줌
+  const hiddenRecords = useMemo(() => albumPhotos.filter((photo) => photo.hiddenReason), [albumPhotos]);
   const [albumLoading, setAlbumLoading] = useState(true);
   const [slideSeconds, setSlideSeconds] = useState(DEFAULT_SLIDE_SECONDS);
   const [sectionBookId, setSectionBookId] = useState<string | null>(null);
@@ -180,9 +174,10 @@ function RecapviewPageContent() {
         setCharacterNickname(data.characterNickname ?? null);
         setCharacterId(data.characterId ?? null);
         setExposure(data.emotionLevel ?? DEFAULT_EXPOSURE);
-        setShowHiddenRecords(false);
-        // 전에 본 사진은 선명하게, 나머지는 흐리게
-        setRevealedIds(new Set(data.photos.filter((photo) => photo.revealed).map((photo) => photo.driveFileId)));
+        // 보고 싶지 않다고 한 기록만 흐리게 (전에 "눌러서 보기"로 본 사진은 선명하게), 나머지는 처음부터 선명
+        setRevealedIds(
+          new Set(data.photos.filter((photo) => photo.revealed || !photo.hiddenReason).map((photo) => photo.driveFileId)),
+        );
         setSavedIds(new Set(data.photos.filter((photo) => photo.saved).map((photo) => photo.driveFileId)));
       } catch {
         setSectionError(true);
@@ -659,22 +654,11 @@ function RecapviewPageContent() {
               <p className="mt-1 text-center font-mulish text-sm text-[#AF9083]">
                 {currentSubtitle}
               </p>
-              {/* 보고 싶지 않다고 한 기록을 뺐다는 안내 (원하면 함께 보기) */}
+              {/* 보고 싶지 않다고 한 기록은 흐리게 보여준다는 안내 */}
               {hiddenRecords.length > 0 && (
-                <p className="pointer-events-auto mt-2 inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 font-mulish text-xs text-[#4A423C] shadow-sm">
-                  {showHiddenRecords
-                    ? `보고 싶지 않다고 하신 기록 ${hiddenRecords.length}장도 함께 보는 중이에요`
-                    : `보고 싶지 않다고 하신 기록(${[...new Set(hiddenRecords.map((photo) => photo.hiddenReason))].join(", ")}) ${hiddenRecords.length}장을 빼고 보여드려요`}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowHiddenRecords((show) => !show);
-                      setCurrentIndex(0);
-                    }}
-                    className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-[#AF9083] underline underline-offset-2"
-                  >
-                    {showHiddenRecords ? "다시 빼기" : "함께 보기"}
-                  </button>
+                <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 font-mulish text-xs text-[#4A423C] shadow-sm">
+                  보고 싶지 않다고 하신 기록({[...new Set(hiddenRecords.map((photo) => photo.hiddenReason))].join(", ")}){" "}
+                  {hiddenRecords.length}장은 흐리게 보여드려요
                 </p>
               )}
             </div>

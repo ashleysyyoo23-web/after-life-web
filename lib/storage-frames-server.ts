@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { excludedTypesMatching, sanitizeExcludedTypes } from "@/lib/character-fields";
 import { deceasedIdFromWall } from "@/lib/community";
 import { COMMUNITY_FRAME, type SavedPhoto } from "@/lib/storage-frames";
 
@@ -48,6 +49,26 @@ export async function loadSavedPhotos(
     (photos ?? []).map((photo) => [`${photo.section_id}/${photo.drive_file_id}`, photo]),
   );
 
+  // 보고 싶지 않다고 한 기록(인물마다 설정)에 해당하는 사진만 흐리게: AI 분류(또는 직접 고친 태그) 기준
+  const characterIds = [...new Set([...sectionInfo.values()].map((info) => info.characterId).filter((id): id is string => Boolean(id)))];
+  const excludedByCharacter = new Map<string, string[]>();
+  if (characterIds.length > 0) {
+    const { data: characterRows } = await supabase
+      .from("user_characters")
+      .select("id, excluded_types")
+      .eq("owner_email", userEmail)
+      .in("id", characterIds);
+    for (const row of characterRows ?? []) excludedByCharacter.set(row.id as string, sanitizeExcludedTypes(row.excluded_types));
+  }
+  const fileIds = [...new Set(saved.map((row) => row.drive_file_id as string))];
+  const categoriesByFile = new Map<string, string[]>();
+  const { data: analysisRows } = await supabase
+    .from("photo_analyses")
+    .select("drive_file_id, categories")
+    .eq("owner_email", userEmail)
+    .in("drive_file_id", fileIds);
+  for (const row of analysisRows ?? []) categoriesByFile.set(row.drive_file_id as string, (row.categories ?? []) as string[]);
+
   return saved.flatMap((row) => {
     const section = sectionInfo.get(row.section_id);
     const photo = photoInfo.get(`${row.section_id}/${row.drive_file_id}`);
@@ -63,6 +84,11 @@ export async function loadSavedPhotos(
         caption: (photo.caption as string | null) ?? "",
         mediaUrl: `/api/album-sections/${row.section_id}/photos/${encodeURIComponent(row.drive_file_id as string)}`,
         revealed: Boolean(photo.revealed_at),
+        hidden:
+          excludedTypesMatching(
+            excludedByCharacter.get(section.characterId ?? "") ?? [],
+            categoriesByFile.get(row.drive_file_id as string) ?? [],
+          ).length > 0,
         savedAt: row.saved_at as string,
       },
     ];
