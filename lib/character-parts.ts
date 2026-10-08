@@ -72,6 +72,41 @@ export const CHARACTER_OPTIONS = {
     { value: "flower", label: "꽃" },
     { value: "cane", label: "지팡이" },
   ],
+  // ── 반려동물 (관계가 "반려동물"일 때 꾸미기) ──
+  species: [
+    { value: "human", label: "사람" },
+    { value: "dog", label: "강아지" },
+    { value: "cat", label: "고양이" },
+  ],
+  petSize: [
+    { value: "small", label: "작은" },
+    { value: "regular", label: "보통" },
+    { value: "large", label: "큰" },
+  ],
+  fur: [
+    { value: "cream", label: "크림" },
+    { value: "white", label: "흰색" },
+    { value: "brown", label: "갈색" },
+    { value: "black", label: "검정" },
+    { value: "gray", label: "회색" },
+    { value: "ginger", label: "주황" },
+  ],
+  pattern: [
+    { value: "none", label: "없음" },
+    { value: "spots", label: "점박이" },
+    { value: "patch", label: "얼룩" },
+    { value: "stripes", label: "줄무늬" },
+  ],
+  ears: [
+    { value: "floppy", label: "접힌 귀" },
+    { value: "pointy", label: "선 귀" },
+  ],
+  petItem: [
+    { value: "none", label: "없음" },
+    { value: "ball", label: "공" },
+    { value: "bone", label: "뼈다귀" },
+    { value: "flower", label: "꽃" },
+  ],
 } as const;
 
 type OptionValue<K extends keyof typeof CHARACTER_OPTIONS> =
@@ -88,6 +123,14 @@ export type CharacterAppearance = {
   color2: OptionValue<"clothColor">;
   eyes: OptionValue<"eyes">;
   item: OptionValue<"item">;
+  // 반려동물: species 가 human 이 아니면 아래 값으로 그려요 (목걸이 색은 color1, 눈은 eyes)
+  species: OptionValue<"species">;
+  petSize: OptionValue<"petSize">;
+  fur: OptionValue<"fur">;
+  pattern: OptionValue<"pattern">;
+  patternColor: OptionValue<"fur">;
+  ears: OptionValue<"ears">;
+  petItem: OptionValue<"petItem">;
   hat: boolean;
   glasses: boolean;
   mustache: boolean;
@@ -114,6 +157,13 @@ export const DEFAULT_APPEARANCE: CharacterAppearance = {
   color2: "navy",
   eyes: "closed",
   item: "cocktail",
+  species: "human",
+  petSize: "regular",
+  fur: "cream",
+  pattern: "none",
+  patternColor: "brown",
+  ears: "floppy",
+  petItem: "none",
   hat: false,
   glasses: false,
   mustache: false,
@@ -140,6 +190,13 @@ export function sanitizeAppearance(raw: unknown): CharacterAppearance {
     color2: pick("clothColor", input.color2, DEFAULT_APPEARANCE.color2),
     eyes: pick("eyes", input.eyes, DEFAULT_APPEARANCE.eyes),
     item: pick("item", input.item, DEFAULT_APPEARANCE.item),
+    species: pick("species", input.species, DEFAULT_APPEARANCE.species),
+    petSize: pick("petSize", input.petSize, DEFAULT_APPEARANCE.petSize),
+    fur: pick("fur", input.fur, DEFAULT_APPEARANCE.fur),
+    pattern: pick("pattern", input.pattern, DEFAULT_APPEARANCE.pattern),
+    patternColor: pick("fur", input.patternColor, DEFAULT_APPEARANCE.patternColor),
+    ears: pick("ears", input.ears, DEFAULT_APPEARANCE.ears),
+    petItem: pick("petItem", input.petItem, DEFAULT_APPEARANCE.petItem),
     hat: input.hat === true,
     glasses: input.glasses === true,
     mustache: input.mustache === true,
@@ -148,13 +205,43 @@ export function sanitizeAppearance(raw: unknown): CharacterAppearance {
   };
 }
 
-export function randomAppearance(): CharacterAppearance {
-  const any = <K extends keyof typeof CHARACTER_OPTIONS>(key: K) => {
-    const list = CHARACTER_OPTIONS[key];
-    return list[Math.floor(Math.random() * list.length)].value as OptionValue<K>;
+const anyOption = <K extends keyof typeof CHARACTER_OPTIONS>(key: K) => {
+  const list = CHARACTER_OPTIONS[key];
+  return list[Math.floor(Math.random() * list.length)].value as OptionValue<K>;
+};
+
+// 관계를 바꾸면 모습 종류도 맞춤: 반려동물이면 강아지(이미 동물이면 그대로), 아니면 사람
+export function appearanceForRelation(appearance: CharacterAppearance, isPet: boolean): CharacterAppearance {
+  if (isPet && appearance.species === "human") return { ...appearance, species: "dog" };
+  if (!isPet && appearance.species !== "human") return { ...appearance, species: "human" };
+  return appearance;
+}
+
+// 반려동물 무작위 꾸미기 (종류는 그대로)
+export function randomPetAppearance(current: CharacterAppearance): CharacterAppearance {
+  const species = current.species === "cat" ? "cat" : "dog";
+  const fur = anyOption("fur");
+  let patternColor = anyOption("fur");
+  if (patternColor === fur) patternColor = fur === "brown" ? "black" : "brown";
+  return {
+    ...current,
+    species,
+    petSize: anyOption("petSize"),
+    fur,
+    pattern: Math.random() < 0.4 ? "none" : anyOption("pattern"),
+    patternColor,
+    ears: anyOption("ears"),
+    eyes: anyOption("eyes"),
+    color1: anyOption("clothColor"),
+    petItem: Math.random() < 0.5 ? "none" : anyOption("petItem"),
   };
+}
+
+export function randomAppearance(): CharacterAppearance {
+  const any = anyOption;
   const body = any("body");
   return {
+    ...DEFAULT_APPEARANCE,
     view: any("view"),
     body,
     skin: any("skin"),
@@ -351,6 +438,74 @@ function headSvg(a: CharacterAppearance, skin: string, hair: string) {
   return s.join("");
 }
 
+// ───────── 반려동물 (앉아 있는 옆모습, 사람과 같은 먹색 선·부드러운 채색) ─────────
+const FUR_COLORS = {
+  cream: ["#FBEBD0", "#EBCFA6"], white: ["#FFFFFF", "#E9E4DF"], brown: ["#D4A37C", "#B7855E"],
+  black: ["#6F6360", "#524846"], gray: ["#D9D6D3", "#BCB7B2"], ginger: ["#F5BE8C", "#E39A62"],
+} as const;
+const PET_SCALE = { small: 0.82, regular: 1, large: 1.14 } as const;
+
+function petSvg(a: CharacterAppearance, paint: (colors: readonly [string, string]) => string) {
+  const cat = a.species === "cat";
+  const f = paint(FUR_COLORS[a.fur]);
+  const furLight = FUR_COLORS[a.fur][0];
+  const spot = FUR_COLORS[a.patternColor][1];
+  const collar = CLOTH_COLORS[a.color1][1];
+  const g: string[] = [];
+
+  // 꼬리
+  g.push(cat
+    ? fill("M80 284 Q40 290 38 256 Q37 232 52 226 Q58 226 56 232 Q46 240 48 258 Q52 278 80 274 Z", f)
+    : fill("M72 268 Q46 262 48 232 Q50 226 55 230 Q56 252 76 256 Z", f));
+  // 몸 + 무늬
+  g.push(fill("M110 168 Q86 172 76 210 Q66 250 72 278 Q78 290 98 290 L140 290 Q144 258 140 228 Q138 196 134 176 Z", f));
+  if (a.pattern === "spots") g.push(`<ellipse cx="92" cy="214" rx="9" ry="7" fill="${spot}" opacity=".8"/><ellipse cx="84" cy="244" rx="6" ry="5" fill="${spot}" opacity=".8"/><ellipse cx="108" cy="196" rx="5" ry="4" fill="${spot}" opacity=".8"/>`);
+  if (a.pattern === "patch") g.push(`<path d="M92 186 Q112 182 116 204 Q104 214 86 206 Z" fill="${spot}" opacity=".85"/>`);
+  if (a.pattern === "stripes") g.push(`<path d="M84 200 Q94 204 100 198 M78 222 Q90 228 98 220 M76 246 Q88 252 96 244" fill="none" stroke="${spot}" stroke-width="2.2" stroke-linecap="round"/>`);
+  // 뒷다리(허벅지) + 뒷발
+  g.push(fill("M70 262 Q70 232 96 234 Q118 238 116 266 Q114 290 92 290 Q72 288 70 262 Z", f));
+  g.push(line("M84 252 Q90 244 100 246", 1.1));
+  g.push(fill("M96 290 Q96 280 108 280 Q122 280 122 290 Z", f, 1.3));
+  // 앞다리: 윗부분은 몸에 녹아들게 (옆선·발끝만 선)
+  g.push(`<path d="M120 214 L120 286 Q120 291 127 291 Q134 291 133 286 L132 214 Z" fill="${furLight}"/>` + line("M120 228 L120 286 Q120 291 127 291 Q134 291 133 286 L132 232", 1.4));
+  g.push(`<path d="M132 214 L134 286 Q134 291 141 291 Q148 291 147 286 L144 214 Z" fill="${furLight}"/>` + line("M133 238 L134 286 Q134 291 141 291 Q148 291 147 286 L143 216", 1.4));
+  g.push(line("M124 289 L124 285 M128 289 L128 285 M138 289 L138 285 M142 289 L142 285", 1));
+  // 목걸이
+  g.push(`<path d="M112 176 Q126 186 140 176" fill="none" stroke="${collar}" stroke-width="7" stroke-linecap="round"/>` +
+    line("M112 172 Q126 182 140 172 M112 180 Q126 190 140 180", 1.1) +
+    `<circle cx="127" cy="190" r="4" fill="#F7D774" stroke="${INK}" stroke-width="1.1"/>`);
+  // 머리
+  if (!cat) {
+    if (a.ears === "pointy") g.push(fill("M110 132 L106 102 L126 122 Z", f) + fill("M134 122 L146 98 L148 128 Z", f));
+    g.push(fill("M104 150 Q102 120 128 118 Q152 118 154 140 Q170 142 172 156 Q172 170 154 170 Q142 178 124 176 Q106 172 104 150 Z", f));
+    if (a.pattern === "patch") g.push(`<ellipse cx="134" cy="140" rx="9" ry="8" fill="${spot}" opacity=".85"/>`);
+    g.push(`<ellipse cx="170" cy="152" rx="5" ry="4" fill="${INK}"/>`);
+    g.push(line("M156 164 Q160 168 166 164", 1.3));
+    if (a.ears === "floppy") g.push(fill("M112 124 Q96 126 96 152 Q98 170 108 168 Q116 156 120 132 Z", f));
+    g.push(`<ellipse cx="146" cy="160" rx="7" ry="4" fill="#E88A80" opacity=".3"/>`);
+  } else {
+    g.push(fill("M108 128 L106 98 L126 118 Z", f) + fill("M136 116 L150 96 L152 128 Z", f));
+    g.push(`<path d="M110 120 L109 106 L120 117 M141 116 L148 104 L148 120" fill="none" stroke="#E88A80" stroke-width="1" stroke-linecap="round"/>`);
+    g.push(fill("M104 148 Q102 118 128 116 Q154 116 158 140 Q166 150 160 160 Q150 176 126 176 Q106 172 104 148 Z", f));
+    if (a.pattern === "stripes") g.push(`<path d="M120 120 L122 130 M130 118 L130 128 M140 120 L138 130" fill="none" stroke="${spot}" stroke-width="1.8" stroke-linecap="round"/>`);
+    if (a.pattern === "patch") g.push(`<ellipse cx="136" cy="138" rx="9" ry="8" fill="${spot}" opacity=".85"/>`);
+    g.push(fill("M158 150 L164 150 L161 155 Z", "#F4A9A8", 1));
+    g.push(line("M161 155 Q158 160 154 158 M161 155 Q163 160 167 158", 1.2));
+    g.push(line("M152 156 L176 152 M152 160 L176 162", 0.9));
+    g.push(`<ellipse cx="144" cy="162" rx="6" ry="4" fill="#E88A80" opacity=".3"/>`);
+  }
+  g.push(a.eyes === "dot" ? `<circle cx="142" cy="142" r="2.4" fill="${INK}"/>` : line("M137 143 Q142 147 147 143", 1.4));
+  // 물고 있는 것
+  if (a.petItem === "ball") g.push(`<circle cx="${cat ? 166 : 168}" cy="176" r="8" fill="#F5D07A" stroke="${INK}" stroke-width="1.3"/>` + line("M160 174 Q168 178 176 174", 1));
+  if (a.petItem === "bone") g.push(fill("M150 172 L176 172 Q182 166 186 172 Q182 178 186 182 Q180 186 176 178 L150 178 Q144 184 140 178 Q144 174 140 168 Q146 166 150 172 Z", "#FBF4E6", 1.2));
+  if (a.petItem === "flower") g.push(line("M158 168 L178 150", 1.2) + fill("M178 150 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0", "#F4A9A8", 1.2));
+
+  // 발밑 그림자 + 크기 (발끝 기준으로 키우고 줄임, 가운데에 오도록 살짝 왼쪽으로)
+  const scale = PET_SCALE[a.petSize];
+  return `<ellipse cx="100" cy="${GROUND + 2}" rx="${46 * scale}" ry="5" fill="#E9C9B6" opacity=".7"/>` +
+    `<g transform="translate(100 ${GROUND}) scale(${scale}) translate(-108 -${GROUND})">${g.join("")}</g>`;
+}
+
 // 캐릭터 한 명의 SVG 내용. idPrefix 는 한 화면에 여러 캐릭터가 있어도 색(그라데이션) id 가 겹치지 않게.
 // 들어가는 값은 모두 sanitizeAppearance 를 거친 목록 안의 이름과 고정된 색이라, 사용자 글자는 들어가지 않아요.
 export function renderCharacterSvg(appearance: CharacterAppearance, idPrefix: string) {
@@ -363,6 +518,12 @@ export function renderCharacterSvg(appearance: CharacterAppearance, idPrefix: st
     defs.push(`<radialGradient id="${id}" cx="45%" cy="40%" r="75%"><stop offset="0" stop-color="${light}"/><stop offset=".7" stop-color="${light}"/><stop offset="1" stop-color="${dark}"/></radialGradient>`);
     return `url(#${id})`;
   };
+
+  // 반려동물이면 동물 그림 (색 정의는 그린 뒤에 모아서 앞에 붙임)
+  if (a.species !== "human") {
+    const body = petSvg(a, paint);
+    return `<defs>${defs.join("")}</defs>${body}`;
+  }
 
   const skinLight = SKIN_COLORS[a.skin][0];
   const skin = paint(SKIN_COLORS[a.skin]);

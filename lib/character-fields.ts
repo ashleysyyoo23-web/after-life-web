@@ -2,6 +2,9 @@
 export const CHARACTER_NICKNAME_MAX = 20;
 export const CHARACTER_DESCRIPTION_MAX = 300;
 export const CHARACTER_RELATIONS = ["배우자", "부모님", "조부모님", "형제자매", "자녀", "친구", "스승 · 동료", "반려동물"] as const;
+// 관계가 반려동물이면 동물 모습·"아이" 문구
+export const PET_RELATION = "반려동물";
+export const isPetRelation = (relation: string | null | undefined) => relation === PET_RELATION;
 
 // ── 열람방식 설정하기 (캐릭터 만들기 4단계 · 인물 편집 공용) ──
 export const CHARACTER_EXCLUDED_TYPES = [
@@ -65,7 +68,8 @@ export function buildSpecialDateRows(value: unknown) {
     const parsed = typeof item.date === "string" ? parseSpecialDate(item.date) : null;
     if (!parsed) continue;
 
-    let kind: "death_anniversary" | "birthday" | "custom" = label.includes("기일")
+    // 반려동물의 "무지개다리 건넌 날"도 기일로 봐요 (그날 즈음 추모 섬)
+    let kind: "death_anniversary" | "birthday" | "custom" = label.includes("기일") || label.includes("무지개다리")
       ? "death_anniversary"
       : label.includes("생일") || label.includes("생신")
         ? "birthday"

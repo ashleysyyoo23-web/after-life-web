@@ -10,9 +10,10 @@ import {
   CHARACTER_NICKNAME_MAX,
   CHARACTER_RELATIONS,
   emptySpecialDate,
+  isPetRelation,
   type SpecialDate,
 } from "@/lib/character-fields";
-import type { CharacterAppearance } from "@/lib/character-parts";
+import { appearanceForRelation, type CharacterAppearance } from "@/lib/character-parts";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -259,7 +260,10 @@ export function CharacterManager() {
                 key={item}
                 type="button"
                 aria-pressed={editing.relation === item}
-                onClick={() => setEditing({ ...editing, relation: editing.relation === item ? null : item })}
+                onClick={() => {
+                  const relation = editing.relation === item ? null : item;
+                  setEditing({ ...editing, relation, appearance: appearanceForRelation(editing.appearance, isPetRelation(relation)) });
+                }}
                 className={chip(editing.relation === item)}
               >
                 {item}
@@ -269,7 +273,7 @@ export function CharacterManager() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <span className="font-mulish text-sm text-[#898787]">어떤 분이셨나요? (최대 {CHARACTER_DESCRIPTION_MAX}자)</span>
+          <span className="font-mulish text-sm text-[#898787]">{isPetRelation(editing.relation) ? "어떤 아이였나요?" : "어떤 분이셨나요?"} (최대 {CHARACTER_DESCRIPTION_MAX}자)</span>
           <textarea
             value={editing.description}
             maxLength={CHARACTER_DESCRIPTION_MAX}
@@ -285,6 +289,7 @@ export function CharacterManager() {
             appearance={editing.appearance}
             onChange={(appearance) => setEditing({ ...editing, appearance })}
             previewLabel={editing.nickname || "인물"}
+            pet={isPetRelation(editing.relation)}
           />
         </section>
 
@@ -299,6 +304,7 @@ export function CharacterManager() {
               allowRecommendation: editing.allowRecommendation,
             }}
             onChange={(next) => setEditing({ ...editing, ...next })}
+            isPet={isPetRelation(editing.relation)}
           />
         </section>
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
-import { DEFAULT_APPEARANCE, type CharacterAppearance } from "@/lib/character-parts";
-import { CHARACTER_RELATIONS, emptySpecialDate, type SpecialDate } from "@/lib/character-fields";
+import { DEFAULT_APPEARANCE, appearanceForRelation, type CharacterAppearance } from "@/lib/character-parts";
+import { CHARACTER_RELATIONS, emptySpecialDate, isPetRelation, type SpecialDate } from "@/lib/character-fields";
 import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { useCallback, useEffect, useState } from "react";
 
@@ -96,6 +96,7 @@ export function CharacterCreateModal({
   const [step, setStep] = useState(initialDraft?.step ?? 1);
   const [nickname, setNickname] = useState(initialDraft?.nickname ?? "");
   const [relation, setRelation] = useState(initialDraft?.relation ?? "");
+  const isPet = isPetRelation(relation);
   const [description, setDescription] = useState(initialDraft?.description ?? "");
   const [appearance, setAppearance] = useState<CharacterAppearance>(initialDraft?.appearance ?? DEFAULT_APPEARANCE);
   const [emotionLevel, setEmotionLevel] = useState(initialDraft?.emotionLevel ?? 50);
@@ -255,7 +256,10 @@ export function CharacterCreateModal({
                     <button
                       key={item}
                       type="button"
-                      onClick={() => setRelation(item)}
+                      onClick={() => {
+                        setRelation(item);
+                        setAppearance((prev) => appearanceForRelation(prev, isPetRelation(item)));
+                      }}
                       className={`w-full cursor-pointer rounded-xl border py-4 font-mulish text-base transition-colors ${
                         relation === item ? "border-[#AF9083] bg-[#FDD9BD]/30 text-[#AF9083]" : "border-gray-200 bg-white text-[#1a1a1a]"
                       }`}
@@ -270,25 +274,26 @@ export function CharacterCreateModal({
 
           {step === 2 && (
             <div className="flex flex-col gap-6">
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{nickname || "이 분"}의 모습을 꾸며주세요</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{nickname || (isPet ? "이 아이" : "이 분")}의 모습을 꾸며주세요</h2>
               <CharacterPartsPicker
                 appearance={appearance}
                 onChange={setAppearance}
                 previewLabel={nickname || "캐릭터"}
+                pet={isPet}
               />
             </div>
           )}
 
           {step === 3 && (
             <div className="flex flex-col gap-8">
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">어떤 분이셨나요?</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{isPet ? "어떤 아이였나요?" : "어떤 분이셨나요?"}</h2>
               <div className="flex flex-col gap-[18px]">
                 <p className={sectionLabel}><span>1</span><span>기억하고 싶은 모습을 자유롭게 적어주세요</span></p>
                 <textarea
                   value={description}
                   maxLength={300}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="(예시) 항상 밥 먹었냐고 물어보시던 분이에요."
+                  placeholder={isPet ? "(예시) 산책 가자고 하면 꼬리부터 흔들던 아이예요." : "(예시) 항상 밥 먹었냐고 물어보시던 분이에요."}
                   className="h-28 w-full resize-none rounded-xl border border-gray-200 px-4 py-4 font-mulish text-base text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
                 />
               </div>
@@ -396,6 +401,7 @@ export function CharacterCreateModal({
                     setSpecialDates(next.specialDates);
                     setAllowRecommendation(next.allowRecommendation);
                   }}
+                  isPet={isPet}
                 />
               </div>
             </div>
