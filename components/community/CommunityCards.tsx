@@ -9,6 +9,7 @@ import {
   type CommunityReaction,
 } from "@/lib/community";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { refreshGuide } from "@/lib/guide";
 import { defaultNickname, useMyProfile } from "@/lib/use-my-profile";
 import { useEffect, useState } from "react";
 
@@ -70,6 +71,7 @@ function CommentSection({ message }: { message: CommunityMessage }) {
       setComments((prev) => [...(prev ?? []), data.comment as CommunityComment]);
       setCount((prev) => prev + 1);
       setBody("");
+      refreshGuide();
       try {
         window.localStorage.setItem(COMMENT_NICKNAME_KEY, nickname.trim());
       } catch {
@@ -187,8 +189,16 @@ type CardActions = {
   onDelete: (id: string) => void;
 };
 
-// 북마크 · 좋아요(수) · 공유 버튼 줄
-function ReactionButtons({ message, onToggle }: { message: CommunityMessage; onToggle: CardActions["onToggle"] }) {
+// 북마크 · 좋아요(수) · 공유 버튼 줄 (glow: 안내 빛 — 좋아요 버튼이 반짝여요)
+function ReactionButtons({
+  message,
+  onToggle,
+  glow = false,
+}: {
+  message: CommunityMessage;
+  onToggle: CardActions["onToggle"];
+  glow?: boolean;
+}) {
   return (
     <div className="flex items-center justify-end gap-2">
       <button
@@ -216,9 +226,9 @@ function ReactionButtons({ message, onToggle }: { message: CommunityMessage; onT
       <button
         type="button"
         onClick={() => onToggle(message.id, "like")}
-        className={`flex cursor-pointer items-center gap-1 border-0 bg-transparent p-1 ${
+        className={`flex cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent p-1 ${
           message.liked ? "text-red-400" : "text-[#AF9083]"
-        }`}
+        }${glow ? " guide-glow" : ""}`}
         aria-label={`좋아요 ${message.likeCount}개`}
         aria-pressed={message.liked}
       >
@@ -330,13 +340,14 @@ export function HoverMessageCard({
   onToggle,
   onDelete,
   photoOnly,
-}: { message: CommunityMessage; photoOnly?: boolean } & CardActions) {
+  glow,
+}: { message: CommunityMessage; photoOnly?: boolean; glow?: boolean } & CardActions) {
   return (
     <div className="flex w-64 flex-col gap-3 rounded-2xl bg-white p-4 shadow-lg transition-opacity duration-200">
       <CardHeader message={message} onDelete={onDelete} />
       <CardPicture message={message} className="h-32 w-full rounded-lg" photoOnly={photoOnly} />
       <p className="font-mulish text-sm text-[#4A423C]">{message.message}</p>
-      <ReactionButtons message={message} onToggle={onToggle} />
+      <ReactionButtons message={message} onToggle={onToggle} glow={glow} />
       <CommentSection message={message} />
     </div>
   );
@@ -348,14 +359,15 @@ export function GridMessageCard({
   onToggle,
   onDelete,
   photoOnly,
-}: { message: CommunityMessage; photoOnly?: boolean } & CardActions) {
+  glow,
+}: { message: CommunityMessage; photoOnly?: boolean; glow?: boolean } & CardActions) {
   return (
     <article className="overflow-hidden rounded bg-white shadow-[0px_2px_4px_0px_rgba(0,0,0,0.14),0px_0px_2px_0px_rgba(0,0,0,0.12)]">
       <CardPicture message={message} className="h-[169px] w-full" photoOnly={photoOnly} />
       <div className="flex flex-col gap-3 p-3">
         <CardHeader message={message} onDelete={onDelete} />
         <p className="font-mulish text-sm leading-relaxed text-[#4A423C]">{message.message}</p>
-        <ReactionButtons message={message} onToggle={onToggle} />
+        <ReactionButtons message={message} onToggle={onToggle} glow={glow} />
         <CommentSection message={message} />
       </div>
     </article>
@@ -414,6 +426,7 @@ export function useWallMessages(wall: CommunityMessage["wall"]) {
       const data = (await res.json().catch(() => null)) as { likeCount?: number } | null;
       if (!res.ok) throw new Error();
       if (kind === "like") apply(on, data?.likeCount);
+      refreshGuide();
     } catch {
       apply(!on, kind === "like" ? target.likeCount : undefined);
     }

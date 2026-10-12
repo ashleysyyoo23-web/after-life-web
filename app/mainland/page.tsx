@@ -9,6 +9,7 @@ import { ISLAND_SLOTS, arrangeIslands, islandLook, islandPlacement, islandSoloSt
 import { MAP_TUTORIAL_KEY_PREFIX, MAP_TUTORIAL_STEPS, MapTutorial } from "@/components/MapTutorial";
 import { useSession } from "next-auth/react";
 import { IslandSign } from "@/components/IslandSign";
+import { guideGlow, useGuideStep } from "@/lib/guide";
 import { SeaWaves } from "@/components/SeaWaves";
 import { IslandSeagull } from "@/components/IslandSeagull";
 import { SkyBird } from "@/components/SkyBird";
@@ -127,6 +128,15 @@ function MainlandPageContent() {
   }, []);
 
   const asking = islands.find((island) => island.status === "ask") ?? null;
+
+  // 안내 빛: 다음에 갈 섬의 팻말이 반짝여요 (기록 정리·리캡은 마이 랜드, 반응은 커뮤니티 추모 랜드)
+  const guideStep = useGuideStep();
+  const guideTarget =
+    guideStep === "character" || guideStep === "records" || guideStep === "recap"
+      ? "/myland"
+      : guideStep === "community"
+        ? "/community"
+        : null;
   const openIslands = islands.filter((island) => island.status === "open").slice(0, maxOpen);
   const laterIslands = islands.filter((island) => island.status === "later");
 
@@ -195,6 +205,7 @@ function MainlandPageContent() {
                 sub={daysUntilLabel(island.daysUntil, isPetRelation(island.relation))}
                 x={`${placement.flip ? 100 - ANNIVERSARY_SIGN_SPOT[placement.shape].x : ANNIVERSARY_SIGN_SPOT[placement.shape].x}%`}
                 y={`${ANNIVERSARY_SIGN_SPOT[placement.shape].y}%`}
+                glow={guideStep === "island" && index === 0}
               />
             </Link>
           );
@@ -226,7 +237,13 @@ function MainlandPageContent() {
         {/* 고정 섬 이름: 섬에 꽂힌 나무 팻말 (늘 보여요) */}
         {/* 누르기는 아래의 섬 영역이 받아요 */}
         {mainlandIslands.map((island) => (
-          <IslandSign key={island.label} label={island.label} x={island.sign.x} y={island.sign.y} />
+          <IslandSign
+            key={island.label}
+            label={island.label}
+            x={island.sign.x}
+            y={island.sign.y}
+            glow={guideTarget === island.href && !asking && tutorialStep === null}
+          />
         ))}
 
         {/* 마이 랜드 모래밭을 걸어다니는 갈매기 (팻말 앞, 개인 추모 랜드 뒤) */}
@@ -307,7 +324,7 @@ function MainlandPageContent() {
                 autoFocus
                 onClick={() => void answer(asking.deceasedId, "open")}
                 disabled={answering}
-                className="h-12 w-full cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] font-mulish text-base font-semibold text-black hover:bg-[#C4836E] hover:text-white disabled:opacity-60"
+                className={`h-12 w-full cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] font-mulish text-base font-semibold text-black hover:bg-[#C4836E] hover:text-white disabled:opacity-60${guideGlow(guideStep === "island")}`}
               >
                 섬 열기
               </button>

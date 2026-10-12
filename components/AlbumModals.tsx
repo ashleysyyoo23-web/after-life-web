@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { guideGlow, useGuideStep } from "@/lib/guide";
 import {
   ANALYZE_BATCH_SIZE,
   ANALYZE_CONCURRENCY,
@@ -91,17 +92,19 @@ function TitleField({
 function SubmitButton({
   disabled,
   saving,
+  glow = false,
   children,
 }: {
   disabled: boolean;
   saving: boolean;
+  glow?: boolean; // 안내 빛
   children: ReactNode;
 }) {
   return (
     <button
       type="submit"
       disabled={disabled || saving}
-      className="mt-6 w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a] transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+      className={`mt-6 w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a] transition-opacity disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glow && !disabled && !saving)}`}
     >
       {saving ? "저장하는 중..." : children}
     </button>
@@ -132,6 +135,8 @@ export function CreateAlbumModal({
   onClose: () => void;
   onCreated: (book: CreatedBook) => void;
 }) {
+  // 안내 빛 (기록 정리 단계): 제목을 적으면 "앨범 만들기"
+  const guiding = useGuideStep() === "records";
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,7 +185,7 @@ export function CreateAlbumModal({
         {error && (
           <p className="mt-2 font-mulish text-sm text-red-600">{error}</p>
         )}
-        <SubmitButton disabled={!title.trim()} saving={saving}>
+        <SubmitButton disabled={!title.trim()} saving={saving} glow={guiding}>
           앨범 만들기
         </SubmitButton>
       </form>
@@ -252,6 +257,8 @@ export function SectionPhotosModal({
   onClose: () => void;
   onSaved: (section: CreatedSection) => void;
 }) {
+  // 안내 빛 (기록 정리 단계): 사진을 아직 안 골랐으면 "모두 선택", 고르고 이름까지 적으면 저장 버튼
+  const guiding = useGuideStep() === "records";
   const isEdit = Boolean(sectionId);
   const [title, setTitle] = useState("");
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -666,7 +673,7 @@ export function SectionPhotosModal({
                   type="button"
                   onClick={selectAll}
                   disabled={allSelected}
-                  className="cursor-pointer rounded-full border border-[#AF9083] bg-white px-4 py-1.5 font-mulish text-sm text-[#AF9083] transition-colors hover:bg-[#FAF6F0] disabled:cursor-not-allowed disabled:opacity-40"
+                  className={`cursor-pointer rounded-full border border-[#AF9083] bg-white px-4 py-1.5 font-mulish text-sm text-[#AF9083] transition-colors hover:bg-[#FAF6F0] disabled:cursor-not-allowed disabled:opacity-40${guideGlow(guiding && selectedIds.length === 0)}`}
                 >
                   {visibleFiles.length < files.length ? "보이는 사진 모두 선택" : "모두 선택"}
                 </button>
@@ -1009,6 +1016,7 @@ export function SectionPhotosModal({
         <SubmitButton
           disabled={!title.trim() || selectedIds.length === 0}
           saving={saving}
+          glow={guiding}
         >
           {isEdit
             ? `사진 ${selectedIds.length}장으로 저장하기`

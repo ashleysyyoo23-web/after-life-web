@@ -17,6 +17,7 @@ import {
   type CreatedCharacter,
 } from "@/components/CharacterCreateModal";
 import { TopNav } from "@/app/components/TopNav";
+import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -159,6 +160,7 @@ function MylandPageContent() {
   const [resumeGoogleEmail, setResumeGoogleEmail] = useState<string | null>(null);
   const [resumeDriveError, setResumeDriveError] = useState<string | null>(null);
   const [characters, setCharacters] = useState<CreatedCharacter[]>([]);
+  const guideStep = useGuideStep();
   const [charactersLoaded, setCharactersLoaded] = useState(false);
   const [showHint, setShowHint] = useState(true);
   // 캐릭터 우클릭 메뉴 (Drive 연결 상태 · 다시 연결하기)
@@ -566,6 +568,8 @@ function MylandPageContent() {
               positionX: character.positionX,
               positionY: character.positionY,
               label: `${character.nickname}의 기록 보기`,
+              // 안내 빛: 기록 정리·리캡 단계면 처음 불러온 고인이 반짝여요
+              glow: (guideStep === "records" || guideStep === "recap") && character.id === characters[0]?.id,
               // 연결이 지워졌거나(설정에서 연결 해제) 만료된 인물
               disconnected: !character.drive || character.drive.needsReconnect,
               onOpen: () => router.push(`/archiveshelf?character=${encodeURIComponent(character.id)}`),
@@ -580,6 +584,7 @@ function MylandPageContent() {
                   positionY: myCharacter.positionY,
                   label: `나의 캐릭터 (${myCharacter.name}) 꾸미기`,
                   disconnected: false,
+                  glow: false,
                   onContextMenu: undefined,
                   onOpen: () => {
                     setSettingsTab("profile");
@@ -614,7 +619,7 @@ function MylandPageContent() {
                   draggingKey === character.key
                     ? "z-10 cursor-grabbing"
                     : "cursor-pointer transition-transform duration-300 hover:-translate-y-[102%]"
-                }`}
+                }${character.glow ? " rounded-[50%] guide-glow" : ""}`}
                 style={{
                   left: `${character.positionX ?? 50}%`,
                   top: `${character.positionY ?? 76}%`,
@@ -623,7 +628,7 @@ function MylandPageContent() {
                 }}
               >
                 <CharacterAvatar appearance={character.appearance} className="pointer-events-none h-full w-full" />
-                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <span className={`pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] transition-opacity duration-200 group-hover:opacity-100 ${character.glow ? "opacity-100" : "opacity-0"}`}>
                   {character.name}
                   {character.disconnected && (
                     <span className="ml-2 font-mulish text-xs text-[#9E2121]">Drive 연결 끊김 · 우클릭</span>
@@ -726,7 +731,7 @@ function MylandPageContent() {
           }
           setShowAddModal(true);
         }}
-        className="fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
+        className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]${guideGlow(guideStep === "character" && !showAddModal)}`}
       >
         + 고인 불러오기
       </button>
@@ -761,6 +766,7 @@ function MylandPageContent() {
           onCreated={(character) => {
             setCharacters((prev) => [...prev, character]);
             setShowAddModal(false);
+            refreshGuide();
             setResumeDraft(null);
             setResumeDriveError(null);
           }}

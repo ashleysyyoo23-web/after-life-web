@@ -7,6 +7,7 @@ import { COMMUNITY_MOTION } from "@/lib/scene-motion";
 import { COMMUNITY_WALLS, type CommunityStoneWall } from "@/lib/community";
 import { BackgroundPageLayout } from "@/components/background-page-layout";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
+import { guideGlow, useGuideStep } from "@/lib/guide";
 import { GridMessageCard, HoverMessageCard, useWallMessages } from "@/components/community/CommunityCards";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -135,6 +136,8 @@ function CommunityContent() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [hoveredStone, setHoveredStone] = useState<number | null>(null);
+  // 안내 빛: 커뮤니티 단계면 가운데쯤의 큰 돌(친구)이 반짝여요
+  const guideCommunity = useGuideStep() === "community";
   const [isListOpen, setIsListOpen] = useState(false);
   const viewport = useViewport();
   const zoom = zoomStone ? zoomFor(zoomStone, viewport.width, viewport.height) : { scale: 1, x: 0, y: 0 };
@@ -195,7 +198,7 @@ function CommunityContent() {
                     onClick={() => openStone(stone.wall)}
                     className={`pointer-events-auto absolute cursor-pointer rounded-[45%] border-0 transition-colors duration-200 ${
                       hovered ? "bg-white/15" : "bg-transparent"
-                    }`}
+                    }${guideGlow(guideCommunity && stone.wall === "friend")}`}
                     style={{ left: `${stone.left}%`, top: `${stone.top}%`, width: `${stone.width}%`, height: `${stone.height}%` }}
                   >
                     {hovered && (
@@ -326,6 +329,8 @@ function CommunityContent() {
 function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowStone: () => void }) {
   const { messages, loaded, error, onToggle, onDelete } = useWallMessages(wall);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  // 안내 빛: 첫 카드의 좋아요 (메시지가 없으면 "메시지 남기기")
+  const guideCommunity = useGuideStep() === "community";
 
   return (
     <div className="fixed inset-0 z-[25] bg-[#FAF6F0]">
@@ -340,7 +345,7 @@ function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowSto
         <button
           type="button"
           onClick={() => setShowMessageModal(true)}
-          className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 font-mulish text-lg font-semibold text-white"
+          className={`pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 font-mulish text-lg font-semibold text-white${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
         >
           <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
           메시지 남기기
@@ -361,9 +366,15 @@ function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowSto
           </p>
         ) : (
           <div className="mx-auto max-w-[1400px] columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <div key={message.id} className="mb-5 break-inside-avoid">
-                <GridMessageCard message={message} onToggle={onToggle} onDelete={onDelete} photoOnly />
+                <GridMessageCard
+                  message={message}
+                  onToggle={onToggle}
+                  onDelete={onDelete}
+                  photoOnly
+                  glow={guideCommunity && index === 0}
+                />
               </div>
             ))}
           </div>
@@ -449,6 +460,8 @@ function StoneMessages({
   const [showMessageModal, setShowMessageModal] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placed = messages.slice(0, stone.flowers.length);
+  // 안내 빛: 첫 꽃 → 뜬 카드의 좋아요 (메시지가 없으면 "메시지 남기기")
+  const guideCommunity = useGuideStep() === "community";
 
   const enter = (index: number) => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
@@ -484,7 +497,7 @@ function StoneMessages({
               onBlur={leave}
               className={`pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 transition-all duration-200 ${
                 active ? "border-white bg-white/25 shadow-[0_0_18px_rgba(255,255,255,0.9)]" : "border-white/70 bg-white/0 hover:bg-white/20"
-              }`}
+              }${guideGlow(guideCommunity && index === 0 && hovered === null)}`}
               style={{ left: point.x, top: point.y, width: spot, height: spot }}
             />
           );
@@ -504,7 +517,13 @@ function StoneMessages({
               onMouseEnter={() => enter(hovered)}
               onMouseLeave={leave}
             >
-              <HoverMessageCard message={placed[hovered]} onToggle={onToggle} onDelete={onDelete} photoOnly />
+              <HoverMessageCard
+                message={placed[hovered]}
+                onToggle={onToggle}
+                onDelete={onDelete}
+                photoOnly
+                glow={guideCommunity}
+              />
             </div>
           );
         })()}
@@ -513,7 +532,7 @@ function StoneMessages({
       <button
         type="button"
         onClick={() => setShowMessageModal(true)}
-        className="fixed left-12 top-[224px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-lg font-semibold text-white"
+        className={`fixed left-12 top-[224px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-lg font-semibold text-white${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
       >
         <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
         메시지 남기기

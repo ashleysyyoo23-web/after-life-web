@@ -7,8 +7,10 @@ export function IslandSign({
   sub,
   x,
   y,
+  glow = false,
 }: {
   label: string;
+  glow?: boolean; // 안내 빛 (다음에 갈 섬)
   sub?: string; // 작은 둘째 줄 (예: "기일이 2일 남았어요")
   x: string;
   y: string;
@@ -19,7 +21,7 @@ export function IslandSign({
       style={{ left: x, top: y }}
     >
       <span
-        className="relative block whitespace-nowrap border-2 border-[#5A4636] text-center font-jeju-myeongjo text-[#3F2F24]"
+        className={`relative block whitespace-nowrap border-2${glow ? " guide-glow" : ""} border-[#5A4636] text-center font-jeju-myeongjo text-[#3F2F24]`}
         style={{
           padding: "0.45cqw 1.1cqw 0.5cqw",
           borderRadius: WOOD_BORDER_RADIUS,

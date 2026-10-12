@@ -10,6 +10,7 @@ import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { RevealOverlay } from "@/components/safety/RevealOverlay";
 import { SavePhotoButton } from "@/components/SavePhotoButton";
 import { DEFAULT_EXPOSURE, exposureBlurPx, exposureBlurStyle } from "@/lib/exposure";
+import { markGuideVisited } from "@/lib/guide";
 import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
@@ -173,6 +174,8 @@ function RecapviewPageContent() {
         setAlbumSubtitle(data.book?.title ?? "");
         setSectionBookId(data.book?.id ?? null);
         setAlbumPhotos(data.photos);
+        // 안내 빛: 리캡 보기 완료 (마지막 단계)
+        markGuideVisited("recap");
         setDrawings(data.drawings ?? {});
         setCharacterNickname(data.characterNickname ?? null);
         setCharacterId(data.characterId ?? null);

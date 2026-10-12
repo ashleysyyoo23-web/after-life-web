@@ -2,6 +2,7 @@
 
 import { ANNIVERSARY_SHOWN_KEY_PREFIX } from "@/lib/anniversary";
 import { MAP_TUTORIAL_KEY_PREFIX } from "@/components/MapTutorial";
+import { GUIDE_KEY_PREFIX } from "@/lib/guide";
 import { EXPOSURE_STEPS, exposureStepIndex } from "@/lib/exposure";
 import {
   DEFAULT_RECAP_VIEW,
@@ -136,6 +137,7 @@ export default function FacilitatorPage() {
   const [resetAnniversaryShown, setResetAnniversaryShown] = useState(true);
   // 전체 지도 섬지기 둘러보기 "처음 한 번" 기억 (이 브라우저)
   const [resetMapTutorial, setResetMapTutorial] = useState(true);
+  const [resetGuide, setResetGuide] = useState(true);
   // 이번 참가자가 남긴 기록 지우기 (시작 시각은 이 브라우저에 기억)
   const [clearParticipant, setClearParticipant] = useState(true);
   const [participantStart, setParticipantStart] = useState<string | null>(null);
@@ -230,6 +232,8 @@ export default function FacilitatorPage() {
       };
       const clearedAnniversaryShown = resetAnniversaryShown && clearLocal(ANNIVERSARY_SHOWN_KEY_PREFIX);
       const clearedMapTutorial = resetMapTutorial && clearLocal(MAP_TUTORIAL_KEY_PREFIX);
+      // 안내 빛: 섬 방문·리캡 보기·끄기 기억을 지워서 처음 단계부터 다시 빛나게
+      const clearedGuide = resetGuide && clearLocal(GUIDE_KEY_PREFIX);
 
       // 지금부터가 다음 참가자의 시작
       const nextStart = new Date().toISOString();
@@ -254,6 +258,7 @@ export default function FacilitatorPage() {
             : null,
           clearedAnniversaryShown ? "기일 안내 창이 다시 저절로 뜨게" : null,
           clearedMapTutorial ? "섬지기 둘러보기가 다시 뜨게" : null,
+          clearedGuide ? "안내 빛이 처음부터 다시 빛나게" : null,
           pc
             ? `참가자 기록(메시지 ${pc.messages}·댓글 ${pc.comments}·좋아요/북마크 ${pc.reactions}·저장 ${pc.savedPhotos}·기분 ${pc.emotionLogs}·섬 답 ${pc.islandAnswers}) 지움`
             : null,
@@ -464,6 +469,23 @@ export default function FacilitatorPage() {
               <label className="flex cursor-pointer items-start gap-3">
                 <input
                   type="checkbox"
+                  checked={resetGuide}
+                  onChange={(event) => setResetGuide(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#AF9083]"
+                />
+                <span className="flex flex-col gap-1 text-sm">
+                  <span>
+                    다음 할 일 <b>안내 빛</b>을 처음부터 다시
+                  </span>
+                  <span className="text-xs text-[#898787]">
+                    추모 섬 방문·리캡 보기·안내 끄기 기억을 이 브라우저에서 지워요. 프로필·기록 등 이미 저장된 단계는 그대로 지난 것으로 봐요.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
                   checked={clearParticipant}
                   onChange={(event) => setClearParticipant(event.target.checked)}
                   className="mt-1 h-4 w-4 accent-[#AF9083]"
@@ -501,6 +523,7 @@ export default function FacilitatorPage() {
                     {resetView ? `, 넘김 속도를 ${startView.slideSeconds}초로` : ""}
                     {resetAnniversaryShown ? ", 기일 안내 창이 다시 뜨게" : ""}
                     {resetMapTutorial ? ", 섬지기 둘러보기가 다시 뜨게" : ""}
+                    {resetGuide ? ", 안내 빛이 처음부터 다시 빛나게" : ""}
                     {clearParticipant && participantStart ? `, ${formatStart(participantStart)} 이후 참가자 기록을 지우고` : ""} 되돌릴까요?
                   </span>
                   <button

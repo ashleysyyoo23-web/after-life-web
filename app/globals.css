@@ -128,3 +128,111 @@ body {
     opacity: 1;
   }
 }
+
+/* 안내 빛 (lib/guide.ts): 다음에 누를 것을 반딧불처럼 — 둘레가 숨 쉬듯 밝아지고, 작은 반딧불이 몽글몽글 떠다녀요 */
+@keyframes guide-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(238, 178, 62, 0.7),
+      0 0 16px 5px rgba(245, 185, 70, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(242, 190, 80, 0.95),
+      0 0 32px 12px rgba(245, 185, 70, 0.65);
+  }
+}
+@keyframes firefly-drift-a {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.7;
+    transform: translate(8px, -10px) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-3px, -20px) scale(0.7);
+  }
+}
+@keyframes firefly-drift-b {
+  0% {
+    opacity: 0;
+    transform: translate(0, -2px) scale(0.7);
+  }
+  30% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.6;
+    transform: translate(-9px, 8px) scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(4px, 16px) scale(0.6);
+  }
+}
+.guide-glow {
+  animation: guide-pulse 2.4s ease-in-out infinite;
+}
+/* 반딧불 점이 버튼 둘레에 붙도록 (이미 absolute·fixed 인 것은 그대로) */
+.guide-glow:not(.absolute):not(.fixed) {
+  position: relative;
+}
+.guide-glow::before,
+.guide-glow::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #ffe68a;
+  pointer-events: none;
+}
+/* 점 하나에 그림자로 반딧불 몇 마리를 더 달아요 */
+.guide-glow::before {
+  top: -8px;
+  left: 14%;
+  box-shadow:
+    0 0 6px 2px rgba(240, 170, 40, 0.95),
+    26px -6px 0 -1px #ffe68a,
+    26px -6px 6px 1px rgba(240, 170, 40, 0.8),
+    -12px 14px 0 -1px #ffe68a,
+    -12px 14px 5px 1px rgba(240, 170, 40, 0.7);
+  animation: firefly-drift-a 3.2s ease-in-out infinite;
+}
+.guide-glow::after {
+  bottom: -7px;
+  right: 12%;
+  box-shadow:
+    0 0 6px 2px rgba(240, 170, 40, 0.95),
+    -24px 6px 0 -1px #ffe68a,
+    -24px 6px 6px 1px rgba(240, 170, 40, 0.8),
+    14px -16px 0 -1px #ffe68a,
+    14px -16px 5px 1px rgba(240, 170, 40, 0.7);
+  animation: firefly-drift-b 3.8s ease-in-out 0.6s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-glow,
+  .guide-glow::before,
+  .guide-glow::after {
+    animation: none;
+  }
+  .guide-glow {
+    box-shadow:
+      0 0 0 3px rgba(242, 190, 80, 0.95),
+      0 0 24px 8px rgba(245, 185, 70, 0.6);
+  }
+}

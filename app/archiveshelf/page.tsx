@@ -6,6 +6,7 @@ import { CreateAlbumModal, type CreatedBook } from "@/components/AlbumModals";
 import { BookSketchFilterDefs, ShelfBook } from "@/components/ShelfBook";
 import { BookTitleForm } from "@/components/BookTitleForm";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
+import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { arrangeBooksFromCenter, type ShelfBookData } from "@/lib/book-styles";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -91,9 +92,15 @@ function ArchiveshelfPageContent() {
   const handleCreated = (book: CreatedBook) => {
     setBooks((prev) => [...prev, book]);
     setShowCreateModal(false);
+    refreshGuide();
   };
 
   const isEmpty = loaded && books.length === 0;
+  // 안내 빛: 기록 정리 단계에 앨범이 없으면 "+ 앨범 만들기", 있으면(또는 리캡 단계면) 처음 만든 앨범
+  const guideStep = useGuideStep();
+  const guideOnShelf = guideStep === "records" || guideStep === "recap";
+  const glowCreate = guideStep === "records" && isEmpty && !showCreateModal;
+  const glowBookId = guideOnShelf && !isEmpty ? books[0]?.id : undefined;
   const shelfBooks = isEmpty ? [EMPTY_BOOK] : arrangeBooksFromCenter(books);
 
   return (
@@ -129,6 +136,7 @@ function ArchiveshelfPageContent() {
                   onSelect={handleSelectBook}
                   onContextMenu={isEmpty ? undefined : handleBookContextMenu}
                   emptyLabel="눌러서 앨범 만들기"
+                  glow={book.id === glowBookId}
                 />
               ))}
             </div>
@@ -190,7 +198,7 @@ function ArchiveshelfPageContent() {
       <button
         type="button"
         onClick={() => setShowCreateModal(true)}
-        className="fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
+        className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]${guideGlow(glowCreate)}`}
       >
         + 앨범 만들기
       </button>

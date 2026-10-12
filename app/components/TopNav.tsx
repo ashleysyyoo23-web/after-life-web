@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { guideGlow, useGuideStep } from "@/lib/guide";
 import { loginUrl } from "@/lib/login";
 import { timeAgoLabel, type AppNotification } from "@/lib/notifications";
 import { useSession } from "next-auth/react";
@@ -71,6 +72,9 @@ export function TopNav({
   // 실제로 소리가 나는지 (자동 재생이 막혀 있으면 "재생"으로 보여요)
   const [isMusicPlaying, setIsMusicPlaying] = useState(() => Boolean(globalBgm && !globalBgm.paused));
   const [showNotifications, setShowNotifications] = useState(false);
+  // 안내 빛: 프로필·남길 기록 단계면 설정 버튼이 반짝여요 (설정 창이 열려 있으면 그 안에서 안내)
+  const guideStep = useGuideStep();
+  const glowSettings = !settingsExpanded && (guideStep === "profile" || guideStep === "legacy");
 
   // 섬에 들어오면 바로 재생 시도 (막히면 첫 클릭·키 입력 때) + 버튼 모양을 실제 재생 상태에 맞춤
   useEffect(() => {
@@ -225,7 +229,7 @@ export function TopNav({
         <button
           type="button"
           onClick={handleSettingsClick}
-          className={navTextClass}
+          className={`${navTextClass} rounded-full${guideGlow(glowSettings)}`}
           aria-label="설정"
           aria-expanded={settingsExpanded}
         >

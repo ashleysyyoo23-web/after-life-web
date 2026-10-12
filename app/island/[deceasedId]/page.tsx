@@ -6,6 +6,7 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { GridMessageCard, useWallMessages } from "@/components/community/CommunityCards";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
 import { daysUntilLabel } from "@/lib/anniversary";
+import { markGuideVisited } from "@/lib/guide";
 import { isPetRelation } from "@/lib/character-fields";
 import { deceasedWall } from "@/lib/community";
 import { islandLook, islandSoloStyle } from "@/lib/islands";
@@ -42,6 +43,8 @@ export default function IslandPage() {
         return;
       }
       setInfo(data.island);
+      // 안내 빛: 개인 추모 랜드 방문 완료
+      markGuideVisited("island");
     })();
   }, [deceasedId]);
 

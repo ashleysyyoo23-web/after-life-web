@@ -4,6 +4,7 @@ import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { DEFAULT_APPEARANCE, appearanceForRelation, type CharacterAppearance } from "@/lib/character-parts";
 import { CHARACTER_RELATIONS, emptySpecialDate, isPetRelation, type SpecialDate } from "@/lib/character-fields";
 import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
+import { guideGlow, useGuideStep } from "@/lib/guide";
 import { useCallback, useEffect, useState } from "react";
 
 const RELATIONS = CHARACTER_RELATIONS;
@@ -185,6 +186,13 @@ export function CharacterCreateModal({
     step === 2 ||
     (step === 3 && Boolean(connectionId && selectedFolder));
 
+  // 안내 빛 (고인 불러오기 단계): 지금 누를 수 있는 다음 버튼 하나만
+  const guiding = useGuideStep() === "character";
+  const usableConnections = connections?.filter((connection) => !connection.needsReconnect) ?? [];
+  const glowConnectionId =
+    guiding && step === 3 && !connectionId && usableConnections.length > 0 ? usableConnections[0].id : null;
+  const glowConnectNew = guiding && step === 3 && connections !== null && usableConnections.length === 0;
+
   const handleSave = async () => {
     if (!connectionId || !selectedFolder) return;
     setSaving(true);
@@ -315,7 +323,7 @@ export function CharacterCreateModal({
                       onClick={() => chooseConnection(connection.id)}
                       className={`flex cursor-pointer items-center gap-4 rounded-xl border bg-white p-4 text-left font-mulish transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                         connectionId === connection.id ? "border-[#AF9083]" : "border-[#E8DDD5]"
-                      }`}
+                      }${guideGlow(connection.id === glowConnectionId)}`}
                     >
                       <GoogleDriveIcon />
                       <span className="min-w-0 flex-1 truncate text-sm text-[#1a1a1a]">{connection.googleEmail}</span>
@@ -329,7 +337,7 @@ export function CharacterCreateModal({
                   <button
                     type="button"
                     onClick={connectNewAccount}
-                    className="flex cursor-pointer items-center gap-4 rounded-xl border border-dashed border-[#AF9083] bg-white p-4 text-left font-mulish"
+                    className={`flex cursor-pointer items-center gap-4 rounded-xl border border-dashed border-[#AF9083] bg-white p-4 text-left font-mulish${guideGlow(glowConnectNew)}`}
                   >
                     <GoogleDriveIcon />
                     <span className="flex-1 text-sm text-[#1a1a1a]">
@@ -421,7 +429,7 @@ export function CharacterCreateModal({
               type="button"
               disabled={!canNext}
               onClick={() => setStep(step + 1)}
-              className="flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
+              className={`flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(guiding && canNext)}`}
             >
               다음으로 &gt;
             </button>
@@ -430,7 +438,7 @@ export function CharacterCreateModal({
               type="button"
               disabled={saving}
               onClick={() => void handleSave()}
-              className="flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
+              className={`flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(guiding && !saving)}`}
             >
               {saving ? "저장하는 중..." : "저장하기 >"}
             </button>

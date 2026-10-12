@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { guideGlow, useGuideStep } from "@/lib/guide";
 import { defaultNickname, fetchMyProfile, useMyProfile } from "@/lib/use-my-profile";
 import { useRouter } from "next/navigation";
 import {
@@ -100,6 +101,8 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
   const [selectedColor, setSelectedColor] = useState("#000000");
   const [nickname, setNickname] = useState("");
   const [message, setMessage] = useState("");
+  // 안내 빛 (커뮤니티 단계): 닉네임·메시지를 적으면 업로드 버튼이 반짝여요
+  const guiding = useGuideStep() === "community";
   // 3. 이미지 공유: Drive 주소 → 불러오기로 확인 → 미리보기
   const [driveUrl, setDriveUrl] = useState("");
   const [drivePreview, setDrivePreview] = useState<DrivePreview | null>(null);
@@ -665,7 +668,9 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                 type="button"
                 onClick={() => void handleUpload()}
                 disabled={submitting}
-                className="flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#D99B82] bg-[#FDD9BD] font-newsreader text-base text-[#4A423C] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] disabled:cursor-not-allowed disabled:opacity-60"
+                className={`flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#D99B82] bg-[#FDD9BD] font-newsreader text-base text-[#4A423C] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] disabled:cursor-not-allowed disabled:opacity-60${guideGlow(
+                  guiding && !submitting && Boolean(nickname.trim() && message.trim()),
+                )}`}
               >
                 {submitting ? "올리는 중..." : "추모비에 업로드하기"}
               </button>

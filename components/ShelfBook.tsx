@@ -33,10 +33,12 @@ type ShelfBookProps = {
   onContextMenu?: (bookId: string, event: React.MouseEvent) => void;
   // 제목이 비어 있는 책(아직 앨범이 없을 때)의 툴팁
   emptyLabel?: string;
+  // 안내 빛 (다음에 열 책)
+  glow?: boolean;
 };
 
 // 책장 무대(container-type: size) 안에서 cqw/cqh 단위로 크기를 잡아요.
-export function ShelfBook({ book, onSelect, onContextMenu, emptyLabel }: ShelfBookProps) {
+export function ShelfBook({ book, onSelect, onContextMenu, emptyLabel, glow = false }: ShelfBookProps) {
   const color = getBookColor(book.color);
   const shape = getBookShape(book.shape);
   const isHorizontal = book.titleLayout === "horizontal";
@@ -49,7 +51,7 @@ export function ShelfBook({ book, onSelect, onContextMenu, emptyLabel }: ShelfBo
       onClick={() => onSelect(book.id)}
       onContextMenu={onContextMenu ? (event) => onContextMenu(book.id, event) : undefined}
       aria-label={label}
-      className="group relative shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 ease-out hover:-translate-y-[1.6cqh] focus-visible:-translate-y-[1.6cqh] focus-visible:outline-none"
+      className={`group relative shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 ease-out hover:-translate-y-[1.6cqh] focus-visible:-translate-y-[1.6cqh] focus-visible:outline-none${glow ? " guide-glow rounded-sm" : ""}`}
       style={{
         width: `${shape.width}cqw`,
         height: `${shape.height}cqh`,

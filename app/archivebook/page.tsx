@@ -6,6 +6,7 @@ import { SectionPhotosModal, type CreatedSection } from "@/components/AlbumModal
 import { BookTitleForm } from "@/components/BookTitleForm";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { exposureBlurPx } from "@/lib/exposure";
+import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -85,6 +86,7 @@ function ArchivebookPageContent() {
   const handleCreated = (section: CreatedSection) => {
     setSections((prev) => [...prev, section].sort((a, b) => a.slot - b.slot));
     setShowCreateModal(false);
+    refreshGuide();
   };
 
   const handleEdited = (section: CreatedSection) => {
@@ -92,7 +94,16 @@ function ArchivebookPageContent() {
       prev.map((item) => (item.id === section.id ? { ...item, ...section } : item)),
     );
     setEditingSectionId(null);
+    refreshGuide();
   };
+
+  // 안내 빛: 기록 정리 단계면 "+ 섹션 추가"(섹션이 없을 때) 또는 첫 섹션의 "사진 편집",
+  // 리캡 단계면 첫 섹션(눌러서 리캡 보기)
+  const guideStep = useGuideStep();
+  const firstSectionId = sections[0]?.id;
+  const glowAddSection = guideStep === "records" && sections.length === 0 && !showCreateModal;
+  const glowEditId = guideStep === "records" && !editingSectionId ? firstSectionId : undefined;
+  const glowRecapId = guideStep === "recap" ? firstSectionId : undefined;
 
   return (
     <>
@@ -120,7 +131,7 @@ function ArchivebookPageContent() {
             return (
               <div key={section.id} className="group">
                 <div
-                  className="absolute transition-transform duration-300 group-hover:-translate-y-[0.6cqh] group-focus-within:-translate-y-[0.6cqh]"
+                  className={`absolute transition-transform duration-300 group-hover:-translate-y-[0.6cqh] group-focus-within:-translate-y-[0.6cqh]${guideGlow(section.id === glowRecapId)}`}
                   style={{
                     left: `${slot.left}%`,
                     top: `${slot.top}%`,
@@ -160,7 +171,9 @@ function ArchivebookPageContent() {
                   <button
                     type="button"
                     onClick={() => setEditingSectionId(section.id)}
-                    className="absolute right-[0.5cqw] top-[0.5cqw] cursor-pointer rounded-full border-0 bg-white/90 px-3 py-1 font-mulish text-xs font-semibold text-[#4A423C] opacity-0 shadow transition-opacity hover:bg-[#FDD9BD] focus-visible:opacity-100 group-hover:opacity-100"
+                    className={`absolute right-[0.5cqw] top-[0.5cqw] cursor-pointer rounded-full border-0 bg-white/90 px-3 py-1 font-mulish text-xs font-semibold text-[#4A423C] shadow transition-opacity hover:bg-[#FDD9BD] focus-visible:opacity-100 group-hover:opacity-100 ${
+                      section.id === glowEditId ? "opacity-100 guide-glow" : "opacity-0"
+                    }`}
                   >
                     사진 편집
                   </button>
@@ -241,7 +254,7 @@ function ArchivebookPageContent() {
           onClick={() => setShowCreateModal(true)}
           disabled={isFull}
           title={isFull ? "한 앨범에는 섹션을 8개까지 만들 수 있어요." : undefined}
-          className="fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50"
+          className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glowAddSection)}`}
         >
           + 섹션 추가
         </button>
