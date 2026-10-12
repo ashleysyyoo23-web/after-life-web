@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { loadAnniversaryIslands } from "@/lib/anniversary-server";
 import { ISLAND_DAYS_BEFORE, daysUntilLabel } from "@/lib/anniversary";
+import { isPetRelation } from "@/lib/character-fields";
 import { isCommunityWall, wallHomePath } from "@/lib/community";
 import type { AppNotification } from "@/lib/notifications";
 
@@ -37,8 +38,8 @@ export async function GET() {
         kind: "anniversary",
         message:
           island.daysUntil === 0
-            ? `오늘은 ${island.nickname}의 기일이에요. 개인 추모 랜드를 열까요?`
-            : `${island.nickname}의 ${daysUntilLabel(island.daysUntil)}. 개인 추모 랜드를 열까요?`,
+            ? `오늘은 ${island.nickname}의 ${isPetRelation(island.relation) ? "무지개다리 건넌 날" : "기일"}이에요. 개인 추모 랜드를 열까요?`
+            : `${island.nickname}의 ${daysUntilLabel(island.daysUntil, isPetRelation(island.relation))}. 개인 추모 랜드를 열까요?`,
         href: "/mainland",
         createdAt: start.toISOString(),
       });

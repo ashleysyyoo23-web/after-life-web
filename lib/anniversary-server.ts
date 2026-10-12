@@ -5,6 +5,7 @@ export type AnniversaryIsland = {
   characterId: string;
   deceasedId: string;
   nickname: string; // 내가 부르는 호칭 → "OO의 섬"
+  relation: string | null; // 반려동물이면 "기일" 대신 "무지개다리 건넌 날"
   anniversaryDate: string; // 이번 기간의 기일 (YYYY-MM-DD)
   daysUntil: number; // 남은 날 (지났으면 음수)
   status: "ask" | "open" | "later"; // 아직 안 물어봄 · 섬 열기 · 나중에
@@ -14,7 +15,7 @@ export type AnniversaryIsland = {
 export async function loadAnniversaryIslands(supabase: SupabaseClient, userEmail: string): Promise<AnniversaryIsland[]> {
   const { data: characters } = await supabase
     .from("user_characters")
-    .select("id, nickname, deceased_id")
+    .select("id, nickname, relation, deceased_id")
     .eq("owner_email", userEmail)
     .is("deleted_at", null);
   if (!characters || characters.length === 0) return [];
@@ -38,6 +39,7 @@ export async function loadAnniversaryIslands(supabase: SupabaseClient, userEmail
       characterId: character.id,
       deceasedId: character.deceased_id,
       nickname: character.nickname,
+      relation: (character.relation as string | null) ?? null,
       ...window,
     });
   }

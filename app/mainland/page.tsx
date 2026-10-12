@@ -4,6 +4,7 @@ import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { daysUntilLabel } from "@/lib/anniversary";
+import { isPetRelation } from "@/lib/character-fields";
 import { ISLAND_SLOTS, arrangeIslands, islandLook, islandPlacement, islandSoloStyle, type IslandShape } from "@/lib/islands";
 import { MAP_TUTORIAL_KEY_PREFIX, MAP_TUTORIAL_STEPS, MapTutorial } from "@/components/MapTutorial";
 import { useSession } from "next-auth/react";
@@ -21,6 +22,7 @@ import { Suspense, useEffect, useState } from "react";
 type AnniversaryIsland = {
   deceasedId: string;
   nickname: string;
+  relation: string | null;
   anniversaryDate: string;
   daysUntil: number;
   status: "ask" | "open" | "later";
@@ -181,7 +183,7 @@ function MainlandPageContent() {
             <Link
               key={island.deceasedId}
               href={`/island/${island.deceasedId}`}
-              aria-label={`${island.nickname}의 섬 (${daysUntilLabel(island.daysUntil)})`}
+              aria-label={`${island.nickname}의 섬 (${daysUntilLabel(island.daysUntil, isPetRelation(island.relation))})`}
               className="group pointer-events-auto absolute z-[2] block animate-[island-rise_1.4s_ease-out]"
               style={placement.style}
             >
@@ -194,7 +196,7 @@ function MainlandPageContent() {
               />
               <IslandSign
                 label={`${island.nickname}의 섬`}
-                sub={daysUntilLabel(island.daysUntil)}
+                sub={daysUntilLabel(island.daysUntil, isPetRelation(island.relation))}
                 x={`${placement.flip ? 100 - ANNIVERSARY_SIGN_SPOT[placement.shape].x : ANNIVERSARY_SIGN_SPOT[placement.shape].x}%`}
                 y={`${ANNIVERSARY_SIGN_SPOT[placement.shape].y}%`}
               />
@@ -293,12 +295,12 @@ function MainlandPageContent() {
               );
             })()}
             <div className="flex flex-col gap-2">
-              <p className="font-mulish text-sm text-[#AF9083]">{daysUntilLabel(asking.daysUntil)}</p>
+              <p className="font-mulish text-sm text-[#AF9083]">{daysUntilLabel(asking.daysUntil, isPetRelation(asking.relation))}</p>
               <h2 id="anniversary-title" className="font-jeju-myeongjo text-2xl text-[#4A423C]">
                 {asking.nickname}의 개인 추모 랜드를 열까요?
               </h2>
               <p className="font-mulish text-sm leading-relaxed text-[#898787]">
-                기일 동안 지도에 {asking.nickname}의 섬이 떠올라요.
+                {isPetRelation(asking.relation) ? "그날 즈음" : "기일 동안"} 지도에 {asking.nickname}의 섬이 떠올라요.
                 <br />
                 섬에서 함께 기억하는 가족과 마음을 남길 수 있어요.
               </p>
@@ -322,7 +324,7 @@ function MainlandPageContent() {
                 나중에
               </button>
               <p className="font-mulish text-xs text-[#AF9083]">
-                &lsquo;나중에&rsquo;를 고르면 이번 기일 동안 다시 묻지 않아요. 지도 아래에서 언제든 열 수 있어요.
+                &lsquo;나중에&rsquo;를 고르면 이번 {isPetRelation(asking.relation) ? "기간" : "기일"} 동안 다시 묻지 않아요. 지도 아래에서 언제든 열 수 있어요.
               </p>
             </div>
           </div>

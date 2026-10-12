@@ -37,9 +37,11 @@ export function anniversaryWindow(month: number, day: number, today = seoulToday
 }
 
 // "기일이 3일 남았어요" / "오늘이 기일이에요" / "기일이 2일 지났어요"
-export function daysUntilLabel(daysUntil: number) {
-  if (daysUntil === 0) return "오늘이 기일이에요";
-  return daysUntil > 0 ? `기일이 ${daysUntil}일 남았어요` : `기일이 ${-daysUntil}일 지났어요`;
+// 반려동물이면 "무지개다리 건넌 날이 3일 남았어요"처럼
+export function daysUntilLabel(daysUntil: number, isPet = false) {
+  const day = isPet ? "무지개다리 건넌 날" : "기일";
+  if (daysUntil === 0) return `오늘이 ${day}이에요`;
+  return daysUntil > 0 ? `${day}이 ${daysUntil}일 남았어요` : `${day}이 ${-daysUntil}일 지났어요`;
 }
 
 // 다음 기일 (사흘 안에 지난 기일은 그대로 보여 줌): { 기일 날짜, 남은 날(지났으면 -1~-3) }

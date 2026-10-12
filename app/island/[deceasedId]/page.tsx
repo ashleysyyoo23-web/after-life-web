@@ -6,6 +6,7 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { GridMessageCard, useWallMessages } from "@/components/community/CommunityCards";
 import { KYHMessageModal } from "@/components/KYHMessageModal";
 import { daysUntilLabel } from "@/lib/anniversary";
+import { isPetRelation } from "@/lib/character-fields";
 import { deceasedWall } from "@/lib/community";
 import { islandLook, islandSoloStyle } from "@/lib/islands";
 import Image from "next/image";
@@ -74,7 +75,7 @@ export default function IslandPage() {
               </WoodPlank>
               {info.daysUntil !== null && (
                 <p className="font-mulish text-sm text-[#AF9083]">
-                  {info.anniversaryDate?.replace(/-/g, ".")} · {daysUntilLabel(info.daysUntil)}
+                  {info.anniversaryDate?.replace(/-/g, ".")} · {daysUntilLabel(info.daysUntil, isPetRelation(info.relation))}
                 </p>
               )}
               <p className="font-mulish text-sm text-[#898787]">
