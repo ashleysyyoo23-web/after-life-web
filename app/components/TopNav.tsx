@@ -12,7 +12,7 @@ let globalBgm: HTMLAudioElement | null = null;
 let globalIsPlaying = true;
 
 const navTextClass =
-  "inline-flex h-[42px] items-center justify-center px-3 py-1 font-mulish text-2xl font-semibold text-[#4B3F39] transition-opacity hover:opacity-70";
+  "inline-flex h-[42px] items-center justify-center whitespace-nowrap px-3 py-1 font-mulish text-2xl font-semibold text-[#4B3F39] transition-opacity hover:opacity-70";
 
 const navIconFrameClass =
   "inline-flex h-12 w-12 items-center justify-center p-1 transition-opacity hover:opacity-70";
@@ -134,7 +134,8 @@ export function TopNav({
         />
       </Link>
 
-      <div className="flex items-center justify-end gap-[52px]" data-tutorial="top-menu">
+      {/* 좁은 창에서는 간격을 줄여 글자가 세로로 깨지지 않게 */}
+      <div className="flex items-center justify-end gap-5 xl:gap-[52px]" data-tutorial="top-menu">
         <Link href="/about" className={navTextClass}>
           소개
         </Link>
@@ -142,7 +143,7 @@ export function TopNav({
         {sessionStatus === "unauthenticated" && (
           <Link
             href={loginUrl(`${pathname ?? "/mainland"}`)}
-            className="rounded-full border border-[#AF9083] bg-white/80 px-4 py-1.5 font-mulish text-base font-semibold text-[#AF9083] transition-colors hover:bg-[#FDD9BD]"
+            className="whitespace-nowrap rounded-full border border-[#AF9083] bg-white/80 px-4 py-1.5 font-mulish text-base font-semibold text-[#AF9083] transition-colors hover:bg-[#FDD9BD]"
           >
             로그인
           </Link>

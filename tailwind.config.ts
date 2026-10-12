@@ -49,7 +49,8 @@ const config: Config = {
       fontFamily: {
         newsreader: ["var(--font-newsreader)", "serif"],
         mulish: ["var(--font-mulish)", "sans-serif"],
-        "jeju-myeongjo": ["'Jeju Myeongjo'", "serif"],
+        // 이름은 예전 그대로, 실제 글꼴은 고운바탕 (app/layout.tsx)
+        "jeju-myeongjo": ["var(--font-myeongjo)", "serif"],
         handwriting: ["var(--font-handwriting)", "cursive"],
       },
       fontSize: {

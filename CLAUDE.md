@@ -31,7 +31,7 @@
 - 폰트
   - Newsreader (영문 제목) → `font-newsreader`
   - Mulish (본문, body 기본값) → `font-mulish`
-  - Jeju Myeongjo (한글 툴팁) → `font-jeju-myeongjo`
+  - 한글 명조 (섬 팻말·말풍선·제목) → `font-jeju-myeongjo` — 이름은 예전 그대로지만 실제 글꼴은 **고운바탕(Gowun Batang)**, `app/layout.tsx`에서 `next/font`로 우리 사이트가 직접 내려줌 (예전 제주명조 주소는 없어져서 10/13에 바꿈)
 - 주요 색상
   - `green-500` #9BB073
   - `pink-300` #FDD9BD
