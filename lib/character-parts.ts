@@ -445,7 +445,15 @@ const FUR_COLORS = {
 } as const;
 const PET_SCALE = { small: 0.82, regular: 1, large: 1.14 } as const;
 
-function petSvg(a: CharacterAppearance, paint: (colors: readonly [string, string]) => string) {
+// 붓 (메시지를 남긴 뒤 돌에 그림 그리는 모습): 손잡이 + 물감 묻은 붓끝
+const BRUSH_TIP = "#F28C8C";
+function brushSvg(fromX: number, fromY: number, toX: number, toY: number) {
+  return `<path d="M${fromX} ${fromY} L${toX} ${toY}" stroke="#C99B78" stroke-width="3.2" stroke-linecap="round"/>` +
+    line(`M${fromX} ${fromY} L${toX} ${toY}`, 0.9) +
+    `<ellipse cx="${toX + 2}" cy="${toY - 2}" rx="4" ry="2.6" transform="rotate(-40 ${toX + 2} ${toY - 2})" fill="${BRUSH_TIP}" stroke="${INK}" stroke-width="1"/>`;
+}
+
+function petSvg(a: CharacterAppearance, paint: (colors: readonly [string, string]) => string, painting = false) {
   const cat = a.species === "cat";
   const f = paint(FUR_COLORS[a.fur]);
   const furLight = FUR_COLORS[a.fur][0];
@@ -496,9 +504,11 @@ function petSvg(a: CharacterAppearance, paint: (colors: readonly [string, string
   }
   g.push(a.eyes === "dot" ? `<circle cx="142" cy="142" r="2.4" fill="${INK}"/>` : line("M137 143 Q142 147 147 143", 1.4));
   // 물고 있는 것
-  if (a.petItem === "ball") g.push(`<circle cx="${cat ? 166 : 168}" cy="176" r="8" fill="#F5D07A" stroke="${INK}" stroke-width="1.3"/>` + line("M160 174 Q168 178 176 174", 1));
-  if (a.petItem === "bone") g.push(fill("M150 172 L176 172 Q182 166 186 172 Q182 178 186 182 Q180 186 176 178 L150 178 Q144 184 140 178 Q144 174 140 168 Q146 166 150 172 Z", "#FBF4E6", 1.2));
-  if (a.petItem === "flower") g.push(line("M158 168 L178 150", 1.2) + fill("M178 150 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0", "#F4A9A8", 1.2));
+  // 그림 그리는 중이면 붓을 입에 물어요 (물고 있던 것 대신)
+  if (painting) g.push(brushSvg(cat ? 154 : 158, 168, cat ? 184 : 190, 146));
+  else if (a.petItem === "ball") g.push(`<circle cx="${cat ? 166 : 168}" cy="176" r="8" fill="#F5D07A" stroke="${INK}" stroke-width="1.3"/>` + line("M160 174 Q168 178 176 174", 1));
+  else if (a.petItem === "bone") g.push(fill("M150 172 L176 172 Q182 166 186 172 Q182 178 186 182 Q180 186 176 178 L150 178 Q144 184 140 178 Q144 174 140 168 Q146 166 150 172 Z", "#FBF4E6", 1.2));
+  else if (a.petItem === "flower") g.push(line("M158 168 L178 150", 1.2) + fill("M178 150 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0", "#F4A9A8", 1.2));
 
   // 발밑 그림자 + 크기 (발끝 기준으로 키우고 줄임, 가운데에 오도록 살짝 왼쪽으로)
   const scale = PET_SCALE[a.petSize];
@@ -508,7 +518,8 @@ function petSvg(a: CharacterAppearance, paint: (colors: readonly [string, string
 
 // 캐릭터 한 명의 SVG 내용. idPrefix 는 한 화면에 여러 캐릭터가 있어도 색(그라데이션) id 가 겹치지 않게.
 // 들어가는 값은 모두 sanitizeAppearance 를 거친 목록 안의 이름과 고정된 색이라, 사용자 글자는 들어가지 않아요.
-export function renderCharacterSvg(appearance: CharacterAppearance, idPrefix: string) {
+// painting: 손(동물은 입)에 붓을 들고 있는 모습 (들고 있던 것 대신)
+export function renderCharacterSvg(appearance: CharacterAppearance, idPrefix: string, painting = false) {
   const a = sanitizeAppearance(appearance);
   const b = BODIES[a.body];
   const defs: string[] = [];
@@ -521,7 +532,7 @@ export function renderCharacterSvg(appearance: CharacterAppearance, idPrefix: st
 
   // 반려동물이면 동물 그림 (색 정의는 그린 뒤에 모아서 앞에 붙임)
   if (a.species !== "human") {
-    const body = petSvg(a, paint);
+    const body = petSvg(a, paint, painting);
     return `<defs>${defs.join("")}</defs>${body}`;
   }
 
@@ -573,10 +584,11 @@ export function renderCharacterSvg(appearance: CharacterAppearance, idPrefix: st
   }
   s.push(`<circle cx="${hand[0]}" cy="${hand[1]}" r="5.5" fill="${skinLight}" stroke="${INK}" stroke-width="1.3"/>`);
   const [hx, hy] = hand;
-  if (a.item === "cocktail") s.push(fill(`M${hx - 10} ${hy - 26} L${hx + 10} ${hy - 26} L${hx} ${hy - 12} Z`, "#F5D7D2", 1.3) + line(`M${hx} ${hy - 12} L${hx} ${hy - 2} M${hx - 6} ${hy - 2} L${hx + 6} ${hy - 2}`, 1.3));
-  if (a.item === "cup") s.push(fill(`M${hx - 8} ${hy - 22} L${hx + 8} ${hy - 22} L${hx + 6} ${hy} L${hx - 6} ${hy} Z`, "#CFEDEA", 1.3));
-  if (a.item === "cane") s.push(line(`M${hx} ${hy} L${hx + 2} ${GROUND} M${hx} ${hy} Q${hx - 2} ${hy - 8} ${hx - 8} ${hy - 6}`, 2.2));
-  if (a.item === "flower") s.push(line(`M${hx} ${hy} L${hx + 2} ${hy - 26}`, 1.2) + fill(`M${hx + 2} ${hy - 26} m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0`, "#F4A9A8", 1.2));
+  if (painting) s.push(brushSvg(hx - 6, hy + 8, hx + 18, hy - 22));
+  else if (a.item === "cocktail") s.push(fill(`M${hx - 10} ${hy - 26} L${hx + 10} ${hy - 26} L${hx} ${hy - 12} Z`, "#F5D7D2", 1.3) + line(`M${hx} ${hy - 12} L${hx} ${hy - 2} M${hx - 6} ${hy - 2} L${hx + 6} ${hy - 2}`, 1.3));
+  else if (a.item === "cup") s.push(fill(`M${hx - 8} ${hy - 22} L${hx + 8} ${hy - 22} L${hx + 6} ${hy} L${hx - 6} ${hy} Z`, "#CFEDEA", 1.3));
+  else if (a.item === "cane") s.push(line(`M${hx} ${hy} L${hx + 2} ${GROUND} M${hx} ${hy} Q${hx - 2} ${hy - 8} ${hx - 8} ${hy - 6}`, 2.2));
+  else if (a.item === "flower") s.push(line(`M${hx} ${hy} L${hx + 2} ${hy - 26}`, 1.2) + fill(`M${hx + 2} ${hy - 26} m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0`, "#F4A9A8", 1.2));
 
   return `<defs>${defs.join("")}</defs>${s.join("")}`;
 }

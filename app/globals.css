@@ -94,6 +94,31 @@ body {
   }
 }
 
+/* 메시지를 남긴 뒤: 붓이 닿은 자리에 꽃이 피어나기 · 그리는 손짓 */
+@keyframes bloom {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.1) rotate(-30deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.12) rotate(4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+}
+@keyframes paint-stroke {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-3deg) translateY(-2px);
+  }
+}
+
 /* 커뮤니티 추모 랜드: 돌을 확대한 뒤 꽃 자리가 천천히 나타나기 */
 @keyframes fade-in {
   from {
