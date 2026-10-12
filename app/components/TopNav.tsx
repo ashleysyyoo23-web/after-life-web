@@ -8,8 +8,46 @@ import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+// 배경음악은 화면을 옮겨도 하나만 (모듈에 하나 두고 모든 화면의 위쪽 메뉴가 같이 씀)
 let globalBgm: HTMLAudioElement | null = null;
-let globalIsPlaying = true;
+// 사용자가 음악 버튼으로 직접 껐는지 (끈 뒤에는 화면을 눌러도 다시 켜지지 않음)
+let musicWanted = true;
+let unlockListening = false;
+
+// 브라우저가 자동 재생을 막으면, 화면을 처음 누르거나 키를 누르는 순간 재생
+function waitForFirstInteraction() {
+  if (unlockListening) return;
+  unlockListening = true;
+  const events = ["pointerdown", "keydown", "touchstart"] as const;
+  const unlock = (event: Event) => {
+    // 음악 버튼을 누른 거면 버튼이 알아서 켜요 (여기서 켜면 버튼이 바로 꺼 버려요)
+    if (event.target instanceof Element && event.target.closest("[data-music-toggle]")) return;
+    events.forEach((name) => window.removeEventListener(name, unlock, true));
+    unlockListening = false;
+    if (musicWanted) playBgm();
+  };
+  events.forEach((name) => window.addEventListener(name, unlock, true));
+}
+
+function playBgm() {
+  if (!globalBgm) return;
+  globalBgm.play().catch(() => waitForFirstInteraction());
+}
+
+function ensureBgm() {
+  if (globalBgm) return globalBgm;
+  // 배경음악: 원본(bgm1.mp3, 136MB)은 GitHub 한도를 넘어 올리지 않고, 64kbps 로 줄인 파일(약 27MB)을 써요
+  globalBgm = new Audio("/sounds/bgm1.m4a");
+  globalBgm.loop = true;
+  globalBgm.volume = 0.4;
+  // 반복이 안 먹는 브라우저를 위해: 끝나면 처음부터 다시
+  globalBgm.addEventListener("ended", () => {
+    if (!globalBgm || !musicWanted) return;
+    globalBgm.currentTime = 0;
+    playBgm();
+  });
+  return globalBgm;
+}
 
 const navTextClass =
   "inline-flex h-[42px] items-center justify-center whitespace-nowrap px-3 py-1 font-mulish text-2xl font-semibold text-[#4B3F39] transition-opacity hover:opacity-70";
@@ -30,33 +68,32 @@ export function TopNav({
   // 로그인 안 했으면 오른쪽 위에 "로그인" (로그인 뒤 지금 화면으로 돌아옴)
   const { status: sessionStatus } = useSession();
   const pathname = usePathname();
-  // 다른 화면에서 멈췄으면 그 상태 그대로 (화면을 옮겨도 음악은 하나라서)
-  const [isMusicPlaying, setIsMusicPlaying] = useState(() => globalIsPlaying);
+  // 실제로 소리가 나는지 (자동 재생이 막혀 있으면 "재생"으로 보여요)
+  const [isMusicPlaying, setIsMusicPlaying] = useState(() => Boolean(globalBgm && !globalBgm.paused));
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // 섬에 들어오면 바로 재생 시도 (막히면 첫 클릭·키 입력 때) + 버튼 모양을 실제 재생 상태에 맞춤
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    if (!globalBgm) {
-      // 배경음악: 원본(bgm1.mp3, 136MB)은 GitHub 한도를 넘어 올리지 않고, 64kbps 로 줄인 파일(약 27MB)을 써요
-      globalBgm = new Audio("/sounds/bgm1.m4a");
-      globalBgm.loop = true;
-      globalBgm.volume = 0.4;
-      globalBgm.play().catch(() => {});
-    }
+    const audio = ensureBgm();
+    const sync = () => setIsMusicPlaying(!audio.paused);
+    audio.addEventListener("play", sync);
+    audio.addEventListener("pause", sync);
+    if (musicWanted && audio.paused) playBgm();
+    return () => {
+      audio.removeEventListener("play", sync);
+      audio.removeEventListener("pause", sync);
+    };
   }, []);
 
   const toggleMusic = () => {
-    if (!globalBgm) return;
-
-    if (globalIsPlaying) {
-      globalBgm.pause();
+    const audio = ensureBgm();
+    if (!audio.paused) {
+      musicWanted = false;
+      audio.pause();
     } else {
-      globalBgm.play().catch(() => {});
+      musicWanted = true;
+      playBgm();
     }
-
-    globalIsPlaying = !globalIsPlaying;
-    setIsMusicPlaying(globalIsPlaying);
   };
 
   // 알림함: 개인 추모 랜드 · 내 메시지의 좋아요 · 댓글 (/api/notifications). 연 뒤에 생긴 것만 빨간 숫자로
@@ -151,6 +188,7 @@ export function TopNav({
         <button
           type="button"
           onClick={toggleMusic}
+          data-music-toggle
           className={navIconFrameClass}
           aria-label={isMusicPlaying ? "음악 정지" : "음악 재생"}
           aria-pressed={isMusicPlaying}
