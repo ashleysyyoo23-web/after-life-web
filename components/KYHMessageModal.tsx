@@ -89,6 +89,9 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
+  // 부드러운 선: 직전 점과 직전 중간점 (점 사이를 곡선으로 이어요)
+  const lastPoint = useRef<{ x: number; y: number } | null>(null);
+  const lastMid = useRef<{ x: number; y: number } | null>(null);
   const undoStack = useRef<ImageData[]>([]);
 
   const [activeTool, setActiveTool] = useState<ActiveTool>("pen");
@@ -220,7 +223,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
   };
 
   const getCanvasPoint = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+    (e: { clientX: number; clientY: number }) => {
       const canvas = canvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
 
@@ -292,64 +295,77 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
     }
   }, [restoreCompositeOperation]);
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // 펜·지우개 그리기: 마우스·펜·터치 모두. 빠르게 그어도 점을 놓치지 않고(브라우저가 모아 둔 사이 움직임까지),
+  // 점 사이는 곡선으로 이어 매끄럽게. 그림판 밖으로 잠깐 나가도 선이 끊기지 않게 포인터를 붙잡아 둬요.
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
       if (activeTool !== "pen" && activeTool !== "eraser") return;
 
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!canvas || !ctx) return;
 
+      e.currentTarget.setPointerCapture(e.pointerId);
       saveCanvasState();
       isDrawing.current = true;
 
-      const { x, y } = getCanvasPoint(e);
       if (activeTool === "eraser") {
         applyEraserStyle(ctx);
       } else {
         applyPenStyle(ctx);
       }
+      const point = getCanvasPoint(e);
+      lastPoint.current = point;
+      lastMid.current = point;
+      // 한 번 콕 찍어도 점이 보이게
       ctx.beginPath();
-      ctx.moveTo(x, y);
+      ctx.moveTo(point.x, point.y);
+      ctx.lineTo(point.x, point.y);
+      ctx.stroke();
     },
     [activeTool, applyEraserStyle, applyPenStyle, getCanvasPoint, saveCanvasState],
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
       if (!isDrawing.current) return;
 
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      if (!canvas || !ctx) return;
+      const ctx = canvasRef.current?.getContext("2d");
+      if (!ctx || !lastPoint.current || !lastMid.current) return;
 
-      const { x, y } = getCanvasPoint(e);
-
-      if (activeTool === "eraser") {
-        applyEraserStyle(ctx);
+      const events = e.nativeEvent.getCoalescedEvents?.() ?? [];
+      for (const event of events.length > 0 ? events : [e.nativeEvent]) {
+        const point = getCanvasPoint(event);
+        const previous = lastPoint.current;
+        const mid = { x: (previous.x + point.x) / 2, y: (previous.y + point.y) / 2 };
+        ctx.beginPath();
+        ctx.moveTo(lastMid.current.x, lastMid.current.y);
+        ctx.quadraticCurveTo(previous.x, previous.y, mid.x, mid.y);
+        ctx.stroke();
+        lastPoint.current = point;
+        lastMid.current = mid;
       }
-
-      ctx.lineTo(x, y);
-      ctx.stroke();
-
-      if (activeTool === "eraser") {
-        restoreCompositeOperation(ctx);
-      }
-
-      ctx.beginPath();
-      ctx.moveTo(x, y);
     },
-    [activeTool, applyEraserStyle, getCanvasPoint, restoreCompositeOperation],
+    [getCanvasPoint],
   );
 
   const stopDrawing = useCallback(() => {
     if (isDrawing.current) {
       const ctx = canvasRef.current?.getContext("2d");
       if (ctx) {
+        // 마지막 중간점에서 끝점까지 마저 그어요
+        if (lastMid.current && lastPoint.current) {
+          ctx.beginPath();
+          ctx.moveTo(lastMid.current.x, lastMid.current.y);
+          ctx.lineTo(lastPoint.current.x, lastPoint.current.y);
+          ctx.stroke();
+        }
         restoreCompositeOperation(ctx);
       }
     }
     isDrawing.current = false;
+    lastPoint.current = null;
+    lastMid.current = null;
   }, [restoreCompositeOperation]);
 
   useEffect(() => {
@@ -462,10 +478,10 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                 height={CANVAS_HEIGHT}
                 className="relative h-full w-full cursor-crosshair touch-none bg-transparent"
                 style={{ background: "transparent" }}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={stopDrawing}
+                onPointerCancel={stopDrawing}
               />
             </div>
 

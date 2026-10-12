@@ -457,10 +457,20 @@ function CaptionInput({
 
 // ───────── 그리기 ─────────
 
+// 점들을 부드러운 곡선으로 이어요 (점 사이 가운데를 지나는 곡선). 저장된 점은 그대로, 보이는 모양만 매끄럽게
 function strokeToPath(stroke: DrawingStroke) {
-  return stroke.points
-    .map(([x, y], index) => `${index === 0 ? "M" : "L"}${x * 1000} ${y * 1000}`)
-    .join(" ");
+  const points = stroke.points.map(([x, y]) => [x * 1000, y * 1000] as const);
+  if (points.length < 3) {
+    return points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x} ${y}`).join(" ");
+  }
+  let d = `M${points[0][0]} ${points[0][1]}`;
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const [x, y] = points[index];
+    const [nx, ny] = points[index + 1];
+    d += ` Q${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`;
+  }
+  const [lx, ly] = points[points.length - 1];
+  return `${d} L${lx} ${ly}`;
 }
 
 // 선을 순서대로 그려요. 예전 방식의 지우개 선(mode: "erase")이 저장돼 있으면
@@ -594,7 +604,10 @@ function DrawingLayer({
     };
   }, []);
 
-  const toPoint = (event: React.PointerEvent): [number, number] => {
+  // 지금 긋는 선 (화면이 다시 그려지기 전에 들어온 점도 놓치지 않게 여기에 바로 모아요)
+  const currentRef = useRef<DrawingStroke | null>(null);
+
+  const toPoint = (event: { clientX: number; clientY: number }): [number, number] => {
     const rect = svgRef.current!.getBoundingClientRect();
     const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
     const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
@@ -647,7 +660,8 @@ function DrawingLayer({
       return;
     }
 
-    setCurrent({ color, width: penWidth, points: [toPoint(event)] });
+    currentRef.current = { color, width: penWidth, points: [toPoint(event)] };
+    setCurrent(currentRef.current);
   };
 
   const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -655,12 +669,21 @@ function DrawingLayer({
       eraseAt(event);
       return;
     }
-    if (!current) return;
-    const point = toPoint(event);
-    const last = current.points[current.points.length - 1];
-    // 너무 촘촘한 점은 건너뛰어 저장 용량을 줄임
-    if (Math.hypot(point[0] - last[0], point[1] - last[1]) < 0.002) return;
-    setCurrent({ ...current, points: [...current.points, point] });
+    const stroke = currentRef.current;
+    if (!stroke) return;
+    // 빠르게 그을 때 브라우저가 모아 둔 사이 움직임까지 모두 받아요
+    const coalesced = event.nativeEvent.getCoalescedEvents?.() ?? [];
+    const points = [...stroke.points];
+    for (const move of coalesced.length > 0 ? coalesced : [event.nativeEvent]) {
+      const point = toPoint(move);
+      const last = points[points.length - 1];
+      // 너무 촘촘한 점은 건너뛰어 저장 용량을 줄임
+      if (Math.hypot(point[0] - last[0], point[1] - last[1]) < 0.0015) continue;
+      points.push(point);
+    }
+    if (points.length === stroke.points.length) return;
+    currentRef.current = { ...stroke, points };
+    setCurrent(currentRef.current);
   };
 
   const handlePointerUp = () => {
@@ -671,12 +694,14 @@ function DrawingLayer({
       if (strokes.length !== before.length) commit(strokes, before);
       return;
     }
-    if (!current) return;
+    const stroke = currentRef.current;
+    if (!stroke) return;
     // 점 하나만 찍어도 보이도록 같은 자리에 점을 하나 더
     const finished =
-      current.points.length === 1
-        ? { ...current, points: [current.points[0], current.points[0]] as Array<[number, number]> }
-        : current;
+      stroke.points.length === 1
+        ? { ...stroke, points: [stroke.points[0], stroke.points[0]] as Array<[number, number]> }
+        : stroke;
+    currentRef.current = null;
     setCurrent(null);
     commit([...strokes, finished]);
   };
