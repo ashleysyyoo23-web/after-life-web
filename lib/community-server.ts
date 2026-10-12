@@ -3,9 +3,11 @@ import sharp from "sharp";
 import {
   COMMUNITY_IMAGE_MAX_BYTES,
   deceasedIdFromWall,
+  type AuthorProfile,
   type CommunityMessage,
   type CommunityWall,
 } from "@/lib/community";
+import { sanitizeAppearance } from "@/lib/character-parts";
 import {
   findCharacterRootFolder,
   getValidAccessTokenForConnection,
@@ -128,6 +130,24 @@ type MessageRow = {
 export const COMMUNITY_MESSAGE_COLUMNS =
   "id, wall, author_email, nickname, message, drawing_path, image_path, created_at";
 
+// 쓴 사람들의 "나의 프로필"(아이디·캐릭터)을 한 번에 (이메일 → 프로필). 표가 없거나 못 읽으면 빈 목록
+export async function loadAuthorProfiles(supabase: SupabaseClient, emails: string[]) {
+  const profiles = new Map<string, NonNullable<AuthorProfile>>();
+  const unique = [...new Set(emails)].filter(Boolean);
+  if (unique.length === 0) return profiles;
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("user_email, handle, appearance")
+    .in("user_email", unique);
+  if (error) return profiles;
+  for (const row of data ?? []) {
+    const handle = (row.handle as string | null) ?? null;
+    const appearance = row.appearance ? sanitizeAppearance(row.appearance) : null;
+    if (handle || appearance) profiles.set(row.user_email as string, { handle, appearance });
+  }
+  return profiles;
+}
+
 // 메시지 줄 → 화면용 (좋아요 수·내가 누른 표시 포함, 작성자 이메일은 빼고)
 export async function toClientMessages(
   supabase: SupabaseClient,
@@ -169,6 +189,8 @@ export async function toClientMessages(
     }
   }
 
+  const authors = await loadAuthorProfiles(supabase, rows.map((row) => row.author_email));
+
   return rows.map((row) => {
     const reaction = reactions.get(row.id) ?? { likeCount: 0, liked: false, bookmarked: false };
     return {
@@ -182,6 +204,7 @@ export async function toClientMessages(
       ...reaction,
       commentCount: commentCounts.get(row.id) ?? 0,
       isMine: row.author_email === userEmail,
+      author: authors.get(row.author_email) ?? null,
     };
   });
 }

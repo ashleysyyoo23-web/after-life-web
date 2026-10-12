@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
-import { canUseWall } from "@/lib/community-server";
+import { canUseWall, loadAuthorProfiles } from "@/lib/community-server";
 import { COMMUNITY_COMMENT_MAX, COMMUNITY_NICKNAME_MAX, type CommunityComment } from "@/lib/community";
 
 type RouteParams = {
@@ -26,12 +26,18 @@ async function findMessage(supabase: Parameters<typeof canUseWall>[0], userEmail
   return message;
 }
 
-const toClient = (row: CommentRow, userEmail: string): CommunityComment => ({
+const toClient = (
+  row: CommentRow,
+  userEmail: string,
+  authors: Awaited<ReturnType<typeof loadAuthorProfiles>>,
+): CommunityComment => ({
   id: row.id,
   nickname: row.nickname,
   body: row.body,
   createdAt: row.created_at,
   isMine: row.author_email === userEmail,
+  // 쓴 사람의 아이디·캐릭터 (이메일은 보내지 않음)
+  author: authors.get(row.author_email) ?? null,
 });
 
 // 댓글 목록 (오래된 것부터)
@@ -54,7 +60,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     .limit(200);
 
   if (error) return NextResponse.json(NEEDS_MIGRATION, { status: 503 });
-  return NextResponse.json({ comments: (data as CommentRow[]).map((row) => toClient(row, userEmail)) });
+  const rows = data as CommentRow[];
+  const authors = await loadAuthorProfiles(supabase, rows.map((row) => row.author_email));
+  return NextResponse.json({ comments: rows.map((row) => toClient(row, userEmail, authors)) });
 }
 
 // 댓글 달기. body: { nickname, body }
@@ -88,5 +96,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (error.code === "42P01" || error.code === "PGRST205") return NextResponse.json(NEEDS_MIGRATION, { status: 503 });
     return NextResponse.json({ error: "댓글을 남기지 못했어요. 잠시 뒤 다시 시도해 주세요." }, { status: 500 });
   }
-  return NextResponse.json({ comment: toClient(data as CommentRow, userEmail) }, { status: 201 });
+  const authors = await loadAuthorProfiles(supabase, [userEmail]);
+  return NextResponse.json({ comment: toClient(data as CommentRow, userEmail, authors) }, { status: 201 });
 }

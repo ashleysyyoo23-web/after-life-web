@@ -1,3 +1,5 @@
+import type { CharacterAppearance } from "@/lib/character-parts";
+
 // 추모 공간(커뮤니티) 메시지 공통 규칙
 // drawingPath = 메시지를 남긴 뒤 돌아갈 화면. 커뮤니티 추모 랜드 돌들은 그 돌을 확대한 화면(/community?stone=…)
 export const COMMUNITY_WALLS = {
@@ -47,6 +49,12 @@ export const COMMUNITY_STORAGE_BUCKET = "community";
 
 export type CommunityReaction = "like" | "bookmark";
 
+// 쓴 사람의 "나의 프로필" (아이디·캐릭터). 프로필을 저장하지 않았으면 null
+export type AuthorProfile = {
+  handle: string | null;
+  appearance: CharacterAppearance | null;
+} | null;
+
 // 화면에 보내는 메시지 (작성자 이메일은 보내지 않음)
 export type CommunityMessage = {
   id: string;
@@ -61,6 +69,7 @@ export type CommunityMessage = {
   liked: boolean;
   bookmarked: boolean;
   isMine: boolean;
+  author: AuthorProfile;
 };
 
 // Google Drive 주소에서 파일 ID 꺼내기
@@ -93,4 +102,5 @@ export type CommunityComment = {
   body: string;
   createdAt: string;
   isMine: boolean;
+  author: AuthorProfile;
 };

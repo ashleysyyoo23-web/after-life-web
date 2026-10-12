@@ -3,6 +3,7 @@ import { getSessionContext } from "@/lib/api-session";
 import { loadAnniversaryIslands } from "@/lib/anniversary-server";
 import { ISLAND_DAYS_BEFORE, daysUntilLabel } from "@/lib/anniversary";
 import { isPetRelation } from "@/lib/character-fields";
+import { loadAuthorProfiles } from "@/lib/community-server";
 import { isCommunityWall, wallHomePath } from "@/lib/community";
 import type { AppNotification } from "@/lib/notifications";
 
@@ -64,24 +65,32 @@ export async function GET() {
     // 다른 사람이 누른 좋아요 (메시지마다 하나로 묶음)
     const { data: likes } = await supabase
       .from("community_reactions")
-      .select("message_id, created_at")
+      .select("message_id, user_email, created_at")
       .in("message_id", ids)
       .eq("kind", "like")
       .neq("user_email", userEmail)
       .gte("created_at", since);
-    const likeGroups = new Map<string, { count: number; latest: string }>();
+    const likeGroups = new Map<string, { count: number; latest: string; latestEmail: string }>();
     for (const like of likes ?? []) {
-      const group = likeGroups.get(like.message_id) ?? { count: 0, latest: like.created_at };
+      const group = likeGroups.get(like.message_id) ?? { count: 0, latest: like.created_at, latestEmail: like.user_email };
       group.count += 1;
-      if (like.created_at > group.latest) group.latest = like.created_at;
+      if (like.created_at > group.latest) {
+        group.latest = like.created_at;
+        group.latestEmail = like.user_email;
+      }
       likeGroups.set(like.message_id, group);
     }
+    // 가장 최근에 공감한 사람의 아이디 (나의 프로필에 아이디를 저장한 사람만)
+    const likers = await loadAuthorProfiles(supabase, [...likeGroups.values()].map((group) => group.latestEmail));
     for (const [messageId, group] of likeGroups) {
       const message = messages.get(messageId)!;
+      const handle = likers.get(group.latestEmail)?.handle;
       notifications.push({
         id: `like:${messageId}:${group.latest}`,
         kind: "like",
-        message: `'${preview(message.message)}'에 공감이 ${group.count}개 달렸어요.`,
+        message: handle
+          ? `'${preview(message.message)}'에 @${handle} 님${group.count > 1 ? ` 외 ${group.count - 1}명` : ""}이 공감했어요.`
+          : `'${preview(message.message)}'에 공감이 ${group.count}개 달렸어요.`,
         href: messageHref(message.wall),
         createdAt: group.latest,
       });
@@ -90,26 +99,32 @@ export async function GET() {
     // 다른 사람이 단 댓글 (메시지마다 하나로 묶고, 가장 최근 댓글을 미리 보기)
     const { data: comments, error: commentsError } = await supabase
       .from("community_comments")
-      .select("message_id, nickname, body, created_at")
+      .select("message_id, author_email, nickname, body, created_at")
       .in("message_id", ids)
       .neq("author_email", userEmail)
       .is("deleted_at", null)
       .gte("created_at", since)
       .order("created_at", { ascending: false });
     if (!commentsError) {
-      const commentGroups = new Map<string, { count: number; latest: { nickname: string; body: string; created_at: string } }>();
+      const commentGroups = new Map<
+        string,
+        { count: number; latest: { author_email: string; nickname: string; body: string; created_at: string } }
+      >();
       for (const comment of comments ?? []) {
         const group = commentGroups.get(comment.message_id);
         if (group) group.count += 1;
         else commentGroups.set(comment.message_id, { count: 1, latest: comment });
       }
+      const commenters = await loadAuthorProfiles(supabase, [...commentGroups.values()].map((group) => group.latest.author_email));
       for (const [messageId, group] of commentGroups) {
         const message = messages.get(messageId)!;
         const more = group.count > 1 ? ` 외 ${group.count - 1}개` : "";
+        const handle = commenters.get(group.latest.author_email)?.handle;
+        const who = handle ? `@${handle} ` : group.latest.nickname;
         notifications.push({
           id: `comment:${messageId}:${group.latest.created_at}`,
           kind: "comment",
-          message: `'${preview(message.message)}'에 ${group.latest.nickname}님이 댓글을 남겼어요${more}: "${preview(group.latest.body, 20)}"`,
+          message: `'${preview(message.message)}'에 ${who}님이 댓글을 남겼어요${more}: "${preview(group.latest.body, 20)}"`,
           href: messageHref(message.wall),
           createdAt: group.latest.created_at,
         });

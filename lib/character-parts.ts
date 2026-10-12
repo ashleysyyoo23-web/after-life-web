@@ -581,5 +581,24 @@ export function renderCharacterSvg(appearance: CharacterAppearance, idPrefix: st
   return `<defs>${defs.join("")}</defs>${s.join("")}`;
 }
 
+// 프로필 이미지용: 얼굴(머리) 둘레만 잘라 보는 틀. 체형마다 머리 위치·크기가 달라서 계산해요.
+export function faceViewBox(appearance: CharacterAppearance) {
+  const a = sanitizeAppearance(appearance);
+  if (a.species !== "human") {
+    // 동물 머리 가운데 (132, 140) 근처를 발끝 기준 크기에 맞춰
+    const s = PET_SCALE[a.petSize];
+    const cx = 100 + 24 * s;
+    const cy = 290 - 150 * s;
+    const size = 104 * s;
+    return `${cx - size / 2} ${cy - size / 2} ${size} ${size}`;
+  }
+  // 사람 머리 가운데 (108, 68) 근처, 머리카락·모자까지
+  const b = BODIES[a.body];
+  const cx = 100 + (a.view === "side" ? 12 : 0) * b.head;
+  const cy = b.top + 4 - 56 * b.head;
+  const size = 120 * b.head;
+  return `${cx - size / 2} ${cy - size / 2} ${size} ${size}`;
+}
+
 // 그림 틀: 발끝(바닥 중앙)이 (100, 290), 전체 -10~210 × 0~300
 export const CHARACTER_VIEWBOX = "-10 0 220 300";

@@ -8,6 +8,8 @@ import {
   type CommunityMessage,
   type CommunityReaction,
 } from "@/lib/community";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { defaultNickname, useMyProfile } from "@/lib/use-my-profile";
 import { useEffect, useState } from "react";
 
 // 댓글 닉네임은 그 컴퓨터에 기억해 두고 다음에 채워 줌
@@ -22,6 +24,8 @@ function CommentSection({ message }: { message: CommunityMessage }) {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 나의 프로필이 있으면 그 아이디·캐릭터로 남겨요 (닉네임은 프로필 이름으로 미리 채움)
+  const myProfile = useMyProfile();
 
   const load = async () => {
     setError(null);
@@ -40,11 +44,13 @@ function CommentSection({ message }: { message: CommunityMessage }) {
     const next = !open;
     setOpen(next);
     if (next && comments === null) {
+      let remembered = "";
       try {
-        setNickname(window.localStorage.getItem(COMMENT_NICKNAME_KEY) ?? "");
+        remembered = window.localStorage.getItem(COMMENT_NICKNAME_KEY) ?? "";
       } catch {
         // 저장소를 못 쓰면 빈 칸으로
       }
+      setNickname(remembered || defaultNickname(myProfile, COMMUNITY_NICKNAME_MAX));
       void load();
     }
   };
@@ -109,7 +115,13 @@ function CommentSection({ message }: { message: CommunityMessage }) {
               {comments.map((comment) => (
                 <li key={comment.id} className="rounded-md bg-white px-2 py-1.5 font-mulish text-xs text-[#4A423C]">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-semibold">{comment.nickname}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <ProfileAvatar appearance={comment.author?.appearance} size={20} />
+                      <span className="truncate font-semibold">{comment.nickname}</span>
+                      {comment.author?.handle && (
+                        <span className="truncate text-[10px] text-[#AF9083]">@{comment.author.handle}</span>
+                      )}
+                    </span>
                     <span className="flex shrink-0 items-center gap-2 text-[10px] text-[#898787]">
                       {formatCommunityDate(comment.createdAt).date}
                       {comment.isMine && (
@@ -130,6 +142,12 @@ function CommentSection({ message }: { message: CommunityMessage }) {
           )}
           {error && <p className="font-mulish text-xs text-[#9E2121]">{error}</p>}
           <div className="flex flex-col gap-1.5">
+            {myProfile && (myProfile.handle || myProfile.appearance) && (
+              <p className="flex items-center gap-1.5 font-mulish text-[11px] text-[#776257]">
+                <ProfileAvatar appearance={myProfile.appearance} size={18} />
+                {myProfile.handle ? `@${myProfile.handle} 프로필로 남겨요` : "내 캐릭터 프로필로 남겨요"}
+              </p>
+            )}
             <input
               value={nickname}
               onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_NICKNAME_MAX))}
@@ -160,16 +178,6 @@ function CommentSection({ message }: { message: CommunityMessage }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function ProfileSilhouette() {
-  return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8DDD5]">
-      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#AF9083]" aria-hidden="true">
-        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-      </svg>
     </div>
   );
 }
@@ -257,9 +265,12 @@ function CardHeader({ message, onDelete }: { message: CommunityMessage; onDelete
   return (
     <div className="flex items-start justify-between gap-2">
       <div className="flex min-w-0 items-start gap-2">
-        <ProfileSilhouette />
+        <ProfileAvatar appearance={message.author?.appearance} size={32} />
         <div className="min-w-0 font-mulish text-sm text-[#4A423C]">
-          <p className="truncate font-semibold">{message.nickname}</p>
+          <p className="truncate">
+            <span className="font-semibold">{message.nickname}</span>
+            {message.author?.handle && <span className="ml-1 text-xs text-[#AF9083]">@{message.author.handle}</span>}
+          </p>
           <p className="text-xs text-[#898787]">
             {date} / {time}
           </p>

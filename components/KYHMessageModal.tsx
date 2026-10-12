@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { defaultNickname, fetchMyProfile, useMyProfile } from "@/lib/use-my-profile";
 import { useRouter } from "next/navigation";
 import {
   COMMUNITY_MESSAGE_MAX,
@@ -364,22 +366,15 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
     setIsPaletteOpen(false);
   }, [isOpen]);
 
-  // 닉네임 칸이 비어 있으면 나의 프로필 이름으로 채워 둠 (처음 열 때 한 번)
+  // 닉네임 칸이 비어 있으면 나의 프로필 이름(없으면 아이디)으로 채워 둠 (처음 열 때 한 번)
+  const myProfile = useMyProfile();
   useEffect(() => {
     if (!isOpen || nicknameFilledRef.current) return;
     nicknameFilledRef.current = true;
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/me/profile", { cache: "no-store" });
-        if (!res.ok) return;
-        const { profile } = (await res.json()) as { profile?: { displayName?: string } };
-        const name = profile?.displayName?.slice(0, COMMUNITY_NICKNAME_MAX) ?? "";
-        if (name) setNickname((current) => current || name);
-      } catch {
-        // 못 불러오면 빈칸 그대로
-      }
-    })();
+    void fetchMyProfile().then((profile) => {
+      const name = defaultNickname(profile, COMMUNITY_NICKNAME_MAX);
+      if (name) setNickname((current) => current || name);
+    });
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -555,6 +550,13 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                   <span>1</span>
                   <span>메시지를 남기고 싶은 닉네임을 설정해주세요.</span>
                 </div>
+                {myProfile && (myProfile.handle || myProfile.appearance) && (
+                  <p className="-mt-2 flex items-center gap-2 font-mulish text-xs text-[#776257]">
+                    <ProfileAvatar appearance={myProfile.appearance} size={24} />
+                    {myProfile.handle ? `@${myProfile.handle} 프로필로 남겨요` : "내 캐릭터 프로필로 남겨요"}
+                    <span className="text-[#AF9083]">(설정 → 나의 프로필에서 바꿀 수 있어요)</span>
+                  </p>
+                )}
                 <input
                   type="text"
                   value={nickname}
