@@ -1,7 +1,6 @@
 "use client";
 
-import { CHARACTER_VIEWBOX, DEFAULT_APPEARANCE, renderCharacterSvg } from "@/lib/character-parts";
-import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
 
 // 전체 지도 튜토리얼: 배를 탄 "섬지기"가 말풍선으로 섬들을 소개하고, 소개하는 곳을 점선 타원으로 비춰요.
 // 섬 자리는 지도 무대(16:9) 기준 %, 위쪽 메뉴는 화면에서 실제 위치를 재서 비춰요.
@@ -88,59 +87,39 @@ export const MAP_TUTORIAL_KEY_PREFIX = "afterlife:map-tutorial-done:";
 
 const DIM = "rgba(74, 52, 42, 0.32)";
 
-// 배를 탄 섬지기 (기본 캐릭터 모습 + 모자, 정면에서 칵테일 잔)
+// 배를 탄 섬지기: 디자인 그림(public/tutorial/island-keeper.webp, 배경을 투명하게 오려 낸 고화질 그림).
+// 등불 빛과 물결은 따로 그려서 은은하게 움직여요.
+const KEEPER_SRC = "/tutorial/island-keeper.webp";
+const KEEPER_RATIO = 1265 / 858; // 그림 가로 ÷ 세로
+const KEEPER_LANTERN = { x: 3.95, y: 28.1 }; // 그림 안 등불 자리 (%)
+
 function BoatKeeper() {
-  const idPrefix = `keeper${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  const ink = "#3A3533";
-  const person = useMemo(
-    () =>
-      renderCharacterSvg({ ...DEFAULT_APPEARANCE, view: "front", hat: false, item: "cocktail" }, idPrefix) +
-      // 넓은 챙 밀짚모자 (캐릭터 그림 좌표)
-      `<path d="M83 34 Q82 12 100 12 Q118 12 117 34 Z" fill="#F6E3CB" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>` +
-      `<path d="M84 29 Q100 33 116 29" fill="none" stroke="#F4A9A8" stroke-width="3" stroke-linecap="round"/>` +
-      `<path d="M56 38 Q100 22 144 38 Q122 46 100 45 Q78 46 56 38 Z" fill="#F6E3CB" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>`,
-    [idPrefix],
-  );
   return (
-    <svg viewBox="0 0 300 270" className="h-full w-auto overflow-visible" aria-hidden>
-      <defs>
-        {/* 배 안쪽 아래는 가려서, 다리가 배 밑으로 나오지 않게 */}
-        <clipPath id={`${idPrefix}-in-boat`}>
-          <rect x="0" y="-40" width="300" height="240" />
-        </clipPath>
-        <radialGradient id={`${idPrefix}-glow`}>
-          <stop offset="0" stopColor="#FFE9A8" stopOpacity="0.95" />
-          <stop offset="1" stopColor="#FFE9A8" stopOpacity="0" />
-        </radialGradient>
-      </defs>
+    <div className="relative h-full" style={{ aspectRatio: `${KEEPER_RATIO}` }}>
       {/* 등불 빛 */}
-      <circle cx="58" cy="78" r="38" fill={`url(#${idPrefix}-glow)`} className="animate-[lantern-glow_3s_ease-in-out_infinite]" />
-      {/* 등불 기둥 + 등 */}
-      <path d="M44 186 L44 62 Q44 50 56 50 L60 50" fill="none" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M52 62 L66 62 L68 90 L50 90 Z" fill="#FBE3A2" stroke={ink} strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M50 62 L68 62 M49 90 L69 90 M59 54 L59 62" fill="none" stroke={ink} strokeWidth="1.5" strokeLinecap="round" />
-      {/* 사람 (배 안에 서 있어서 아랫부분은 배에 가려요) */}
-      <g clipPath={`url(#${idPrefix}-in-boat)`}>
-        <svg x="45" y="-12" width="210" height="286" viewBox={CHARACTER_VIEWBOX} dangerouslySetInnerHTML={{ __html: person }} />
-      </g>
-      {/* 노 */}
-      <path d="M236 182 L288 252" fill="none" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M280 240 Q296 246 294 262 Q282 262 276 248 Z" fill="#E9C9A6" stroke={ink} strokeWidth="1.5" strokeLinejoin="round" />
-      {/* 배 */}
-      <path
-        d="M16 178 Q150 166 284 178 Q268 238 210 246 L90 246 Q32 238 16 178 Z"
-        fill="#EBCFAE"
-        stroke={ink}
-        strokeWidth="1.8"
-        strokeLinejoin="round"
+      <span
+        className="absolute aspect-square w-[19%] -translate-x-1/2 -translate-y-1/2 rounded-full animate-[lantern-glow_3s_ease-in-out_infinite]"
+        style={{
+          left: `${KEEPER_LANTERN.x}%`,
+          top: `${KEEPER_LANTERN.y}%`,
+          background: "radial-gradient(closest-side, rgba(255,236,170,0.95), rgba(255,236,170,0.35) 55%, rgba(255,236,170,0))",
+        }}
+        aria-hidden
       />
-      <path d="M14 176 Q150 162 286 176 L283 186 Q150 174 17 186 Z" fill="#F6E3CB" stroke={ink} strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M30 204 Q150 196 270 204 M52 226 Q150 220 248 226" fill="none" stroke={ink} strokeWidth="1.1" strokeLinecap="round" opacity="0.6" />
-      <circle cx="176" cy="212" r="4.5" fill="#F4A9A8" stroke={ink} strokeWidth="1" />
-      <circle cx="186" cy="214" r="3" fill="#C6B6E0" stroke={ink} strokeWidth="1" />
-      {/* 물결 */}
-      <path d="M4 256 Q24 250 44 256 M232 258 Q252 252 272 258 M112 262 Q132 256 152 262" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-    </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={KEEPER_SRC} alt="" draggable={false} className="relative block h-full w-full select-none" />
+      {/* 배 아래 물결 */}
+      <svg className="absolute -bottom-[4%] left-[2%] w-[96%]" viewBox="0 0 300 24" aria-hidden>
+        <path
+          d="M2 14 Q20 8 38 14 M70 18 Q92 12 114 18 M150 12 Q172 6 194 12 M226 18 Q246 12 266 18"
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          opacity="0.85"
+        />
+      </svg>
+    </div>
   );
 }
 
@@ -239,14 +218,14 @@ export function MapTutorial({
       )}
 
       {/* 배를 탄 섬지기 */}
-      <div className="pointer-events-none absolute bottom-0 left-1/2 h-[34vh] -translate-x-[58%] animate-[boat-bob_4.5s_ease-in-out_infinite]">
+      <div className="pointer-events-none absolute bottom-[2vh] left-1/2 h-[30vh] -translate-x-1/2 animate-[boat-bob_4.5s_ease-in-out_infinite]">
         <BoatKeeper />
       </div>
 
       {/* 말풍선 */}
       <div
         className="absolute bottom-[15vh] w-[min(350px,calc(100vw-2rem))]"
-        style={{ left: "min(calc(50% + 9vh), calc(100vw - 366px))" }}
+        style={{ left: "min(calc(50% + 13vh), calc(100vw - 366px))" }}
       >
         <div className="relative rounded-[18px] border-2 border-[#E8B4A0] bg-[#FFFBF6] px-5 pb-4 pt-6 shadow-[0_6px_18px_rgba(74,52,42,0.18)]">
           {/* 꼬리 (섬지기 쪽) */}
