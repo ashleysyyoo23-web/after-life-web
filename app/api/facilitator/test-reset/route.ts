@@ -84,6 +84,8 @@ export async function GET() {
 //   captions?: { ["섹션ID:파일ID"]: 글 }        → 사진 글을 이 시작 상태로 (없는 사진의 글은 지움). 안 보내면 글은 그대로
 //   clearMemos?: boolean                        → 리캡 ✎ 감정 기록 메모를 모두 지움
 //   viewSettings?: { slideSeconds, recapView }  → 넘김 속도·처음 화면을 이 값으로. 안 보내면 그대로
+//   participantSince?: ISO 시각                 → 그 뒤에 이 계정으로 생긴 참가자 기록(추모 메시지·댓글·좋아요·북마크·
+//                                                  🔖 저장·기분 기록·개인 추모 랜드 답)을 지움. 안 보내면 그대로
 // }
 export async function POST(request: NextRequest) {
   const context = await getSessionContext();
@@ -95,6 +97,7 @@ export async function POST(request: NextRequest) {
     captions?: unknown;
     clearMemos?: unknown;
     viewSettings?: unknown;
+    participantSince?: unknown;
   } | null;
   const levels = (body?.levels && typeof body.levels === "object" ? body.levels : {}) as Record<string, unknown>;
   const startCaptions =
@@ -203,7 +206,38 @@ export async function POST(request: NextRequest) {
     resetViewSettings = true;
   }
 
+  // 6) 이번 참가자가 남긴 기록 지우기 (참가자 시작 시각 이후에 이 계정으로 생긴 것만)
+  const participantCleared = { messages: 0, comments: 0, reactions: 0, savedPhotos: 0, emotionLogs: 0, islandAnswers: 0 };
+  const since = typeof body?.participantSince === "string" ? new Date(body.participantSince) : null;
+  if (since && !Number.isNaN(since.getTime()) && since.getTime() <= Date.now()) {
+    const sinceIso = since.toISOString();
+    const now = new Date().toISOString();
+    // 표가 아직 없으면(SQL 실행 전) 그 항목은 넘어가요
+    const run = async (label: keyof typeof participantCleared, query: PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>) => {
+      const { data, error } = await query;
+      if (error) {
+        console.warn(`[facilitator] participant cleanup skipped (${label})`, error.message);
+        return;
+      }
+      participantCleared[label] = data?.length ?? 0;
+    };
+    // 추모 메시지·댓글은 서비스의 "삭제"처럼 숨김
+    await run("messages", supabase.from("community_messages").update({ deleted_at: now })
+      .eq("author_email", userEmail).gte("created_at", sinceIso).is("deleted_at", null).select("id"));
+    await run("comments", supabase.from("community_comments").update({ deleted_at: now })
+      .eq("author_email", userEmail).gte("created_at", sinceIso).is("deleted_at", null).select("id"));
+    await run("reactions", supabase.from("community_reactions").delete()
+      .eq("user_email", userEmail).gte("created_at", sinceIso).select("message_id"));
+    await run("savedPhotos", supabase.from("saved_photos").delete()
+      .eq("owner_email", userEmail).gte("saved_at", sinceIso).select("drive_file_id"));
+    await run("emotionLogs", supabase.from("emotion_logs").delete()
+      .eq("user_email", userEmail).gte("created_at", sinceIso).select("id"));
+    await run("islandAnswers", supabase.from("anniversary_island_consents").delete()
+      .eq("owner_email", userEmail).gte("decided_at", sinceIso).select("deceased_id"));
+  }
+
   return NextResponse.json({
+    participantCleared,
     clearedPhotos,
     resetCharacters,
     restoredCaptions,

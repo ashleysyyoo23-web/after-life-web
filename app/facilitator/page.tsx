@@ -40,6 +40,31 @@ const BASELINE_KEY = "afterlife:facilitator-baseline";
 const CAPTIONS_KEY = "afterlife:facilitator-captions";
 // 넘김 속도·처음 화면의 시작 값 (기본 3초 · 슬라이드쇼)
 const VIEW_KEY = "afterlife:facilitator-view";
+// 지금 참가자의 시작 시각 (초기화할 때마다 새로 기억 → 다음 초기화 때 그 뒤에 생긴 기록을 지움)
+const PARTICIPANT_START_KEY = "afterlife:facilitator-participant-start";
+
+function readParticipantStart(): string | null {
+  try {
+    const value = window.localStorage.getItem(PARTICIPANT_START_KEY);
+    return value && !Number.isNaN(new Date(value).getTime()) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeParticipantStart(value: string) {
+  try {
+    window.localStorage.setItem(PARTICIPANT_START_KEY, value);
+  } catch {
+    // 기억하지 못하면 다음엔 참가자 기록을 지우지 않음
+  }
+}
+
+// "10월 13일 14:05"
+function formatStart(value: string) {
+  const date = new Date(value);
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
 
 function readStartView(): ViewSettings {
   try {
@@ -111,6 +136,9 @@ export default function FacilitatorPage() {
   const [resetAnniversaryShown, setResetAnniversaryShown] = useState(true);
   // 전체 지도 섬지기 둘러보기 "처음 한 번" 기억 (이 브라우저)
   const [resetMapTutorial, setResetMapTutorial] = useState(true);
+  // 이번 참가자가 남긴 기록 지우기 (시작 시각은 이 브라우저에 기억)
+  const [clearParticipant, setClearParticipant] = useState(true);
+  const [participantStart, setParticipantStart] = useState<string | null>(null);
   const [startView, setStartView] = useState<ViewSettings>({
     slideSeconds: DEFAULT_SLIDE_SECONDS,
     recapView: DEFAULT_RECAP_VIEW,
@@ -138,6 +166,7 @@ export default function FacilitatorPage() {
           writeStartCaptions(data.captions);
         }
         setStartView(readStartView());
+        setParticipantStart(readParticipantStart());
         setStatus(data);
       } catch (loadError) {
         setError(loadError instanceof Error && loadError.message ? loadError.message : "불러오지 못했어요.");
@@ -164,6 +193,7 @@ export default function FacilitatorPage() {
           ...(restoreCaptions ? { captions: startCaptions } : {}),
           clearMemos,
           ...(resetView ? { viewSettings: startView } : {}),
+          ...(clearParticipant && participantStart ? { participantSince: participantStart } : {}),
         }),
       });
       const data = (await res.json().catch(() => null)) as
@@ -172,6 +202,14 @@ export default function FacilitatorPage() {
             resetCharacters: number;
             restoredCaptions: number;
             deletedMemos: number;
+            participantCleared?: {
+              messages: number;
+              comments: number;
+              reactions: number;
+              savedPhotos: number;
+              emotionLogs: number;
+              islandAnswers: number;
+            };
             resetViewSettings: boolean;
             error?: string;
           })
@@ -193,6 +231,12 @@ export default function FacilitatorPage() {
       const clearedAnniversaryShown = resetAnniversaryShown && clearLocal(ANNIVERSARY_SHOWN_KEY_PREFIX);
       const clearedMapTutorial = resetMapTutorial && clearLocal(MAP_TUTORIAL_KEY_PREFIX);
 
+      // 지금부터가 다음 참가자의 시작
+      const nextStart = new Date().toISOString();
+      writeParticipantStart(nextStart);
+      setParticipantStart(nextStart);
+      const pc = clearParticipant && participantStart ? data.participantCleared : undefined;
+
       setStatus({
         characters: data.characters,
         revealedTotal: data.revealedTotal,
@@ -210,6 +254,9 @@ export default function FacilitatorPage() {
             : null,
           clearedAnniversaryShown ? "기일 안내 창이 다시 저절로 뜨게" : null,
           clearedMapTutorial ? "섬지기 둘러보기가 다시 뜨게" : null,
+          pc
+            ? `참가자 기록(메시지 ${pc.messages}·댓글 ${pc.comments}·좋아요/북마크 ${pc.reactions}·저장 ${pc.savedPhotos}·기분 ${pc.emotionLogs}·섬 답 ${pc.islandAnswers}) 지움`
+            : null,
         ]
           .filter(Boolean)
           .join(", ") + ".",
@@ -230,7 +277,7 @@ export default function FacilitatorPage() {
           <h1 className="font-newsreader text-4xl text-black">사용성 테스트 초기화</h1>
           <p className="text-sm text-[#898787]">
             참가자를 바꿀 때 누르세요. &lsquo;눌러서 보기&rsquo;로 본 사진을 모두 다시 흐리게 하고, 캐릭터마다 정한 시작 노출
-            강도로 되돌려요. 아래에서 고르면 사진 글, 감정 기록 메모, 넘김 속도도 함께 되돌려요. 그림·기분 기록은 그대로예요.
+            강도로 되돌려요. 아래에서 고르면 사진 글, 감정 기록 메모, 넘김 속도·보는 방식, 이번 참가자가 남긴 기록도 함께 정리해요. 리캡 펜 그림은 그대로예요.
           </p>
         </header>
 
@@ -339,7 +386,7 @@ export default function FacilitatorPage() {
                 />
                 <span className="flex flex-col gap-2 text-sm">
                   <span>
-                    <b>넘김 속도·처음 화면</b>(설정 → 기록을 마주할 방법)을 시작 값으로
+                    <b>넘김 속도·보는 방식</b>(설정 → 기록을 마주할 방법)을 시작 값으로
                   </span>
                   <span className="text-xs text-[#898787]">
                     지금: {status.viewSettings.slideSeconds}초 ·{" "}
@@ -413,6 +460,26 @@ export default function FacilitatorPage() {
                   <span className="text-xs text-[#898787]">처음 들어올 때 한 번만 떠요. 그 기억을 이 브라우저에서 지워요.</span>
                 </span>
               </label>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={clearParticipant}
+                  onChange={(event) => setClearParticipant(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#AF9083]"
+                />
+                <span className="flex flex-col gap-1 text-sm">
+                  <span>
+                    <b>이번 참가자가 남긴 기록</b> 지우기
+                    {participantStart ? ` (${formatStart(participantStart)} 이후)` : ""}
+                  </span>
+                  <span className="text-xs text-[#898787]">
+                    {participantStart
+                      ? "그 뒤에 이 계정으로 생긴 추모 메시지·댓글·좋아요·북마크·🔖 저장·기분 기록·개인 추모 랜드 답을 지워요. 그 전에 준비해 둔 것과 리캡 펜 그림은 그대로예요."
+                      : "아직 시작 시각이 없어요. 이번 초기화부터 기억해서, 다음 초기화 때 그 뒤에 생긴 기록을 지워요."}
+                  </span>
+                </span>
+              </label>
             </section>
 
             <div className="flex flex-wrap items-center gap-4">
@@ -433,7 +500,8 @@ export default function FacilitatorPage() {
                     {clearMemos ? `, 메모 ${status.memoCount}개를 지우고` : ""}
                     {resetView ? `, 넘김 속도를 ${startView.slideSeconds}초로` : ""}
                     {resetAnniversaryShown ? ", 기일 안내 창이 다시 뜨게" : ""}
-                    {resetMapTutorial ? ", 섬지기 둘러보기가 다시 뜨게" : ""} 되돌릴까요?
+                    {resetMapTutorial ? ", 섬지기 둘러보기가 다시 뜨게" : ""}
+                    {clearParticipant && participantStart ? `, ${formatStart(participantStart)} 이후 참가자 기록을 지우고` : ""} 되돌릴까요?
                   </span>
                   <button
                     type="button"
