@@ -226,7 +226,7 @@ function CommunityContent() {
         </WoodPlank>
       ) : (
         <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
-          추모 커뮤니티
+          커뮤니티 추모 랜드
         </WoodPlank>
       )}
 

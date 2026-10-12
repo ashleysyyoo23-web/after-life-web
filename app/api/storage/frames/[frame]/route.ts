@@ -50,7 +50,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   return NextResponse.json({
     frame,
-    title: character ? character.nickname : "추모 커뮤니티",
+    title: character ? character.nickname : "커뮤니티 추모 랜드",
     photos,
     messages,
   });

@@ -37,7 +37,7 @@ export default function IslandPage() {
       const res = await fetch(`/api/islands/${encodeURIComponent(deceasedId)}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as { island?: IslandInfo; error?: string } | null;
       if (!res.ok || !data?.island) {
-        setInfoError(res.status === 401 ? "로그인하면 추모 섬에 들어갈 수 있어요." : (data?.error ?? "추모 섬을 불러오지 못했어요."));
+        setInfoError(res.status === 401 ? "로그인하면 개인 추모 랜드에 들어갈 수 있어요." : (data?.error ?? "개인 추모 랜드를 불러오지 못했어요."));
         return;
       }
       setInfo(data.island);

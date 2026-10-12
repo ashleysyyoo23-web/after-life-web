@@ -187,7 +187,7 @@ export function CharacterManager() {
           &lsquo;{confirmDelete.nickname}&rsquo; 인물을 지울까요?
         </h3>
         <div className="flex flex-col gap-2 rounded-xl bg-[#FAF6F0] p-4 font-mulish text-sm text-[#4A423C]">
-          <p>메인 랜드에서 이 인물이 사라져요.</p>
+          <p>마이 랜드에서 이 인물이 사라져요.</p>
           <p className="text-xs text-[#898787]">
             {confirmDelete.bookCount > 0
               ? `책장의 앨범 ${confirmDelete.bookCount}권은 지우지 않고 보관해요. 같은 폴더로 인물을 다시 만들면 책장이 그대로 돌아와요.`
@@ -345,7 +345,7 @@ export function CharacterManager() {
               onCreated={(character) => {
                 setCreating(false);
                 setCharacters((prev) => [...(prev ?? []), character]);
-                setMessage(`'${character.nickname}' 인물을 추가했어요. 메인 랜드에서 만날 수 있어요.`);
+                setMessage(`'${character.nickname}' 인물을 추가했어요. 마이 랜드에서 만날 수 있어요.`);
                 notifyMyland();
               }}
             />
@@ -413,7 +413,7 @@ export function CharacterManager() {
       )}
 
       <p className="font-mulish text-xs text-[#898787]">
-        자리는 메인 랜드에서 인물을 끌어서 옮길 수 있고, Drive 연결은 인물을 우클릭해서 다시 이을 수 있어요.
+        자리는 마이 랜드에서 인물을 끌어서 옮길 수 있고, Drive 연결은 인물을 우클릭해서 다시 이을 수 있어요.
       </p>
     </div>
   );

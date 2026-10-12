@@ -16,7 +16,7 @@ export async function GET() {
     loadBookmarkedMessageIds(supabase, userEmail),
   ]);
   const titleOf = (frame: string) =>
-    frame === COMMUNITY_FRAME ? "추모 커뮤니티" : (characters.find((character) => character.id === frame)?.nickname ?? "");
+    frame === COMMUNITY_FRAME ? "커뮤니티 추모 랜드" : (characters.find((character) => character.id === frame)?.nickname ?? "");
 
   const items: StorageSearchItem[] = [];
   for (const photo of photos) {

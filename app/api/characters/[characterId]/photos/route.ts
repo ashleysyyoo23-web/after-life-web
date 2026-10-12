@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const messages = {
       not_found: ["캐릭터를 찾을 수 없어요.", 404],
       not_connected: ["이 인물에게 연결된 Drive 폴더가 없어요.", 409],
-      needs_reconnect: ["Drive 연결이 만료됐어요. 메인 랜드에서 계정을 다시 연결해 주세요.", 401],
+      needs_reconnect: ["Drive 연결이 만료됐어요. 마이 랜드에서 계정을 다시 연결해 주세요.", 401],
     } as const;
     const [message, status] = messages[access.error];
     return NextResponse.json({ error: message, code: access.error }, { status });

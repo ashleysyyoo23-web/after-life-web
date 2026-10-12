@@ -134,7 +134,7 @@ export function TopNav({
         />
       </Link>
 
-      <div className="flex items-center justify-end gap-[52px]">
+      <div className="flex items-center justify-end gap-[52px]" data-tutorial="top-menu">
         <Link href="/about" className={navTextClass}>
           소개
         </Link>

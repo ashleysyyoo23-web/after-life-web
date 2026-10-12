@@ -295,7 +295,7 @@ export function SettingsModal({
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) throw new Error(json?.error ?? "프로필을 저장하지 못했어요.");
 
-      setProfileMessage("저장했어요. 메인 랜드에 나의 캐릭터가 나타나요.");
+      setProfileMessage("저장했어요. 마이 랜드에 나의 캐릭터가 나타나요.");
       // 메인 랜드가 열려 있으면 내 캐릭터를 바로 다시 그리게 알림
       window.dispatchEvent(new Event("afterlife:profile-updated"));
     } catch (saveError) {

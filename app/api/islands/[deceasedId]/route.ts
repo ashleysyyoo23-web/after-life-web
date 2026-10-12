@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     .maybeSingle();
 
   if (!character) {
-    return NextResponse.json({ error: "이 추모 섬에 들어갈 수 없어요." }, { status: 403 });
+    return NextResponse.json({ error: "이 개인 추모 랜드에 들어갈 수 없어요." }, { status: 403 });
   }
 
   const island = (await loadAnniversaryIslands(supabase, userEmail)).find((item) => item.deceasedId === deceasedId);

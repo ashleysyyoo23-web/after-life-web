@@ -142,7 +142,7 @@ function ArchiveshelfPageContent() {
           onClick={() => router.push("/myland?from=moodcheck")}
           className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
         >
-          ← 메인 랜드로
+          ← 마이 랜드로
         </button>
         {nickname && (
           <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">{nickname}의 책장</h1>

@@ -4,7 +4,9 @@ import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { daysUntilLabel } from "@/lib/anniversary";
-import { arrangeIslands, islandLook, islandSoloStyle, type IslandShape } from "@/lib/islands";
+import { ISLAND_SLOTS, arrangeIslands, islandLook, islandPlacement, islandSoloStyle, type IslandShape } from "@/lib/islands";
+import { MAP_TUTORIAL_KEY_PREFIX, MAP_TUTORIAL_STEPS, MapTutorial } from "@/components/MapTutorial";
+import { useSession } from "next-auth/react";
 import { IslandSign } from "@/components/IslandSign";
 import { SeaWaves } from "@/components/SeaWaves";
 import { IslandSeagull } from "@/components/IslandSeagull";
@@ -27,7 +29,7 @@ type AnniversaryIsland = {
 // 고정 섬의 클릭 영역(화면 기준)과 나무 팻말 자리(지도 무대 기준: 기둥이 땅에 닿는 곳)
 const mainlandIslands = [
   {
-    label: "추모 커뮤니티",
+    label: "커뮤니티 추모 랜드",
     href: "/community",
     left: "14.5%",
     top: "50.0%",
@@ -36,7 +38,7 @@ const mainlandIslands = [
     sign: { x: "26.5%", y: "50.8%" },
   },
   {
-    label: "메인 랜드",
+    label: "마이 랜드",
     href: "/myland",
     left: "51.0%",
     top: "61.2%",
@@ -87,6 +89,25 @@ function MainlandPageContent() {
   const [islands, setIslands] = useState<AnniversaryIsland[]>([]);
   const [maxOpen, setMaxOpen] = useState(2);
   const [answering, setAnswering] = useState(false);
+
+  // 지도 둘러보기(섬지기 튜토리얼): 처음 들어오면 저절로 한 번, 오른쪽 아래 버튼으로 다시 보기
+  const { data: session, status: sessionStatus } = useSession();
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+  useEffect(() => {
+    if (sessionStatus === "loading") return;
+    const key = `${MAP_TUTORIAL_KEY_PREFIX}${session?.user?.email ?? "guest"}`;
+    // 지도가 먼저 보이고 잠시 뒤에 섬지기가 말을 걸어요
+    const timer = setTimeout(() => {
+      try {
+        if (window.localStorage.getItem(key)) return;
+        window.localStorage.setItem(key, "1");
+      } catch {
+        return;
+      }
+      setTutorialStep(0);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [sessionStatus, session?.user?.email]);
 
   useEffect(() => {
     void (async () => {
@@ -181,6 +202,29 @@ function MainlandPageContent() {
           );
         })}
 
+        {/* 둘러보기 3단계: 개인 추모 랜드가 아직 없으면 그 자리에 예시 섬을 흐릿하게 */}
+        {tutorialStep !== null &&
+          MAP_TUTORIAL_STEPS[tutorialStep]?.ghostIslands &&
+          ISLAND_SLOTS.slice(openIslands.length).map((slot) => {
+            const placement = islandPlacement(`tutorial-${slot === "left" ? "a" : "c"}`, slot);
+            return (
+              <div key={slot} className="absolute z-[2] animate-[island-rise_1.2s_ease-out] opacity-70" style={placement.style}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={placement.src}
+                  alt=""
+                  className="block h-auto w-full"
+                  style={placement.flip ? { transform: "scaleX(-1)" } : undefined}
+                />
+                <IslandSign
+                  label="개인 추모 랜드"
+                  x={`${placement.flip ? 100 - ANNIVERSARY_SIGN_SPOT[placement.shape].x : ANNIVERSARY_SIGN_SPOT[placement.shape].x}%`}
+                  y={`${ANNIVERSARY_SIGN_SPOT[placement.shape].y}%`}
+                />
+              </div>
+            );
+          })}
+
         {/* 고정 섬 이름: 섬에 꽂힌 나무 팻말 (늘 보여요) */}
         {/* 누르기는 아래의 섬 영역이 받아요 */}
         {mainlandIslands.map((island) => (
@@ -217,7 +261,7 @@ function MainlandPageContent() {
       {/* 닫아 둔 추모 섬: 이번 기일 기간엔 다시 묻지 않지만 여기서 언제든 열 수 있어요 */}
       {laterIslands.length > 0 && !asking && (
         <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-white/85 px-4 py-2 font-mulish text-sm text-[#4A423C] shadow">
-          <span className="text-[#898787]">닫아 둔 추모 섬</span>
+          <span className="text-[#898787]">닫아 둔 개인 추모 랜드</span>
           {laterIslands.map((island) => (
             <button
               key={island.deceasedId}
@@ -251,7 +295,7 @@ function MainlandPageContent() {
             <div className="flex flex-col gap-2">
               <p className="font-mulish text-sm text-[#AF9083]">{daysUntilLabel(asking.daysUntil)}</p>
               <h2 id="anniversary-title" className="font-jeju-myeongjo text-2xl text-[#4A423C]">
-                {asking.nickname}의 추모 섬을 열까요?
+                {asking.nickname}의 개인 추모 랜드를 열까요?
               </h2>
               <p className="font-mulish text-sm leading-relaxed text-[#898787]">
                 기일 동안 지도에 {asking.nickname}의 섬이 떠올라요.
@@ -283,6 +327,22 @@ function MainlandPageContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 지도 둘러보기 다시 보기 */}
+      {tutorialStep === null && (
+        <button
+          type="button"
+          onClick={() => setTutorialStep(0)}
+          className="fixed bottom-6 right-6 z-20 cursor-pointer rounded-full border border-[#E8B4A0] bg-white/85 px-4 py-2 font-jeju-myeongjo text-sm text-[#5A3A30] shadow-sm transition-colors hover:bg-[#FFFBF6]"
+        >
+          🚣 섬지기와 둘러보기
+        </button>
+      )}
+
+      {/* 섬지기 튜토리얼 (기일 팝업이 떠 있으면 그 뒤에) */}
+      {tutorialStep !== null && !asking && (
+        <MapTutorial step={tutorialStep} onStep={setTutorialStep} onClose={() => setTutorialStep(null)} />
       )}
 
       <TopNav

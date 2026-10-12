@@ -24,7 +24,7 @@ export async function GET() {
 
   const frames: FrameSummary[] = [
     ...characters.map((character) => ({ frame: character.id, title: character.nickname, ...count(character.id) })),
-    { frame: COMMUNITY_FRAME, title: "추모 커뮤니티", ...count(COMMUNITY_FRAME) },
+    { frame: COMMUNITY_FRAME, title: "커뮤니티 추모 랜드", ...count(COMMUNITY_FRAME) },
   ];
   return NextResponse.json({ frames });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { ANNIVERSARY_SHOWN_KEY_PREFIX } from "@/lib/anniversary";
+import { MAP_TUTORIAL_KEY_PREFIX } from "@/components/MapTutorial";
 import { EXPOSURE_STEPS, exposureStepIndex } from "@/lib/exposure";
 import {
   DEFAULT_RECAP_VIEW,
@@ -108,6 +109,8 @@ export default function FacilitatorPage() {
   const [resetView, setResetView] = useState(true);
   // 메인 랜드 기일 안내 창 "하루 한 번" 기억 (이 브라우저)
   const [resetAnniversaryShown, setResetAnniversaryShown] = useState(true);
+  // 전체 지도 섬지기 둘러보기 "처음 한 번" 기억 (이 브라우저)
+  const [resetMapTutorial, setResetMapTutorial] = useState(true);
   const [startView, setStartView] = useState<ViewSettings>({
     slideSeconds: DEFAULT_SLIDE_SECONDS,
     recapView: DEFAULT_RECAP_VIEW,
@@ -176,17 +179,19 @@ export default function FacilitatorPage() {
       if (!res.ok || !data) throw new Error(data?.error ?? "초기화하지 못했어요.");
 
       // 기일 안내 창을 다시 저절로 뜨게 (이 브라우저에 남은 "오늘 띄움" 기억 지우기)
-      let clearedAnniversaryShown = false;
-      if (resetAnniversaryShown) {
+      // 섬지기 둘러보기도 처음처럼 다시 뜨게
+      const clearLocal = (prefix: string) => {
         try {
           Object.keys(window.localStorage)
-            .filter((key) => key.startsWith(ANNIVERSARY_SHOWN_KEY_PREFIX))
+            .filter((key) => key.startsWith(prefix))
             .forEach((key) => window.localStorage.removeItem(key));
-          clearedAnniversaryShown = true;
+          return true;
         } catch {
-          // 브라우저 저장소를 못 쓰면 넘어감
+          return false; // 브라우저 저장소를 못 쓰면 넘어감
         }
-      }
+      };
+      const clearedAnniversaryShown = resetAnniversaryShown && clearLocal(ANNIVERSARY_SHOWN_KEY_PREFIX);
+      const clearedMapTutorial = resetMapTutorial && clearLocal(MAP_TUTORIAL_KEY_PREFIX);
 
       setStatus({
         characters: data.characters,
@@ -204,6 +209,7 @@ export default function FacilitatorPage() {
             ? `넘김 속도 ${startView.slideSeconds}초 · 처음 화면 ${startView.recapView === "book" ? "책" : "슬라이드쇼"}로`
             : null,
           clearedAnniversaryShown ? "기일 안내 창이 다시 저절로 뜨게" : null,
+          clearedMapTutorial ? "섬지기 둘러보기가 다시 뜨게" : null,
         ]
           .filter(Boolean)
           .join(", ") + ".",
@@ -385,11 +391,26 @@ export default function FacilitatorPage() {
                 />
                 <span className="flex flex-col gap-1 text-sm">
                   <span>
-                    메인 랜드 <b>기일 안내 창</b>이 다시 저절로 뜨게
+                    마이 랜드 <b>기일 안내 창</b>이 다시 저절로 뜨게
                   </span>
                   <span className="text-xs text-[#898787]">
-                    기일 7일 전~3일 후면 메인 랜드에 들어올 때 하루 한 번 떠요. 그 &ldquo;오늘 띄움&rdquo; 기억을 이 브라우저에서 지워요.
+                    기일 7일 전~3일 후면 마이 랜드에 들어올 때 하루 한 번 떠요. 그 &ldquo;오늘 띄움&rdquo; 기억을 이 브라우저에서 지워요.
                   </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={resetMapTutorial}
+                  onChange={(event) => setResetMapTutorial(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#AF9083]"
+                />
+                <span className="flex flex-col gap-1 text-sm">
+                  <span>
+                    전체 지도 <b>섬지기 둘러보기</b>가 다시 저절로 뜨게
+                  </span>
+                  <span className="text-xs text-[#898787]">처음 들어올 때 한 번만 떠요. 그 기억을 이 브라우저에서 지워요.</span>
                 </span>
               </label>
             </section>
@@ -411,7 +432,8 @@ export default function FacilitatorPage() {
                     {restoreCaptions ? ", 사진 글을 시작 상태로" : ""}
                     {clearMemos ? `, 메모 ${status.memoCount}개를 지우고` : ""}
                     {resetView ? `, 넘김 속도를 ${startView.slideSeconds}초로` : ""}
-                    {resetAnniversaryShown ? ", 기일 안내 창이 다시 뜨게" : ""} 되돌릴까요?
+                    {resetAnniversaryShown ? ", 기일 안내 창이 다시 뜨게" : ""}
+                    {resetMapTutorial ? ", 섬지기 둘러보기가 다시 뜨게" : ""} 되돌릴까요?
                   </span>
                   <button
                     type="button"
@@ -437,7 +459,7 @@ export default function FacilitatorPage() {
         )}
 
         <Link href="/myland?from=moodcheck" className="text-sm text-[#AF9083] underline">
-          메인 랜드로 가기
+          마이 랜드로 가기
         </Link>
       </div>
     </main>

@@ -38,7 +38,7 @@ export function QuickExitButton({ onExit, className = "" }: { onExit?: () => voi
       <button
         type="button"
         onClick={exit}
-        aria-label="중단하기: 기록 보기를 멈추고 메인 랜드로 이동 (Esc)"
+        aria-label="중단하기: 기록 보기를 멈추고 마이 랜드로 이동 (Esc)"
         className={`pointer-events-auto flex h-11 cursor-pointer items-center gap-2 rounded-full border border-[#D99B82] bg-white/90 px-4 font-mulish text-sm font-semibold text-[#8C3B2E] shadow-[0px_2px_6px_rgba(0,0,0,0.12)] transition-colors hover:bg-[#FBEAEA] ${className}`}
       >
         <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />

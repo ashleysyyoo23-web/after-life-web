@@ -74,6 +74,26 @@ body {
   }
 }
 
+/* 지도 튜토리얼: 섬지기의 배가 물 위에서 살짝 흔들리기 · 등불이 은은하게 */
+@keyframes boat-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(-0.8deg);
+  }
+}
+@keyframes lantern-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
 /* 추모 커뮤니티: 돌을 확대한 뒤 꽃 자리가 천천히 나타나기 */
 @keyframes fade-in {
   from {

@@ -37,8 +37,8 @@ export async function GET() {
         kind: "anniversary",
         message:
           island.daysUntil === 0
-            ? `오늘은 ${island.nickname}의 기일이에요. 추모 섬을 열까요?`
-            : `${island.nickname}의 ${daysUntilLabel(island.daysUntil)}. 추모 섬을 열까요?`,
+            ? `오늘은 ${island.nickname}의 기일이에요. 개인 추모 랜드를 열까요?`
+            : `${island.nickname}의 ${daysUntilLabel(island.daysUntil)}. 개인 추모 랜드를 열까요?`,
         href: "/mainland",
         createdAt: start.toISOString(),
       });
