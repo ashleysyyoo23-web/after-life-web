@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { clampToSand } from "@/lib/myland-area";
 
-// 메인 랜드에서 나의 캐릭터를 끌어서 옮긴 자리 저장. body: { positionX, positionY }
+// 마이 랜드에서 나의 캐릭터를 끌어서 옮긴 자리 저장. body: { positionX, positionY }
 export async function PATCH(request: NextRequest) {
   const context = await getSessionContext();
   if (!context.ok) return context.response;

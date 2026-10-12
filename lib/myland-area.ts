@@ -1,4 +1,4 @@
-// 메인 랜드(myland-empty.jpg) 섬의 모래밭: 캐릭터 발끝이 설 수 있는 곳 (화면 16:9 기준 %)
+// 마이 랜드(myland-empty.jpg) 섬의 모래밭: 캐릭터 발끝이 설 수 있는 곳 (화면 16:9 기준 %)
 // 모래 가장자리를 따라 찍은 점들. 이 안에서만 자리를 옮길 수 있어요.
 export const MYLAND_SAND_AREA: Array<[number, number]> = [
   [18, 74],

@@ -11,14 +11,14 @@ const MAX_ITEMS = 30;
 
 const preview = (text: string, length = 14) => (text.length > length ? `${text.slice(0, length)}…` : text);
 
-// 메시지가 있는 곳으로: 추모 커뮤니티 돌은 댓글을 보기 쉬운 카드 화면으로
+// 메시지가 있는 곳으로: 커뮤니티 추모 랜드 돌은 댓글을 보기 쉬운 카드 화면으로
 function messageHref(wall: string) {
   if (!isCommunityWall(wall)) return "/community";
   const home = wallHomePath(wall);
   return home.startsWith("/community?") ? `${home}&view=cards` : home;
 }
 
-// 내 알림: 기일 추모 섬(아직 답하지 않은 것) · 내 메시지에 달린 다른 사람의 좋아요 · 댓글
+// 내 알림: 개인 추모 랜드(아직 답하지 않은 것) · 내 메시지에 달린 다른 사람의 좋아요 · 댓글
 // 응답: { notifications, seenAt } (seenAt 이후에 생긴 것이 "새 알림")
 export async function GET() {
   const context = await getSessionContext();
@@ -26,7 +26,7 @@ export async function GET() {
   const { supabase, userEmail } = context;
   const notifications: AppNotification[] = [];
 
-  // 1) 기일 추모 섬: 기간 안인데 아직 "섬 열기/나중에"를 고르지 않은 인물
+  // 1) 개인 추모 랜드: 기간 안인데 아직 "섬 열기/나중에"를 고르지 않은 인물
   try {
     const islands = await loadAnniversaryIslands(supabase, userEmail);
     for (const island of islands.filter((item) => item.status === "ask")) {

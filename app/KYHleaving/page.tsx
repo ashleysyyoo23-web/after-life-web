@@ -13,7 +13,7 @@ export default function KYHLeavingPage() {
     const params = new URLSearchParams(window.location.search);
     const wall = params.get("wall");
     const home = isCommunityWall(wall) ? wallHomePath(wall) : "/KYHdrawing";
-    // 추모 커뮤니티 카드 화면에서 남겼으면 카드 화면으로
+    // 커뮤니티 추모 랜드 카드 화면에서 남겼으면 카드 화면으로
     const backTo = params.get("view") === "cards" && home.startsWith("/community?") ? `${home}&view=cards` : home;
     const timer = setTimeout(() => {
       router.push(backTo);

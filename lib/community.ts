@@ -1,5 +1,5 @@
 // 추모 공간(커뮤니티) 메시지 공통 규칙
-// drawingPath = 메시지를 남긴 뒤 돌아갈 화면. 추모 커뮤니티 돌들은 그 돌을 확대한 화면(/community?stone=…)
+// drawingPath = 메시지를 남긴 뒤 돌아갈 화면. 커뮤니티 추모 랜드 돌들은 그 돌을 확대한 화면(/community?stone=…)
 export const COMMUNITY_WALLS = {
   kyh: { title: "김영희 님의 섬", drawingPath: "/KYHdrawing", gridPath: "/KYHgrid" },
   sewol: { title: "세월호 참사 추모 공간", drawingPath: "/community?stone=sewol", gridPath: "/communitytwogrid" },
@@ -11,10 +11,10 @@ export const COMMUNITY_WALLS = {
   teacher: { title: "선생님 추모 공간", drawingPath: "/community?stone=teacher", gridPath: null },
 } as const;
 
-// 추모 커뮤니티 섬의 돌 7곳 (kyh 제외)
+// 커뮤니티 추모 랜드의 돌 7곳 (kyh 제외)
 export type CommunityStoneWall = Exclude<keyof typeof COMMUNITY_WALLS, "kyh">;
 
-// 고정 추모 공간(kyh·sewol) + 고인별 기일 추모 섬의 벽("deceased-<고인 ID>")
+// 고정 추모 공간(kyh·sewol) + 고인별 개인 추모 랜드의 벽("deceased-<고인 ID>")
 type FixedWall = keyof typeof COMMUNITY_WALLS;
 export type CommunityWall = FixedWall | `deceased-${string}`;
 

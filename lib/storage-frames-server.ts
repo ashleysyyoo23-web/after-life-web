@@ -115,7 +115,7 @@ export async function loadBookmarkedMessageIds(supabase: SupabaseClient, userEma
   return ids.filter((id) => walls.has(id)).map((id) => ({ id, wall: walls.get(id)!, createdAt: markedAt.get(id)! }));
 }
 
-// 메시지가 어느 액자에 들어가는지: 기일 추모 섬 메시지는 그 고인의 인물 액자, 나머지는 추모 커뮤니티 액자
+// 메시지가 어느 액자에 들어가는지: 개인 추모 랜드 메시지는 그 고인의 인물 액자, 나머지는 커뮤니티 추모 랜드 액자
 export function frameOfWall(wall: string, characters: CharacterRow[]): string | null {
   const deceasedId = deceasedIdFromWall(wall);
   if (!deceasedId) return COMMUNITY_FRAME;

@@ -17,7 +17,7 @@ import { appearanceForRelation, type CharacterAppearance } from "@/lib/character
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-// 메인 랜드가 열려 있으면 인물을 다시 불러오게 알림
+// 마이 랜드가 열려 있으면 인물을 다시 불러오게 알림
 export const CHARACTERS_UPDATED_EVENT = "afterlife:characters-updated";
 
 type Detail = {
@@ -53,7 +53,7 @@ export function CharacterManager() {
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nickname: string; bookCount: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // "+ 인물 추가": 메인 랜드의 "+ 고인 불러오기"와 같은 만들기 창
+  // "+ 인물 추가": 마이 랜드의 "+ 고인 불러오기"와 같은 만들기 창
   const [creating, setCreating] = useState(false);
 
   const loadList = async () => {

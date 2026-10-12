@@ -76,7 +76,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 // body: { nickname?, relation?, description?, appearance?, emotionLevel?,
 //         excludedTypes?, allowRecommendation?, specialDates? (보내면 이 인물의 내 날짜를 통째로 바꿈),
 //         positionX?, positionY? }
-// (positionX/Y 는 메인 랜드에서 끌어서 옮긴 발끝 위치 %, 모래밭 안으로 맞춤)
+// (positionX/Y 는 마이 랜드에서 끌어서 옮긴 발끝 위치 %, 모래밭 안으로 맞춤)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const context = await getSessionContext();
   if (!context.ok) return context.response;
@@ -205,7 +205,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   });
 }
 
-// 인물 지우기: 메인 랜드에서 사라짐. 책장(앨범)은 지우지 않고 보관 →
+// 인물 지우기: 마이 랜드에서 사라짐. 책장(앨범)은 지우지 않고 보관 →
 // 같은 폴더로 인물을 다시 만들면 책장이 그대로 돌아와요.
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const context = await getSessionContext();

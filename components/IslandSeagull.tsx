@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 // 섬 앞쪽 모래밭을 걸어다니며 가끔 바닥을 쪼는 갈매기.
 // 배경과 같은 16:9 무대 안에 넣어요. 위치는 무대 기준 % (갈매기 발 위치).
-// 기본값은 전체 지도(메인 랜드 섬). 다른 화면은 lib/scene-motion.ts 의 값을 넘겨요.
+// 기본값은 전체 지도(마이 랜드). 다른 화면은 lib/scene-motion.ts 의 값을 넘겨요.
 
 export type SeagullConfig = {
   src: string; // 배경에서 오려낸 갈매기 (오른쪽을 봄)

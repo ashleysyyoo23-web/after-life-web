@@ -6,7 +6,7 @@ type RouteParams = {
   params: Promise<{ deceasedId: string }>;
 };
 
-// 기일 추모 섬 화면: 내가 부르는 호칭과 기일 정보. 그 고인을 등록한 사람만.
+// 개인 추모 랜드 화면: 내가 부르는 호칭과 기일 정보. 그 고인을 등록한 사람만.
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   const context = await getSessionContext();
   if (!context.ok) return context.response;

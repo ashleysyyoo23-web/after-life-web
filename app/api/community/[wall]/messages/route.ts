@@ -40,7 +40,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   if (!isCommunityWall(wall)) {
     return NextResponse.json({ error: "Wall not found" }, { status: 404 });
   }
-  // 고인별 추모 섬 벽은 그 고인을 등록한 가족만
+  // 고인별 개인 추모 랜드 벽은 그 고인을 등록한 가족만
   if (!(await canUseWall(supabase, userEmail, wall))) {
     return NextResponse.json({ error: "이 개인 추모 랜드에 들어갈 수 없어요." }, { status: 403 });
   }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!isCommunityWall(wall)) {
     return NextResponse.json({ error: "Wall not found" }, { status: 404 });
   }
-  // 고인별 추모 섬 벽은 그 고인을 등록한 가족만
+  // 고인별 개인 추모 랜드 벽은 그 고인을 등록한 가족만
   if (!(await canUseWall(supabase, userEmail, wall))) {
     return NextResponse.json({ error: "이 개인 추모 랜드에 들어갈 수 없어요." }, { status: 403 });
   }

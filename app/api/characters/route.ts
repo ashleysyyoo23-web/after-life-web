@@ -21,7 +21,7 @@ const NICKNAME_MAX_LENGTH = CHARACTER_NICKNAME_MAX;
 const DESCRIPTION_MAX_LENGTH = CHARACTER_DESCRIPTION_MAX;
 const RELATIONS: readonly string[] = CHARACTER_RELATIONS;
 
-// 메인 랜드(캐릭터 없는 섬) 모래 위 기본 자리. 발끝 위치, 화면(16:9) 기준 %.
+// 마이 랜드(캐릭터 없는 섬) 모래 위 기본 자리. 발끝 위치, 화면(16:9) 기준 %.
 // 새 캐릭터는 비어 있는 첫 자리에 서요. (드래그 배치는 다음 단계)
 const DEFAULT_SPOTS: Array<[number, number]> = [
   [50, 74], [40, 72], [60, 72], [33, 71], [67, 70], [45, 76], [55, 76], [27, 72], [73, 70],

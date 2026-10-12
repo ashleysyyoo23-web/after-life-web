@@ -1,4 +1,4 @@
-// 저장소 섬 안 액자: 고인마다 액자 하나 + "추모 커뮤니티" 액자 하나
+// 저장소 섬 안 액자: 고인마다 액자 하나 + "커뮤니티 추모 랜드" 액자 하나
 // 액자를 누르면 그 고인과 관련해 저장(🔖)한 리캡 사진과 북마크한 메시지를 모아 봐요.
 
 export const COMMUNITY_FRAME = "community";
@@ -7,7 +7,7 @@ export const COMMUNITY_FRAME = "community";
 // 배경 그림에서는 액자를 모두 지웠고, 저장한 기록이 있는 액자만 이 그림으로 걸어요.
 export type FrameSpot = { left: number; top: number; width: number; height: number; src: string };
 
-// 추모 커뮤니티 액자: 오른쪽 무리의 세로로 긴 액자
+// 커뮤니티 추모 랜드 액자: 오른쪽 무리의 세로로 긴 액자
 export const COMMUNITY_FRAME_SPOT: FrameSpot = {
   left: 57.266, top: 38.009, width: 2.865, height: 9.167, src: "/scenes/storage-frames/community.webp",
 };
@@ -26,7 +26,7 @@ export const CHARACTER_FRAME_SPOTS: FrameSpot[] = [
 
 export type FrameSummary = {
   frame: string; // 인물 ID 또는 "community"
-  title: string; // "엄마" / "추모 커뮤니티"
+  title: string; // "엄마" / "커뮤니티 추모 랜드"
   photoCount: number;
   messageCount: number;
   firstSavedAt: string | null; // 처음 저장(북마크)한 때. 이 순서로 액자 자리를 정해요 (없으면 액자 안 걸림)

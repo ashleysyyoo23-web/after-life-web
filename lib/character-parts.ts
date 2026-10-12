@@ -1,6 +1,6 @@
 // 캐릭터 꾸미기 파츠 (docs/SERVICE_PLAN.md 3-3)
 // DB(user_characters.appearance)에는 아래 "이름"들만 저장하고, 그림은 renderCharacterSvg 가 그려요.
-// 레퍼런스(메인 랜드 캐릭터)처럼: 가늘고 고른 먹색 선 + 가장자리만 살짝 진한 부드러운 채색.
+// 레퍼런스(마이 랜드 캐릭터)처럼: 가늘고 고른 먹색 선 + 가장자리만 살짝 진한 부드러운 채색.
 
 export const CHARACTER_OPTIONS = {
   view: [

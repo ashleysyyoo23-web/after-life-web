@@ -21,7 +21,7 @@ type ModalShellProps = {
   wide?: boolean;
 };
 
-// 메인 랜드 "+ 고인 불러오기" 창과 같은 모양
+// 마이 랜드 "+ 고인 불러오기" 창과 같은 모양
 function ModalShell({ heading, onClose, children, wide = false }: ModalShellProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

@@ -51,7 +51,7 @@ body {
   }
 }
 
-/* 메인 랜드 야자수 (components/SwayingPlants.tsx): 밑동을 축으로 살랑 */
+/* 마이 랜드 야자수 (components/SwayingPlants.tsx): 밑동을 축으로 살랑 */
 @keyframes palm-sway {
   0%,
   100% {
@@ -62,7 +62,7 @@ body {
   }
 }
 
-/* 기일 추모 섬이 지도에 천천히 떠오르기 */
+/* 개인 추모 랜드가 지도에 천천히 떠오르기 */
 @keyframes island-rise {
   from {
     opacity: 0;
@@ -94,7 +94,7 @@ body {
   }
 }
 
-/* 추모 커뮤니티: 돌을 확대한 뒤 꽃 자리가 천천히 나타나기 */
+/* 커뮤니티 추모 랜드: 돌을 확대한 뒤 꽃 자리가 천천히 나타나기 */
 @keyframes fade-in {
   from {
     opacity: 0;

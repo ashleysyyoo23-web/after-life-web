@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { sanitizeAppearance } from "@/lib/character-parts";
 
-// 메인 랜드에서 내 캐릭터가 처음 설 자리 (고인 캐릭터들보다 조금 앞쪽, 발끝 위치 %)
+// 마이 랜드에서 내 캐릭터가 처음 설 자리 (고인 캐릭터들보다 조금 앞쪽, 발끝 위치 %)
 const MY_DEFAULT_POSITION = { x: 52, y: 77 };
 
 type ProfileRow = {
@@ -19,7 +19,7 @@ function toClient(row: ProfileRow | null) {
     displayName: row?.display_name ?? "",
     handle: row?.handle ?? "",
     intro: row?.intro ?? "",
-    // 캐릭터를 아직 저장하지 않았으면 null (메인 랜드에 나타나지 않음)
+    // 캐릭터를 아직 저장하지 않았으면 null (마이 랜드에 나타나지 않음)
     appearance: row?.appearance ? sanitizeAppearance(row.appearance) : null,
     positionX: row?.position_x ?? MY_DEFAULT_POSITION.x,
     positionY: row?.position_y ?? MY_DEFAULT_POSITION.y,

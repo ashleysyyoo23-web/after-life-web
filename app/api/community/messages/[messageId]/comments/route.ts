@@ -14,7 +14,7 @@ const NEEDS_MIGRATION = {
   code: "needs_migration",
 };
 
-// 이 메시지를 볼 수 있는 사람만 (기일 추모 섬 메시지는 그 고인의 가족만)
+// 이 메시지를 볼 수 있는 사람만 (개인 추모 랜드 메시지는 그 고인의 가족만)
 async function findMessage(supabase: Parameters<typeof canUseWall>[0], userEmail: string, messageId: string) {
   const { data: message } = await supabase
     .from("community_messages")

@@ -3,7 +3,7 @@ import { getSessionContext } from "@/lib/api-session";
 import { COMMUNITY_FRAME, type FrameSummary } from "@/lib/storage-frames";
 import { frameOfWall, loadBookmarkedMessageIds, loadMyCharacters, loadSavedPhotos } from "@/lib/storage-frames-server";
 
-// 저장소 액자 목록: 내 인물마다 하나 + 추모 커뮤니티 하나 (저장한 사진·북마크한 메시지 수, 처음 저장한 때)
+// 저장소 액자 목록: 내 인물마다 하나 + 커뮤니티 추모 랜드 하나 (저장한 사진·북마크한 메시지 수, 처음 저장한 때)
 export async function GET() {
   const context = await getSessionContext();
   if (!context.ok) return context.response;

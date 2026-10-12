@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-// 지금 기일 기간인 추모 섬 (/api/mainland/islands)
+// 지금 기일 기간인 개인 추모 랜드 (/api/mainland/islands)
 type AnniversaryIsland = {
   deceasedId: string;
   nickname: string;
@@ -63,7 +63,7 @@ const SKY_BIRD_STARTS: Array<[number, number]> = [
   [18, 16],
 ];
 
-// 기일 추모 섬 그림 안에서 팻말 자리 (뒤집지 않은 그림 기준 %, 모래밭)
+// 개인 추모 랜드 그림 안에서 팻말 자리 (뒤집지 않은 그림 기준 %, 모래밭)
 const ANNIVERSARY_SIGN_SPOT: Record<IslandShape, { x: number; y: number }> = {
   rock: { x: 25, y: 86 },
   cairn: { x: 30, y: 89 },
@@ -85,7 +85,7 @@ function MainlandPageContent() {
     "view-method" | "profile" | "legacy" | "edit-person" | null
   >(null);
 
-  // 기일 추모 섬: 기일 7일 전~3일 후에 "섬을 열까요?"를 한 번 묻고, 연 섬만 지도에 (최대 2개)
+  // 개인 추모 랜드: 기일 7일 전~3일 후에 "섬을 열까요?"를 한 번 묻고, 연 섬만 지도에 (최대 2개)
   const [islands, setIslands] = useState<AnniversaryIsland[]>([]);
   const [maxOpen, setMaxOpen] = useState(2);
   const [answering, setAnswering] = useState(false);
@@ -113,7 +113,7 @@ function MainlandPageContent() {
     void (async () => {
       try {
         const res = await fetch("/api/mainland/islands", { cache: "no-store" });
-        if (!res.ok) return; // 로그인 전이면 추모 섬 없음
+        if (!res.ok) return; // 로그인 전이면 개인 추모 랜드 없음
         const data = (await res.json()) as { islands: AnniversaryIsland[]; maxOpen: number };
         setIslands(data.islands);
         setMaxOpen(data.maxOpen);
@@ -155,10 +155,10 @@ function MainlandPageContent() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
-      {/* 고정 섬 3개(추모 커뮤니티·메인 랜드·저장소)만 있는 바탕. 기일 추모 섬은 그 위에 따로 올려요 */}
+      {/* 고정 섬 3개(커뮤니티 추모 랜드·마이 랜드·저장소)만 있는 바탕. 개인 추모 랜드는 그 위에 따로 올려요 */}
       <MoodSkyBackground scene="mainland-base" clouds />
 
-      {/* 기일 추모 섬: 배경(16:9)과 같은 크기의 무대 위, 예전 두 섬 자리(왼쪽 아래·오른쪽 아래) */}
+      {/* 개인 추모 랜드: 배경(16:9)과 같은 크기의 무대 위, 예전 두 섬 자리(왼쪽 아래·오른쪽 아래) */}
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 z-[2] -translate-x-1/2 -translate-y-1/2"
         style={{ width: "max(100vw, 177.78vh)", height: "max(56.25vw, 100vh)", containerType: "size" }}
@@ -166,7 +166,7 @@ function MainlandPageContent() {
         {/* 바다 물결 (섬들 아래) */}
         <SeaWaves />
 
-        {/* 메인 랜드의 살랑이는 야자수·꽃·덤불 */}
+        {/* 마이 랜드의 살랑이는 야자수·꽃·덤불 */}
         <SwayingPlants />
         {/* 저장소 섬 깃발 */}
         <WavingFlag />
@@ -231,7 +231,7 @@ function MainlandPageContent() {
           <IslandSign key={island.label} label={island.label} x={island.sign.x} y={island.sign.y} />
         ))}
 
-        {/* 메인 랜드 모래밭을 걸어다니는 갈매기 (팻말 앞, 기일 추모 섬 뒤) */}
+        {/* 마이 랜드 모래밭을 걸어다니는 갈매기 (팻말 앞, 개인 추모 랜드 뒤) */}
         <IslandSeagull />
       </div>
 
@@ -258,7 +258,7 @@ function MainlandPageContent() {
         })}
       </div>
 
-      {/* 닫아 둔 추모 섬: 이번 기일 기간엔 다시 묻지 않지만 여기서 언제든 열 수 있어요 */}
+      {/* 닫아 둔 개인 추모 랜드: 이번 기일 기간엔 다시 묻지 않지만 여기서 언제든 열 수 있어요 */}
       {laterIslands.length > 0 && !asking && (
         <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-white/85 px-4 py-2 font-mulish text-sm text-[#4A423C] shadow">
           <span className="text-[#898787]">닫아 둔 개인 추모 랜드</span>

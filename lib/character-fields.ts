@@ -68,7 +68,7 @@ export function buildSpecialDateRows(value: unknown) {
     const parsed = typeof item.date === "string" ? parseSpecialDate(item.date) : null;
     if (!parsed) continue;
 
-    // 반려동물의 "무지개다리 건넌 날"도 기일로 봐요 (그날 즈음 추모 섬)
+    // 반려동물의 "무지개다리 건넌 날"도 기일로 봐요 (그날 즈음 개인 추모 랜드)
     let kind: "death_anniversary" | "birthday" | "custom" = label.includes("기일") || label.includes("무지개다리")
       ? "death_anniversary"
       : label.includes("생일") || label.includes("생신")

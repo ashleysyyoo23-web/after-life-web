@@ -12,7 +12,7 @@ export type SceneMotionConfig = {
   birds?: { sky: SkyRange; width: number; src?: string; starts: Array<{ start: [number, number]; size: number }> }; // 하늘 새
 };
 
-// 마이랜드 (/myland): 메인 랜드 섬을 가까이서 본 화면
+// 마이랜드 (/myland): 마이 랜드를 가까이서 본 화면
 export const MYLAND_MOTION: SceneMotionConfig = {
   sea: { mask: "/scenes/myland-sea-mask.png", fade: [52, 62] },
   palms: [
@@ -46,7 +46,7 @@ export const MYLAND_MOTION: SceneMotionConfig = {
   },
 };
 
-// 추모 커뮤니티 (/community): 꽃이 그려진 돌탑 섬. 돌에 그려진 꽃은 그대로, 돌 사이 꽃과 풀만 살랑
+// 커뮤니티 추모 랜드 (/community): 꽃이 그려진 돌탑 섬. 돌에 그려진 꽃은 그대로, 돌 사이 꽃과 풀만 살랑
 export const COMMUNITY_MOTION: SceneMotionConfig = {
   sea: { mask: "/scenes/community-sea-mask.png", fade: [79, 86] },
   plants: [{ src: "/scenes/community-plants.webp", left: 20.208, top: 60.509, width: 65.677 }],

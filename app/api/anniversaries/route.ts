@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import { nextAnniversary, type UpcomingAnniversary } from "@/lib/anniversary";
 
-// 메인 랜드 기일 안내 창: 기일을 적은 내 인물들, 기일이 가까운 순
+// 마이 랜드 기일 안내 창: 기일을 적은 내 인물들, 기일이 가까운 순
 export async function GET() {
   const context = await getSessionContext();
   if (!context.ok) return context.response;

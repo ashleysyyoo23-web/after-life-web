@@ -1,9 +1,9 @@
-// 기일 추모 섬이 보이는 기간 계산 (기준: 한국 시간, 양력)
+// 개인 추모 랜드가 보이는 기간 계산 (기준: 한국 시간, 양력)
 // 기일 7일 전 ~ 3일 후에 섬이 열릴 수 있고, 동시에 최대 2개 (지도의 섬 자리 수)
 export const ISLAND_DAYS_BEFORE = 7;
 export const ISLAND_DAYS_AFTER = 3;
 export const MAX_ANNIVERSARY_ISLANDS = 2;
-// 메인 랜드 기일 안내 창을 "오늘 이미 띄웠는지" 브라우저에 기억하는 이름 (뒤에 날짜)
+// 마이 랜드 기일 안내 창을 "오늘 이미 띄웠는지" 브라우저에 기억하는 이름 (뒤에 날짜)
 export const ANNIVERSARY_SHOWN_KEY_PREFIX = "afterlife:anniversary-shown:";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -54,7 +54,7 @@ export function nextAnniversary(month: number, day: number, today = seoulToday()
   return null;
 }
 
-// 메인 랜드 기일 안내 창에 보여 줄 인물 한 명 (/api/anniversaries)
+// 마이 랜드 기일 안내 창에 보여 줄 인물 한 명 (/api/anniversaries)
 export type UpcomingAnniversary = {
   characterId: string;
   nickname: string;

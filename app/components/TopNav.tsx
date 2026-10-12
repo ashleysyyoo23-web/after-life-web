@@ -60,7 +60,7 @@ export function TopNav({
     setIsMusicPlaying(globalIsPlaying);
   };
 
-  // 알림함: 기일 추모 섬 · 내 메시지의 좋아요 · 댓글 (/api/notifications). 연 뒤에 생긴 것만 빨간 숫자로
+  // 알림함: 개인 추모 랜드 · 내 메시지의 좋아요 · 댓글 (/api/notifications). 연 뒤에 생긴 것만 빨간 숫자로
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [seenAt, setSeenAt] = useState<string | null>(null);
   const [notificationsLoaded, setNotificationsLoaded] = useState(false);

@@ -208,7 +208,7 @@ export async function shrinkCommunityImage(buffer: Buffer, mimeType: string) {
 }
 
 // 이 벽을 보고 쓸 수 있는지: 고정 추모 공간은 로그인한 누구나,
-// 고인별 추모 섬 벽은 그 고인을 등록한(지우지 않은) 사람만 (같은 폴더로 등록한 가족끼리 함께 봄)
+// 고인별 개인 추모 랜드 벽은 그 고인을 등록한(지우지 않은) 사람만 (같은 폴더로 등록한 가족끼리 함께 봄)
 export async function canUseWall(supabase: SupabaseClient, userEmail: string, wall: CommunityWall) {
   const deceasedId = deceasedIdFromWall(wall);
   if (!deceasedId) return true;

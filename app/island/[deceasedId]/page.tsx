@@ -21,7 +21,7 @@ type IslandInfo = {
   daysUntil: number | null;
 };
 
-// 기일 추모 섬: 같은 고인을 등록한 가족끼리 메시지·그림·사진을 남기는 곳
+// 개인 추모 랜드: 같은 고인을 등록한 가족끼리 메시지·그림·사진을 남기는 곳
 export default function IslandPage() {
   const { deceasedId } = useParams<{ deceasedId: string }>();
   const wall = deceasedWall(deceasedId);

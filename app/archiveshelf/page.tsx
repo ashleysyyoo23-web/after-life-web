@@ -46,7 +46,7 @@ function ArchiveshelfPageContent() {
   const [renaming, setRenaming] = useState<{ bookId: string; title: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
-    // 어느 캐릭터의 책장인지 모르면 메인 랜드에서 캐릭터를 고르도록
+    // 어느 캐릭터의 책장인지 모르면 마이 랜드에서 캐릭터를 고르도록
     if (!characterId) {
       router.replace("/myland?from=moodcheck");
       return;

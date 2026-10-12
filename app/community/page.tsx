@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-// 추모 커뮤니티 7곳 (메시지 벽 이름 = lib/community.ts 의 COMMUNITY_WALLS). 함께하는 사람 수는 예시 숫자
+// 커뮤니티 추모 랜드 7곳 (메시지 벽 이름 = lib/community.ts 의 COMMUNITY_WALLS). 함께하는 사람 수는 예시 숫자
 const COUNTS: Record<CommunityStoneWall, number> = {
   itaewon: 278,
   sewol: 190,

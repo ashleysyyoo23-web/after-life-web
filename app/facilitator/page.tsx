@@ -107,7 +107,7 @@ export default function FacilitatorPage() {
   const [clearMemos, setClearMemos] = useState(true);
   const [startCaptions, setStartCaptions] = useState<Record<string, string>>({});
   const [resetView, setResetView] = useState(true);
-  // 메인 랜드 기일 안내 창 "하루 한 번" 기억 (이 브라우저)
+  // 마이 랜드 기일 안내 창 "하루 한 번" 기억 (이 브라우저)
   const [resetAnniversaryShown, setResetAnniversaryShown] = useState(true);
   // 전체 지도 섬지기 둘러보기 "처음 한 번" 기억 (이 브라우저)
   const [resetMapTutorial, setResetMapTutorial] = useState(true);

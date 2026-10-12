@@ -297,7 +297,7 @@ function CardHeader({ message, onDelete }: { message: CommunityMessage; onDelete
 }
 
 // 카드 위쪽 그림: 공유한 사진이 있으면 사진, 없으면 직접 그린 그림
-// photoOnly: 공유한 사진만 보여주고 펜 그림은 숨김 (추모 커뮤니티 돌)
+// photoOnly: 공유한 사진만 보여주고 펜 그림은 숨김 (커뮤니티 추모 랜드 돌)
 function CardPicture({ message, className, photoOnly = false }: { message: CommunityMessage; className: string; photoOnly?: boolean }) {
   const src = photoOnly ? message.imageUrl : (message.imageUrl ?? message.drawingUrl);
   if (!src) return null;

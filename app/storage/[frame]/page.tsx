@@ -26,7 +26,7 @@ const photoKey = (photo: SavedPhoto) => `${photo.sectionId}:${photo.driveFileId}
 // 보고 싶지 않다고 한 기록만 흐리게 (눌러서 본 사진은 선명)
 const isBlurred = (photo: SavedPhoto) => photo.hidden && !photo.revealed;
 
-// 액자 속: 이 고인(또는 추모 커뮤니티)과 관련해 저장한 리캡 사진 + 북마크한 메시지
+// 액자 속: 이 고인(또는 커뮤니티 추모 랜드)과 관련해 저장한 리캡 사진 + 북마크한 메시지
 export default function StorageFramePage() {
   return (
     <Suspense fallback={null}>

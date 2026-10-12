@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // 중단하기 (Quick Exit): 기록을 보다 벅차오를 때 언제든 한 번에 빠져나오기.
-// 누르거나 Esc → 화면을 바로 가리고 재생을 멈춘 뒤 메인 랜드로 (뒤로가기로 사진에 다시 돌아오지 않게 replace).
+// 누르거나 Esc → 화면을 바로 가리고 재생을 멈춘 뒤 마이 랜드로 (뒤로가기로 사진에 다시 돌아오지 않게 replace).
 // "감상 마치기"(끝까지 본 뒤 마음 기록)와 달리 아무것도 묻지 않아요.
 export const SAFE_PLACE = "/myland?from=moodcheck";
 

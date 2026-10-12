@@ -176,7 +176,7 @@ function MylandPageContent() {
       .then((data) => setAnniversaries(data.anniversaries))
       .catch(() => setAnniversaries([]));
   };
-  // 기일 7일 전~3일 후(지난 건 목록에 사흘까지만 와요)인 분이 있으면, 메인 랜드에 들어올 때 하루 한 번 안내 창을 띄움
+  // 기일 7일 전~3일 후(지난 건 목록에 사흘까지만 와요)인 분이 있으면, 마이 랜드에 들어올 때 하루 한 번 안내 창을 띄움
   const anniversarySoon = Boolean(anniversaries?.some((item) => item.daysUntil <= ISLAND_DAYS_BEFORE));
   useEffect(() => {
     if (sessionStatus !== "authenticated") return;

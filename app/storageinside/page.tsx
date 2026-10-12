@@ -19,7 +19,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// 저장소 안: 벽의 액자 = 고인마다 하나 + 추모 커뮤니티 하나. 누르면 그 액자에 저장한 사진·메시지
+// 저장소 안: 벽의 액자 = 고인마다 하나 + 커뮤니티 추모 랜드 하나. 누르면 그 액자에 저장한 사진·메시지
 export default function StorageInsidePage() {
   const router = useRouter();
   const { status } = useSession();
@@ -41,7 +41,7 @@ export default function StorageInsidePage() {
     };
   }, [status]);
 
-  // 저장한 기록이 있는 액자만 걸기. 추모 커뮤니티는 고정 자리, 고인은 처음 저장한 순서대로 다음 빈자리에 (8명까지)
+  // 저장한 기록이 있는 액자만 걸기. 커뮤니티 추모 랜드는 고정 자리, 고인은 처음 저장한 순서대로 다음 빈자리에 (8명까지)
   const placed: Array<{ summary: FrameSummary; spot: FrameSpot }> = [];
   if (frames) {
     const people = frames
