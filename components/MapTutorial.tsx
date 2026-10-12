@@ -145,7 +145,7 @@ export function MapTutorial({
     onStep(next);
   };
 
-  // 키보드: → 다음, ← 이전, Esc 건너뛰기 (Enter 는 포커스된 "다음" 버튼이 받아요)
+  // 키보드: → 다음, ← 이전, Esc 닫기 (Enter 는 포커스된 "다음" 버튼이 받아요)
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -237,7 +237,15 @@ export function MapTutorial({
           <span className="absolute -top-4 left-4 rounded-full border-2 border-[#E8B4A0] bg-[#F6C7C2] px-3 py-0.5 font-jeju-myeongjo text-sm text-[#5A3A30]">
             섬지기
           </span>
-          <span className="absolute -right-1.5 -top-1.5 h-3.5 w-3.5 rounded-full border border-[#E8B4A0] bg-[#F4A9A8]" aria-hidden />
+          {/* 닫기 (언제든 둘러보기를 끝낼 수 있어요) */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="둘러보기 닫기"
+            className="absolute -right-2.5 -top-2.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-[#E8B4A0] bg-[#F6C7C2] p-0 font-mulish text-sm leading-none text-[#5A3A30] shadow-sm transition-colors hover:bg-[#F4A9A8]"
+          >
+            ✕
+          </button>
           <p className="font-jeju-myeongjo text-[15px] leading-[1.75] text-[#4A3A33]" aria-live="polite">
             {current.text}
           </p>
@@ -256,15 +264,6 @@ export function MapTutorial({
               ))}
             </div>
             <div className="flex items-center gap-3">
-              {!last && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 font-jeju-myeongjo text-sm text-[#8A7A72] underline underline-offset-2 hover:text-[#4A3A33]"
-                >
-                  건너뛰기
-                </button>
-              )}
               <button
                 type="button"
                 autoFocus
