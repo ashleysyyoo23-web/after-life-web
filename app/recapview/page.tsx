@@ -117,11 +117,14 @@ function RecapviewPageContent() {
     })();
   }, []);
 
-  // 보는 중에 설정에서 넘김 속도를 저장하면 바로 반영 (지금 사진부터 새 속도로)
+  // 보는 중에 설정에서 저장하면 바로 반영: 넘김 속도(지금 사진부터) + 보는 방식(슬라이드쇼 자동 넘김 / 책 손으로 넘김)
   useEffect(() => {
     const handleUpdated = (event: Event) => {
       const detail = (event as CustomEvent<Parameters<typeof sanitizeViewSettings>[0]>).detail;
-      setSlideSeconds(sanitizeViewSettings(detail).slideSeconds);
+      const updated = sanitizeViewSettings(detail);
+      setSlideSeconds(updated.slideSeconds);
+      viewTouchedRef.current = true;
+      setViewMode(updated.recapView === "book" ? "book" : "auto");
     };
     window.addEventListener(VIEW_SETTINGS_UPDATED_EVENT, handleUpdated);
     return () => window.removeEventListener(VIEW_SETTINGS_UPDATED_EVENT, handleUpdated);

@@ -2,7 +2,7 @@
 
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
-import { saveMoodSky } from "@/lib/mood-sky";
+import { markMoodChecked, saveMoodSky } from "@/lib/mood-sky";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -42,6 +42,8 @@ export default function MoodcheckPage() {
     setIsSaving(true);
     // 이후 하늘이 나오는 화면들에 바로 적용 (이번 방문 동안 유지)
     saveMoodSky(selectedMood);
+    // 이번 접속 동안은 다시 묻지 않음
+    markMoodChecked();
 
     try {
       const res = await fetch("/api/emotion-logs", {
@@ -60,6 +62,7 @@ export default function MoodcheckPage() {
   };
 
   const handleClose = () => {
+    markMoodChecked();
     router.push("/myland?from=moodcheck");
   };
 

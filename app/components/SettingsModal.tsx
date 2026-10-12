@@ -257,13 +257,13 @@ export function SettingsModal({
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) throw new Error(json?.error ?? "저장하지 못했어요.");
 
-      // 열려 있는 리캡에 넘김 속도를 바로 반영 (처음 화면은 다음에 열 때부터)
+      // 열려 있는 리캡에 바로 반영 (넘김 속도 + 보는 방식)
       window.dispatchEvent(
         new CustomEvent(VIEW_SETTINGS_UPDATED_EVENT, {
           detail: { slideSeconds: sliderValue, recapView: selectedViewType },
         }),
       );
-      setViewMessage("저장했어요. 넘김 속도는 바로 적용되고, 처음 화면은 다음에 리캡을 열 때부터 적용돼요.");
+      setViewMessage("저장했어요. 보고 있는 기록에도 바로 적용돼요.");
     } catch (saveError) {
       setViewMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
     } finally {
@@ -838,7 +838,7 @@ export function SettingsModal({
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>2</span>
                               <span>
-                                리캡을 열었을 때 처음 보일 화면을 골라주세요.
+                                고인의 기록을 어떤 방식으로 볼지 골라주세요. 슬라이드쇼는 자동으로 넘어가고, 책은 손으로 넘겨요.
                                 리캡 안에서도 언제든 바꿀 수 있어요.
                               </span>
                             </div>

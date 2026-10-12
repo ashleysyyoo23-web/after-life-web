@@ -3,6 +3,7 @@
 import { SceneMotion } from "@/components/SceneMotion";
 import { MYLAND_MOTION } from "@/lib/scene-motion";
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
+import { hasMoodChecked } from "@/lib/mood-sky";
 import { CharacterAvatar } from "@/components/CharacterAvatar";
 import { clampToSand } from "@/lib/myland-area";
 import { loginUrl } from "@/lib/login";
@@ -220,8 +221,9 @@ function MylandPageContent() {
     );
   };
 
+  // 기분 체크는 접속할 때 한 번만: 이번 접속에서 이미 했으면 바로 마이 랜드
   useEffect(() => {
-    if (searchParams.get("from") === "moodcheck") {
+    if (searchParams.get("from") === "moodcheck" || hasMoodChecked()) {
       return;
     }
     router.push("/moodcheck");
