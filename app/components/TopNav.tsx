@@ -30,7 +30,8 @@ export function TopNav({
   // 로그인 안 했으면 오른쪽 위에 "로그인" (로그인 뒤 지금 화면으로 돌아옴)
   const { status: sessionStatus } = useSession();
   const pathname = usePathname();
-  const [isMusicPlaying, setIsMusicPlaying] = useState(true);
+  // 다른 화면에서 멈췄으면 그 상태 그대로 (화면을 옮겨도 음악은 하나라서)
+  const [isMusicPlaying, setIsMusicPlaying] = useState(() => globalIsPlaying);
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
@@ -43,8 +44,6 @@ export function TopNav({
       globalBgm.volume = 0.4;
       globalBgm.play().catch(() => {});
     }
-
-    setIsMusicPlaying(globalIsPlaying);
   }, []);
 
   const toggleMusic = () => {

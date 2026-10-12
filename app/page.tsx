@@ -39,6 +39,7 @@ export default function OnboardingPage() {
     >
       <MoodSkyBackground scene="onboarding" />
 
+      {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
       <img
         src="/icons/onboarding-logo.svg"
         alt="AFTER LIFE"

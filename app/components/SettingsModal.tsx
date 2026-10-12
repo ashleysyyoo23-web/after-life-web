@@ -137,6 +137,13 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const [selectedSetting, setSelectedSetting] =
     useState<SettingId>("view-method");
+  // "특정 메뉴로 열기"(openToSetting): 창이 그 메뉴로 열릴 때 바로 그 메뉴를 고름 (렌더 중에 한 번만 맞춤)
+  const openKey = isOpen ? (openToSetting ?? null) : null;
+  const [appliedOpenKey, setAppliedOpenKey] = useState<typeof openKey>(null);
+  if (openKey !== appliedOpenKey) {
+    setAppliedOpenKey(openKey);
+    if (openKey) setSelectedSetting(openKey);
+  }
   const [sliderValue, setSliderValue] = useState(DEFAULT_SLIDE_SECONDS);
   const [selectedViewType, setSelectedViewType] = useState<RecapView>(DEFAULT_RECAP_VIEW);
   const [viewSettingsLoaded, setViewSettingsLoaded] = useState(false);
@@ -527,23 +534,13 @@ export function SettingsModal({
     setLegacyEndDate(nextEndDate);
   };
 
-  useEffect(() => {
-    if (!isOpen || !openToSetting) {
-      return;
-    }
-
-    setSelectedSetting(openToSetting);
-
-    if (openToSetting === "legacy") {
-      void loadDriveConnection();
-    }
-  }, [isOpen, openToSetting, loadDriveConnection]);
-
+  // "내가 남길 기록" 메뉴를 열면 Drive 연결 상태를 서버에서 불러옴 (서버 응답을 받아 상태를 채우는 정상적인 동기화)
   useEffect(() => {
     if (!isOpen || selectedSetting !== "legacy") {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 서버에서 불러온 뒤 상태를 채움 (await 뒤라 실제로는 바로 바꾸지 않음)
     void loadDriveConnection();
   }, [isOpen, loadDriveConnection, selectedSetting]);
 

@@ -82,10 +82,11 @@ export default function MainlandPage() {
 
 function MainlandPageContent() {
   const searchParams = useSearchParams();
-  const [showSettings, setShowSettings] = useState(false);
+  // ?settings=legacy 로 들어오면(Drive 연결하고 돌아올 때) 설정의 "내가 남길 기록"을 열린 채로 시작
+  const [showSettings, setShowSettings] = useState(() => searchParams.get("settings") === "legacy");
   const [openToSetting, setOpenToSetting] = useState<
     "view-method" | "profile" | "legacy" | "edit-person" | null
-  >(null);
+  >(() => (searchParams.get("settings") === "legacy" ? "legacy" : null));
 
   // 개인 추모 랜드: 기일 7일 전~3일 후에 "섬을 열까요?"를 한 번 묻고, 연 섬만 지도에 (최대 2개)
   const [islands, setIslands] = useState<AnniversaryIsland[]>([]);
@@ -145,14 +146,9 @@ function MainlandPageContent() {
     }
   };
 
+  // 연 뒤에는 주소에서 ?settings=legacy 를 지워 새로고침해도 다시 열리지 않게
   useEffect(() => {
-    if (searchParams.get("settings") !== "legacy") {
-      return;
-    }
-
-    setShowSettings(true);
-    setOpenToSetting("legacy");
-    window.history.replaceState(null, "", "/mainland");
+    if (searchParams.get("settings") === "legacy") window.history.replaceState(null, "", "/mainland");
   }, [searchParams]);
 
   return (

@@ -49,6 +49,7 @@ export default function RecapmanualPage() {
   if (showConfirm) {
     return (
       <div className="fixed inset-0 z-50">
+        {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
         <img
           src="/recapdiaryconfirm.jpg"
           alt=""
@@ -83,6 +84,7 @@ export default function RecapmanualPage() {
                     aria-label="책"
                     aria-pressed={activeView === "book"}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         activeView === "book"
@@ -110,6 +112,7 @@ export default function RecapmanualPage() {
                     aria-label="보내기"
                     aria-pressed={activeView === "share"}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         activeView === "share"
@@ -146,6 +149,7 @@ export default function RecapmanualPage() {
                     aria-label="연필"
                     aria-pressed={pensActive}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         pensActive
@@ -166,6 +170,7 @@ export default function RecapmanualPage() {
                     aria-label="공유"
                     aria-pressed={shareActive}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         shareActive
@@ -186,6 +191,7 @@ export default function RecapmanualPage() {
                     aria-label="북마크"
                     aria-pressed={bookmarkActive}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         bookmarkActive

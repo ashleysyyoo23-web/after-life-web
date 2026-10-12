@@ -4,15 +4,13 @@ import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { useEffect, useRef, useState } from "react";
 
+// 소개 그림을 바꾸면 이 숫자를 올려 주세요 (브라우저에 남은 예전 그림 대신 새 그림을 받게)
+const ABOUT_SRC = "/about.jpg?v=2";
+
 export default function AboutPage() {
   const scrollRef = useRef<HTMLElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [aboutSrc, setAboutSrc] = useState("/about.jpg");
   const [showSettings, setShowSettings] = useState(false);
-
-  useEffect(() => {
-    setAboutSrc(`/about.jpg?${Date.now()}`);
-  }, []);
 
   useEffect(() => {
     const scrollContainer = scrollRef.current;
@@ -47,10 +45,11 @@ export default function AboutPage() {
         ref={scrollRef}
         className="h-full overflow-y-scroll [scrollbar-gutter:stable]"
       >
-        {aboutSrc && (
+        {ABOUT_SRC && (
+          // eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용
           <img
-            key={aboutSrc}
-            src={aboutSrc}
+            key={ABOUT_SRC}
+            src={ABOUT_SRC}
             alt="소개"
             className="block h-auto w-full"
             decoding="async"

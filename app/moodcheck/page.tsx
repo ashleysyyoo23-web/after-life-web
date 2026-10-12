@@ -72,12 +72,14 @@ export default function MoodcheckPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
+      {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
       <img
         src="/moodcheck.jpg"
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
       />
       {MOOD_OPTIONS.map((option) => (
+        // eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용
         <img
           key={option.background}
           src={option.background}

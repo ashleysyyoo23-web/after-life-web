@@ -65,7 +65,7 @@ function RecapviewPageContent() {
   const [showSettings, setShowSettings] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [activeView, setActiveView] = useState<"book" | "share">("book");
+  const [activeView] = useState<"book" | "share">("book");
   const [showMemoModal, setShowMemoModal] = useState(false);
   // ✎ 감정 기록 메모
   const [memoText, setMemoText] = useState("");
@@ -196,6 +196,7 @@ function RecapviewPageContent() {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 예전 여행 앨범 화면(섹션 없이 열 때): 앨범이 바뀔 때마다 처음 사진·불러오는 중으로 되돌린 뒤 새로 불러옴
     setCurrentIndex(0);
     setAlbumLoading(true);
 
@@ -481,6 +482,7 @@ function RecapviewPageContent() {
   if (showConfirm) {
     return (
       <div className="fixed inset-0 z-50">
+        {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
         <img
           src="/recapdiaryconfirm.jpg"
           alt=""
@@ -518,6 +520,7 @@ function RecapviewPageContent() {
         )}
         {!isBookMode && (
         <>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
         <img
           src={`/${bg}.jpg`}
           alt=""
@@ -551,6 +554,7 @@ function RecapviewPageContent() {
                     aria-label={isSectionMode ? "책으로 넘겨 보기" : "책"}
                     aria-pressed={bookTabActive}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         bookTabActive
@@ -586,6 +590,7 @@ function RecapviewPageContent() {
                     aria-label={isSectionMode ? "자동으로 넘겨 보기" : "보내기"}
                     aria-pressed={shareTabActive}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         shareTabActive
@@ -627,6 +632,7 @@ function RecapviewPageContent() {
                     aria-label="연필"
                     aria-pressed={pensActive}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                     <img
                       src={
                         pensActive

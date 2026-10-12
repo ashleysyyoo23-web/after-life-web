@@ -106,19 +106,19 @@ export function LegacyDatePicker({
   const [yearInput, setYearInput] = useState(String(viewYear));
   const [monthInput, setMonthInput] = useState(String(viewMonth));
 
-  useEffect(() => {
+  // 달력을 열 때 지금 고른 날짜(없으면 오늘)의 달을 보여 줌
+  const togglePicker = () => {
     if (!isOpen) {
-      return;
+      const parsed = parseLegacyDateValue(value);
+      const nextYear = parsed?.year ?? today.year;
+      const nextMonth = parsed?.month ?? today.month;
+      setViewYear(nextYear);
+      setViewMonth(nextMonth);
+      setYearInput(String(nextYear));
+      setMonthInput(String(nextMonth));
     }
-
-    const parsed = parseLegacyDateValue(value);
-    const nextYear = parsed?.year ?? today.year;
-    const nextMonth = parsed?.month ?? today.month;
-    setViewYear(nextYear);
-    setViewMonth(nextMonth);
-    setYearInput(String(nextYear));
-    setMonthInput(String(nextMonth));
-  }, [isOpen, value, today.month, today.year]);
+    setIsOpen((open) => !open);
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -209,7 +209,7 @@ export function LegacyDatePicker({
         <button
           type="button"
           id={pickerId}
-          onClick={() => setIsOpen((open) => !open)}
+          onClick={togglePicker}
           className={`w-[185px] rounded-[7px] border border-[#C0BDBD] bg-white px-6 py-2.5 text-left font-mulish text-sm ${
             value ? "text-[#4A423C]" : "text-[#898787]"
           }`}

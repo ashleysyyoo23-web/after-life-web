@@ -237,6 +237,7 @@ function MylandPageContent() {
     // 적던 내용(보관해 둔 것)을 꺼내 계정 고르기 단계부터 이어서
     const draft = readCharacterDraft();
     // (보관한 내용이 없으면 처음 단계부터)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Google 연결하고 돌아왔을 때(주소 ?drive_connected=), 브라우저에 보관한 만들던 내용(서버에선 못 읽음)을 꺼내 이어서 열어야 해서 화면이 뜬 뒤에 맞춤
     setResumeDraft(draft);
     setResumeGoogleEmail(searchParams.get("drive_email"));
     setShowAddModal(true);
@@ -254,6 +255,7 @@ function MylandPageContent() {
     const message = driveErrorMessage(code);
     const draft = readCharacterDraft();
     if (draft) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Google 연결이 실패하고 돌아왔을 때(주소 ?drive_error=), 브라우저에 보관한 만들던 내용을 꺼내 창을 다시 열어야 해서 화면이 뜬 뒤에 맞춤
       setResumeDraft(draft);
       setResumeGoogleEmail(null);
       setResumeDriveError(message);
@@ -518,6 +520,7 @@ function MylandPageContent() {
 
   useEffect(() => {
     if (searchParams.get("anniversary") === "true") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 주소(?anniversary=true)로 들어왔을 때 한 번 안내 창을 열고 주소를 지움
       openAnniversaryModal();
       router.replace("/myland?from=moodcheck");
     }
@@ -908,6 +911,7 @@ function MylandPageContent() {
                           </span>
                         </div>
                         <div className="relative flex h-[184px] flex-1 items-center justify-center overflow-hidden bg-white">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                           <img
                             src={card.image}
                             alt=""

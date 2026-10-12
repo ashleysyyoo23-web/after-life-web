@@ -24,6 +24,7 @@ export default function ArchiveroomPage() {
           className="absolute inset-0 z-0 cursor-pointer border-0 bg-transparent p-0"
           aria-label="기록 선반으로 이동"
         >
+          {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
           <img
             src="/archiveroom.jpg"
             alt=""
