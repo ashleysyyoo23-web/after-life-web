@@ -15,6 +15,7 @@ For EACH photo, choose ALL categories that apply (an empty list is allowed):
 - "solo": exactly ONE person is in the photo (a selfie or a portrait of one person, even if the face is not visible).
 - "group": TWO or more people are in the photo together (couple, family, friends, group photo).
 - "hospital": hospital, illness or medical treatment (hospital room/bed, IV drip, wheelchair in a medical setting, medicine, medical equipment, patient gown).
+- "farewell": the final moments before a person's death (deathbed or hospice bed, a very frail person near the end of life lying in bed, family gathered around a bed saying a last goodbye). Do NOT use it for funerals, memorial altars, funeral portraits or graves, and not for ordinary illness or a hospital visit without signs of the very end of life.
 - "scenery": mainly landscape, place, food, objects, animals or things, with no person as the subject.
 - "chat": a screenshot of a messenger or chat conversation (e.g. KakaoTalk, SMS, Instagram DM).
 Never choose both "solo" and "group". Choose neither when there is no person.

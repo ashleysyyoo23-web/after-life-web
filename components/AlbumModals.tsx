@@ -219,7 +219,7 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
   { value: "category", label: "AI 분류순" },
 ];
 
-const CATEGORY_ORDER: PhotoCategory[] = ["face", "solo", "group", "scenery", "hospital", "chat", "video"];
+const CATEGORY_ORDER: PhotoCategory[] = ["face", "solo", "group", "scenery", "hospital", "farewell", "chat", "video"];
 // 사용량 한도(429)에 연달아 걸려도 진행이 없으면 이만큼 기다린 뒤 멈춤
 const MAX_RATE_LIMIT_WAITS = 12;
 const categoryRank = (file: DriveFile) => {
@@ -792,7 +792,7 @@ export function SectionPhotosModal({
                   onClick={() => void runAnalyze("redo")}
                   className="self-start cursor-pointer border-0 bg-transparent p-0 font-mulish text-xs text-[#AF9083] underline underline-offset-2"
                 >
-                  예전 기준으로 분류한 {outdated.length}장을 새 기준(혼자·단체 포함)으로 다시 분류하기
+                  예전 기준으로 분류한 {outdated.length}장을 새 기준(작별 직전 포함)으로 다시 분류하기
                 </button>
               )}
               {!aiReady && characterId && (
@@ -880,7 +880,7 @@ export function SectionPhotosModal({
                           <span
                             key={category}
                             className={`rounded-full px-2 py-0.5 font-mulish text-[10px] font-semibold ${
-                              category === "hospital" ? "bg-[#9E2121]/85 text-white" : "bg-white/85 text-[#4A423C]"
+                              category === "hospital" || category === "farewell" ? "bg-[#9E2121]/85 text-white" : "bg-white/85 text-[#4A423C]"
                             }`}
                           >
                             {photoCategoryShort(category)}

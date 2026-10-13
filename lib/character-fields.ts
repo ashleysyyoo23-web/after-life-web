@@ -117,6 +117,7 @@ export function toSpecialDate(row: {
 // "보고 싶지 않은 기록" → AI 사진 분류(lib/photo-categories.ts)와 연결
 // (작별 직전의 순간·음성녹음은 아직 구분할 분류가 없어서 걸러내지 못해요)
 export const EXCLUDED_TYPE_CATEGORIES: Record<string, string[]> = {
+  "작별 직전의 순간": ["farewell"],
   "투병, 아픔이 담긴 사진": ["hospital"],
   "채팅 대화 내역": ["chat"],
   영상: ["video"],
