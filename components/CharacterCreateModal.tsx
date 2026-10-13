@@ -8,7 +8,10 @@ import { guideGlow, useGuideStep } from "@/lib/guide";
 import { useCallback, useEffect, useState } from "react";
 
 const RELATIONS = CHARACTER_RELATIONS;
-const STEPS = ["정보 입력하기", "캐릭터 꾸미기", "기록 불러오기", "열람방식 설정하기"];
+// 3단계 (Task 7 과제와 맞춤). 예전 1·2단계(정보 입력·캐릭터 꾸미기)를 한 화면으로 합쳤어요.
+const STEPS = ["정보 입력·캐릭터 꾸미기", "기록 불러오기", "열람방식 설정하기"];
+const RECORDS_STEP = 2;
+const LAST_STEP = STEPS.length;
 
 // Google 계정을 새로 연결하러 다녀오는 동안 적던 내용을 잠깐 보관 (돌아오면 이어서)
 const DRAFT_KEY = "afterlife:character-draft";
@@ -94,7 +97,8 @@ export function CharacterCreateModal({
   onClose: () => void;
   onCreated: (character: CreatedCharacter) => void;
 }) {
-  const [step, setStep] = useState(initialDraft?.step ?? 1);
+  // 계정을 연결하고 돌아오면(보관한 내용이 있으면) 기록 불러오기부터 이어서
+  const [step, setStep] = useState(initialDraft ? RECORDS_STEP : 1);
   const [nickname, setNickname] = useState(initialDraft?.nickname ?? "");
   const [relation, setRelation] = useState(initialDraft?.relation ?? "");
   const isPet = isPetRelation(relation);
@@ -120,7 +124,7 @@ export function CharacterCreateModal({
 
   // 연결된 계정 목록 (기록 불러오기 단계에서)
   useEffect(() => {
-    if (step !== 3 || connections !== null) return;
+    if (step !== RECORDS_STEP || connections !== null) return;
     void (async () => {
       const res = await fetch("/api/drive/connections", { cache: "no-store" });
       const data = res.ok ? ((await res.json()) as { connections: Connection[] }) : { connections: [] };
@@ -170,7 +174,7 @@ export function CharacterCreateModal({
 
   const connectNewAccount = useCallback(() => {
     const draft: CharacterDraft = {
-      step: 3, nickname, relation, description, appearance,
+      step: RECORDS_STEP, nickname, relation, description, appearance,
       emotionLevel, excludedTypes, specialDates, allowRecommendation,
     };
     try {
@@ -183,15 +187,14 @@ export function CharacterCreateModal({
 
   const canNext =
     (step === 1 && nickname.trim().length > 0) ||
-    step === 2 ||
-    (step === 3 && Boolean(connectionId && selectedFolder));
+    (step === RECORDS_STEP && Boolean(connectionId && selectedFolder));
 
   // 안내 빛 (고인 불러오기 단계): 지금 누를 수 있는 다음 버튼 하나만
   const guiding = useGuideStep() === "character";
   const usableConnections = connections?.filter((connection) => !connection.needsReconnect) ?? [];
   const glowConnectionId =
-    guiding && step === 3 && !connectionId && usableConnections.length > 0 ? usableConnections[0].id : null;
-  const glowConnectNew = guiding && step === 3 && connections !== null && usableConnections.length === 0;
+    guiding && step === RECORDS_STEP && !connectionId && usableConnections.length > 0 ? usableConnections[0].id : null;
+  const glowConnectNew = guiding && step === RECORDS_STEP && connections !== null && usableConnections.length === 0;
 
   const handleSave = async () => {
     if (!connectionId || !selectedFolder) return;
@@ -225,7 +228,7 @@ export function CharacterCreateModal({
         aria-modal="true"
         aria-label="고인 불러오기"
         className={`relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-2xl bg-white p-10 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] ${
-          step === 2 ? "max-w-5xl" : "max-w-3xl"
+          step === 1 ? "max-w-5xl" : "max-w-3xl"
         }`}
       >
         <div className="flex items-center justify-between">
@@ -277,22 +280,22 @@ export function CharacterCreateModal({
                   ))}
                 </div>
               </div>
+              <div className="mt-2 flex flex-col gap-[18px]">
+                <p className={sectionLabel}>
+                  <span>3</span>
+                  <span>{nickname.trim() || (isPet ? "이 아이" : "이 분")}의 모습을 꾸며주세요</span>
+                </p>
+                <CharacterPartsPicker
+                  appearance={appearance}
+                  onChange={setAppearance}
+                  previewLabel={nickname || "캐릭터"}
+                  pet={isPet}
+                />
+              </div>
             </div>
           )}
 
-          {step === 2 && (
-            <div className="flex flex-col gap-6">
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{nickname || (isPet ? "이 아이" : "이 분")}의 모습을 꾸며주세요</h2>
-              <CharacterPartsPicker
-                appearance={appearance}
-                onChange={setAppearance}
-                previewLabel={nickname || "캐릭터"}
-                pet={isPet}
-              />
-            </div>
-          )}
-
-          {step === 3 && (
+          {step === RECORDS_STEP && (
             <div className="flex flex-col gap-8">
               <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{isPet ? "어떤 아이였나요?" : "어떤 분이셨나요?"}</h2>
               <div className="flex flex-col gap-[18px]">
@@ -397,7 +400,7 @@ export function CharacterCreateModal({
             </div>
           )}
 
-          {step === 4 && (
+          {step === LAST_STEP && (
             <div>
               <h2 className="font-newsreader text-3xl text-[#1a1a1a]">기록을 어떻게 마주하고 싶으신가요?</h2>
               <div className="mt-6">
@@ -424,7 +427,7 @@ export function CharacterCreateModal({
               &lt; 뒤로가기
             </button>
           )}
-          {step < 4 ? (
+          {step < LAST_STEP ? (
             <button
               type="button"
               disabled={!canNext}
