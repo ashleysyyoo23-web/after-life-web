@@ -24,6 +24,21 @@ export type BookPhoto = {
 // 양쪽 쪽에 사진 2장씩(왼쪽 위·아래, 오른쪽 위·아래), 사진 바로 아래에 글 한 줄.
 // centerX·top 은 사진 가운데 가로 위치와 위쪽 끝, rotate 는 기본 기울기.
 // 사진을 크게 놓아서 기울어진 모서리끼리는 살짝 겹칠 수 있어요.
+// 왼쪽 조작 카드(리캡 조작)에 가리지 않게 책을 오른쪽으로 옮기는 거리
+export const BOOK_SHIFT = "4vw";
+// 책 무대: 16:9, 화면을 꽉 채우는 크기 그대로 BOOK_SHIFT 만큼 오른쪽으로
+const STAGE_SIZE = { width: "max(100vw, 177.78vh)", height: "max(56.25vw, 100vh)" };
+const STAGE_STYLE: React.CSSProperties = {
+  ...STAGE_SIZE,
+  transform: `translate(calc(-50% + ${BOOK_SHIFT}), -50%)`,
+  containerType: "size",
+};
+// 옮겨서 왼쪽에 생기는 빈틈은 배경을 좌우로 뒤집어 이어 붙여 채워요 (경계가 이어져 보여요)
+const MIRROR_STYLE: React.CSSProperties = {
+  ...STAGE_SIZE,
+  transform: `translate(calc(-150% + ${BOOK_SHIFT}), -50%) scaleX(-1)`,
+};
+
 const PHOTO_SLOTS = [
   { centerX: 34.4, top: 24.5, rotate: -2.6 },
   { centerX: 35.0, top: 56.0, rotate: 1.8 },
@@ -144,14 +159,14 @@ export function RecapBookView({
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#FDF9F4]">
-      {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치 */}
+      {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치.
+          왼쪽 조작 카드에 가리지 않게 책을 BOOK_SHIFT 만큼 오른쪽으로 */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2" style={MIRROR_STYLE} aria-hidden>
+        <MoodSkyBackground scene="recapmanual-empty" className="absolute inset-0 h-full w-full" />
+      </div>
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        style={{
-          width: "max(100vw, 177.78vh)",
-          height: "max(56.25vw, 100vh)",
-          containerType: "size",
-        }}
+        className="absolute left-1/2 top-1/2"
+        style={STAGE_STYLE}
       >
         <MoodSkyBackground
           scene="recapmanual-empty"
@@ -311,12 +326,13 @@ export function RecapBookView({
 
       {/* 쪽 넘기기 (기존 책 화면과 같은 자리·모양) */}
       {spreadCount > 1 && !isDrawing && (
-        <>
+        // 책 그림과 같은 무대 위에 놓아서 책 가장자리 바로 바깥에 붙어 있게
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20" style={STAGE_STYLE}>
           <button
             type="button"
             onClick={() => goTo(spreadIndex - 1)}
-            className="absolute z-20 h-16 w-12 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083]"
-            style={{ left: "11%", top: "55%", transform: "translateY(-50%)" }}
+            className="pointer-events-auto absolute h-16 w-12 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083]"
+            style={{ left: "calc(17% - 3.6cqw)", top: "55%", transform: "translateY(-50%)" }}
             aria-label="이전 쪽"
           >
             ◀
@@ -324,16 +340,19 @@ export function RecapBookView({
           <button
             type="button"
             onClick={() => goTo(spreadIndex + 1)}
-            className="absolute z-20 h-16 w-12 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083]"
-            style={{ right: "10%", top: "55%", transform: "translateY(-50%)" }}
+            className="pointer-events-auto absolute h-16 w-12 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083]"
+            style={{ left: "calc(84% + 0.6cqw)", top: "55%", transform: "translateY(-50%)" }}
             aria-label="다음 쪽"
           >
             ▶
           </button>
-        </>
+        </div>
       )}
 
-      <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3">
+      <div
+        className="absolute bottom-6 z-20 flex -translate-x-1/2 flex-col items-center gap-3"
+        style={{ left: `calc(50% + ${BOOK_SHIFT})` }}
+      >
         {/* 그리는 중에는 쪽 표시를 숨겨서 그리기 도구와 헷갈리지 않게 */}
         {spreadCount > 1 &&
           !isDrawing &&

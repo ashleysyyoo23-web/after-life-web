@@ -4,8 +4,8 @@ import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import { RecapBookView } from "@/components/RecapBookView";
-import { Pause, Play } from "lucide-react";
-import { ExposureControl } from "@/components/safety/ExposureControl";
+import { RecapControlPanel } from "@/components/RecapControlPanel";
+import { ArrowLeft } from "lucide-react";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { RevealOverlay } from "@/components/safety/RevealOverlay";
 import { SavePhotoButton } from "@/components/SavePhotoButton";
@@ -15,7 +15,15 @@ import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { DEFAULT_SLIDE_SECONDS, sanitizeViewSettings, VIEW_SETTINGS_UPDATED_EVENT } from "@/lib/view-settings";
+import {
+  DEFAULT_RECAP_VIEW,
+  DEFAULT_SLIDE_SECONDS,
+  sanitizeViewSettings,
+  SLIDE_SECONDS_MAX,
+  SLIDE_SECONDS_MIN,
+  VIEW_SETTINGS_UPDATED_EVENT,
+  type RecapView,
+} from "@/lib/view-settings";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 const FALLBACK_SLIDE_COUNT = 11;
@@ -101,6 +109,9 @@ function RecapviewPageContent() {
   const pendingExposureRef = useRef<{ characterId: string; value: number } | null>(null);
   // 설정을 불러오기 전에 이미 손으로 바꿨으면 덮어쓰지 않음
   const viewTouchedRef = useRef(false);
+  // 설정에 저장된 "처음 보이는 화면" (사이드바에서 속도만 바꿔 저장할 때 그대로 같이 보냄)
+  const savedRecapViewRef = useRef<RecapView>(DEFAULT_RECAP_VIEW);
+  const speedSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 설정 "기록을 마주할 방법": 사진 한 장당 초 + 처음 보이는 화면(슬라이드쇼/책)
   useEffect(() => {
@@ -110,6 +121,7 @@ function RecapviewPageContent() {
         if (!res.ok || viewTouchedRef.current) return;
         const { settings } = (await res.json()) as { settings: Parameters<typeof sanitizeViewSettings>[0] };
         const loaded = sanitizeViewSettings(settings);
+        savedRecapViewRef.current = loaded.recapView;
         setSlideSeconds(loaded.slideSeconds);
         setViewMode(loaded.recapView === "book" ? "book" : "auto");
       } catch {
@@ -123,6 +135,7 @@ function RecapviewPageContent() {
     const handleUpdated = (event: Event) => {
       const detail = (event as CustomEvent<Parameters<typeof sanitizeViewSettings>[0]>).detail;
       const updated = sanitizeViewSettings(detail);
+      savedRecapViewRef.current = updated.recapView;
       setSlideSeconds(updated.slideSeconds);
       viewTouchedRef.current = true;
       setViewMode(updated.recapView === "book" ? "book" : "auto");
@@ -450,6 +463,21 @@ function RecapviewPageContent() {
     });
   };
 
+  // 사이드바에서 넘김 속도를 바꾸면 바로 반영하고, 잠깐 뒤 설정(기록을 마주할 방법)에도 저장
+  const handleSlideSecondsChange = (seconds: number) => {
+    const next = Math.min(SLIDE_SECONDS_MAX, Math.max(SLIDE_SECONDS_MIN, seconds));
+    setSlideSeconds(next);
+    if (speedSaveTimerRef.current) clearTimeout(speedSaveTimerRef.current);
+    speedSaveTimerRef.current = setTimeout(() => {
+      void fetch("/api/me/view-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slideSeconds: next, recapView: savedRecapViewRef.current }),
+        keepalive: true,
+      });
+    }, 500);
+  };
+
   // 보는 중에 노출 강도를 바꾸면 바로 반영하고, 잠깐 뒤 캐릭터에 저장 (여러 번 눌러도 한 번만)
   const handleExposureChange = (value: number) => {
     setExposure(value);
@@ -544,6 +572,18 @@ function RecapviewPageContent() {
           <div className="relative px-8 pt-24">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
+              {/* 뒤로 가기: 이 섹션이 든 앨범으로 (모르면 바로 전 화면) */}
+              <button
+                type="button"
+                onClick={() =>
+                  sectionBookId ? router.push(`/archivebook?book=${encodeURIComponent(sectionBookId)}`) : router.back()
+                }
+                aria-label="뒤로 가기"
+                className="pointer-events-auto flex h-12 cursor-pointer items-center gap-1.5 rounded-full border border-[#5B5959] bg-white px-4 font-mulish text-base font-semibold text-[#4A423C] hover:bg-[#FDD9BD]"
+              >
+                <ArrowLeft className="h-5 w-5" aria-hidden />
+                뒤로
+              </button>
               <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
                   <button
                     type="button"
@@ -616,9 +656,6 @@ function RecapviewPageContent() {
                   </button>
                 </div>
 
-                {albumPhotos.length > 0 && (
-                  <ExposureControl value={exposure} onChange={handleExposureChange} />
-                )}
               </div>
 
               <div className="pointer-events-auto fixed right-8 top-24 z-20 flex flex-col items-end gap-2">
@@ -778,24 +815,8 @@ function RecapviewPageContent() {
                 </button>
               </div>
 
-              {/* 사진 아래: 멈춤/재생 + 몇 번째 사진인지 (스페이스바로도 멈춤/재생) */}
+              {/* 사진 아래: 몇 번째 사진인지 (일시정지·흐림·속도는 왼쪽 조작 카드) */}
               <div className="mt-3 flex items-center justify-center gap-4">
-                {slideCount > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsPlaying((playing) => !playing)}
-                    aria-label={isPlaying ? "자동 넘김 멈추기 (스페이스바)" : "자동 넘김 다시 재생 (스페이스바)"}
-                    className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[#AF9083] bg-white/90 px-4 font-mulish text-sm font-semibold text-[#AF9083] shadow-[0px_2px_4px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#FDD9BD]"
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                    ) : (
-                      <Play className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                    )}
-                    {isPlaying ? "멈춤" : "재생"}
-                  </button>
-                )}
-
                 {slideCount > MAX_DOTS ? (
                   <p className="font-mulish text-sm text-[#AF9083]">
                     {currentIndex + 1} / {slideCount}
@@ -843,6 +864,18 @@ function RecapviewPageContent() {
           {saveNotice}
         </p>
       )}
+
+      {/* 왼쪽 조작 카드: 일시정지 · 흐림 · 속도 (늘 보여요, 책일 때는 흐림만) */}
+      <RecapControlPanel
+        showPlayback={!isBookMode && slideCount > 1}
+        isPlaying={isPlaying}
+        onTogglePlay={() => setIsPlaying((playing) => !playing)}
+        slideSeconds={slideSeconds}
+        onChangeSeconds={handleSlideSecondsChange}
+        showExposure={albumPhotos.length > 0}
+        exposure={exposure}
+        onChangeExposure={handleExposureChange}
+      />
 
       <TopNav
         onSettingsClick={() => setShowSettings(true)}
