@@ -351,3 +351,17 @@ body {
     animation-delay: 0s;
   }
 }
+/* 쪽지 체크를 누르면 ✓ 가 톡 */
+.today-note-check {
+  animation: today-note-check 0.28s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes today-note-check {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

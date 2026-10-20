@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import type { TodayNote as TodayNoteData } from "@/app/api/me/today-note/route";
-import { noteDateLabel, partOfDayLabel, readDayFlag, TODAY_RECAP_VIEWED_KEY_PREFIX } from "@/lib/today-note";
+import { noteDateLabel, readNoteChecks, writeNoteChecks } from "@/lib/today-note";
 
 type NoteItem = {
   key: string;
   title: string;
   sub: string;
   button: string;
-  done: boolean;
   href?: string;
   onClick?: () => void;
 };
@@ -30,13 +29,17 @@ export function TodayNote({
   const [failed, setFailed] = useState(false);
   // 접어두기: 우체통 쪽으로 작아지며 날아가요 (우체통 자리까지의 거리)
   const [folding, setFolding] = useState<{ x: number; y: number } | null>(null);
+  // 직접 누르는 체크 (처음엔 모두 비어 있고, 그날 안에서는 이 브라우저에 기억)
+  const [checked, setChecked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/me/today-note", { cache: "no-store" })
       .then((res) => (res.ok ? (res.json() as Promise<TodayNoteData>) : Promise.reject(new Error())))
       .then((data) => {
-        if (!cancelled) setNote(data);
+        if (cancelled) return;
+        setNote(data);
+        setChecked(readNoteChecks(data.today));
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -67,6 +70,17 @@ export function TodayNote({
 
   if (failed) return null;
 
+  const toggleCheck = (key: string) => {
+    if (!note) return;
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      writeNoteChecks(note.today, next);
+      return next;
+    });
+  };
+
   const items: NoteItem[] = [];
   if (note) {
     if (note.recap) {
@@ -77,7 +91,6 @@ export function TodayNote({
         sub: bookTitle ? `'${bookTitle}' 책이 새로 정리됐어요` : `${nickname}의 기록을 천천히 꺼내 봐요`,
         button: "마이 랜드",
         href: bookId ? `/archivebook?book=${encodeURIComponent(bookId)}` : `/archiveshelf?character=${encodeURIComponent(characterId)}`,
-        done: readDayFlag(TODAY_RECAP_VIEWED_KEY_PREFIX, note.today),
       });
     } else {
       items.push({
@@ -86,7 +99,6 @@ export function TodayNote({
         sub: "마이 랜드에 소중한 분을 모셔 와요",
         button: "마이 랜드",
         onClick: onAddCharacter,
-        done: false,
       });
     }
     items.push({
@@ -95,26 +107,23 @@ export function TodayNote({
       sub: `${note.community.title}에 꽃 한 송이로 마음을 보태요`,
       button: "커뮤니티 추모 랜드",
       href: `/community?stone=${note.community.wall}`,
-      done: note.community.done,
     });
     if (note.island) {
-      const { nickname, label, month, day, deceasedId, open, done } = note.island;
+      const { nickname, label, month, day, deceasedId, open } = note.island;
       items.push({
         key: "island",
         title: `${nickname} ${label}에 메시지 남기기`,
         sub: `${month}월 ${day}일, 기억하고 싶은 날이 다가와요`,
         button: "개인 추모 랜드",
         href: open ? `/island/${encodeURIComponent(deceasedId)}` : "/mainland",
-        done,
       });
     }
     items.push({
       key: "mood",
       title: "오늘의 마음 날씨 기록하기",
-      sub: note.mood.done ? `${partOfDayLabel(note.mood.at)} 남겨 주셨어요` : "지금 마음은 어떤 날씨인가요?",
+      sub: "지금 마음은 어떤 날씨인가요?",
       button: "감정 기록",
       ...(note.mood.done ? { onClick: onOpenEmotion } : { href: "/moodcheck" }),
-      done: note.mood.done,
     });
   }
 
@@ -168,19 +177,28 @@ export function TodayNote({
                 className="today-note-item flex items-center gap-4 rounded-xl border border-[#E3D8CE] bg-[#FFFDF9]/70 px-4 py-3.5"
                 style={{ animationDelay: `${1.15 + index * 0.12}s` }}
               >
-                {item.done ? (
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#8DB57E]" aria-label="오늘 했어요">
-                    <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={checked.has(item.key)}
+                  aria-label={`${item.title} 했어요`}
+                  onClick={() => toggleCheck(item.key)}
+                  className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 transition-colors ${
+                    checked.has(item.key)
+                      ? "border-0 bg-[#8DB57E]"
+                      : "border-[1.5px] border-[#8F837B] bg-white/60 hover:bg-[#EEF4EA]"
+                  }`}
+                >
+                  {checked.has(item.key) && (
+                    <svg viewBox="0 0 16 16" className="today-note-check h-4 w-4" aria-hidden>
                       <path d="M3.5 8.5l3 3 6-7" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                  </span>
-                ) : (
-                  <span className="h-7 w-7 shrink-0 rounded-full border-[1.5px] border-[#8F837B] bg-white/60" aria-hidden />
-                )}
+                  )}
+                </button>
                 <div className="min-w-0 flex-1">
                   <p
-                    className={`font-jeju-myeongjo text-[18px] font-bold leading-snug ${
-                      item.done ? "text-[#8F837B] line-through decoration-[#8F837B]/80" : "text-[#3B302B]"
+                    className={`font-jeju-myeongjo text-[18px] font-bold leading-snug transition-colors ${
+                      checked.has(item.key) ? "text-[#8F837B] line-through decoration-[#8F837B]/80" : "text-[#3B302B]"
                     }`}
                   >
                     {item.title}

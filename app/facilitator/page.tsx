@@ -3,7 +3,7 @@
 import { ANNIVERSARY_SHOWN_KEY_PREFIX } from "@/lib/anniversary";
 import { MAP_TUTORIAL_KEY_PREFIX } from "@/components/MapTutorial";
 import { GUIDE_KEY_PREFIX } from "@/lib/guide";
-import { TODAY_NOTE_SHOWN_KEY_PREFIX, TODAY_RECAP_VIEWED_KEY_PREFIX } from "@/lib/today-note";
+import { TODAY_NOTE_CHECKS_KEY_PREFIX, TODAY_NOTE_SHOWN_KEY_PREFIX } from "@/lib/today-note";
 import { EXPOSURE_STEPS, exposureStepIndex } from "@/lib/exposure";
 import {
   DEFAULT_RECAP_VIEW,
@@ -231,12 +231,12 @@ export default function FacilitatorPage() {
           return false; // 브라우저 저장소를 못 쓰면 넘어감
         }
       };
-      // 오늘의 쪽지도 다시 날아오게 (+ 쪽지의 "리캡 보기" ✓ 기억)
+      // 오늘의 쪽지도 다시 날아오게 (+ 쪽지에서 누른 체크도 비우기)
       const clearedAnniversaryShown =
         resetAnniversaryShown &&
         clearLocal(ANNIVERSARY_SHOWN_KEY_PREFIX) &&
         clearLocal(TODAY_NOTE_SHOWN_KEY_PREFIX) &&
-        clearLocal(TODAY_RECAP_VIEWED_KEY_PREFIX);
+        clearLocal(TODAY_NOTE_CHECKS_KEY_PREFIX);
       const clearedMapTutorial = resetMapTutorial && clearLocal(MAP_TUTORIAL_KEY_PREFIX);
       // 안내 빛: 섬 방문·리캡 보기·끄기 기억을 지워서 처음 단계부터 다시 빛나게
       const clearedGuide = resetGuide && clearLocal(GUIDE_KEY_PREFIX);
