@@ -29,6 +29,9 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 const FALLBACK_SLIDE_COUNT = 11;
 // 자동 넘김 속도(초)는 설정 "기록을 마주할 방법"에서 정한 초 (없으면 3초).
 // 사진이 많으면 점 대신 "3 / 120" 으로 표시
+// 조작 카드 "흐리게 보기"를 이 창에서 기억하는 열쇠, 그때의 최소 흐림(px)
+const BLUR_ALL_KEY = "afterlife:recap-blur-all";
+const BLUR_ALL_MIN_PX = 18;
 const MAX_DOTS = 20;
 // 지금 사진 앞뒤 몇 장까지만 미리 불러올지 (사진이 많을 때 한꺼번에 받지 않도록)
 const PRELOAD_RANGE = 2;
@@ -98,15 +101,16 @@ function RecapviewPageContent() {
   const [drawings, setDrawings] = useState<Record<number, DrawingStroke[]>>({});
   // 사진마다 원래 크기 → 액자를 지금 사진 모양에 딱 맞춤
   const [photoSizes, setPhotoSizes] = useState<Record<string, { w: number; h: number }>>({});
-  // 안전장치: 사진은 처음엔 흐리게(노출 강도만큼), 눌러야 선명. 노출 강도는 이 섹션의 캐릭터에 저장
+  // 안전장치: 흐린 사진의 세기 = 이 섹션 고인의 노출 강도 (설정의 인물 편집에서 바꿈)
   const [exposure, setExposure] = useState(DEFAULT_EXPOSURE);
-  const [characterId, setCharacterId] = useState<string | null>(null);
+  // "보고 싶지 않은 기록" 중 눌러서 본 사진 (서버에 기억)
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  // 조작 카드의 흐림: 그대로 보기(false) / 흐리게 보기(true, 모든 사진). 이 창에서만 기억 (섹션을 불러올 때 읽음)
+  const [blurAll, setBlurAll] = useState(false);
+  // 흐리게 보기에서 눌러서 본 사진 (바꿀 때마다 처음부터)
+  const [blurAllRevealedIds, setBlurAllRevealedIds] = useState<Set<string>>(new Set());
   // 사진마다 저장(🔖) → 저장소 섬 액자에서 고인별로 모아 보기
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const exposureSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 아직 저장 안 된 노출 강도 (바꾸자마자 화면을 떠나도 잃지 않게)
-  const pendingExposureRef = useRef<{ characterId: string; value: number } | null>(null);
   // 설정을 불러오기 전에 이미 손으로 바꿨으면 덮어쓰지 않음
   const viewTouchedRef = useRef(false);
   // 설정에 저장된 "처음 보이는 화면" (사이드바에서 속도만 바꿔 저장할 때 그대로 같이 보냄)
@@ -191,12 +195,15 @@ function RecapviewPageContent() {
         markGuideVisited("recap");
         setDrawings(data.drawings ?? {});
         setCharacterNickname(data.characterNickname ?? null);
-        setCharacterId(data.characterId ?? null);
         setExposure(data.emotionLevel ?? DEFAULT_EXPOSURE);
-        // 보고 싶지 않다고 한 기록만 흐리게 (전에 "눌러서 보기"로 본 사진은 선명하게), 나머지는 처음부터 선명
-        setRevealedIds(
-          new Set(data.photos.filter((photo) => photo.revealed || !photo.hiddenReason).map((photo) => photo.driveFileId)),
-        );
+        // 보고 싶지 않다고 한 기록 중 전에 "눌러서 보기"로 본 사진
+        setRevealedIds(new Set(data.photos.filter((photo) => photo.revealed).map((photo) => photo.driveFileId)));
+        setBlurAllRevealedIds(new Set());
+        try {
+          setBlurAll(window.sessionStorage.getItem(BLUR_ALL_KEY) === "1");
+        } catch {
+          // 기억을 못 읽으면 그대로 보기
+        }
         setSavedIds(new Set(data.photos.filter((photo) => photo.saved).map((photo) => photo.driveFileId)));
       } catch {
         setSectionError(true);
@@ -397,10 +404,36 @@ function RecapviewPageContent() {
     }
   };
 
-  const blurPx = exposureBlurPx(exposure);
-  // 눌러서 본 사진은 서버에 기억 → 나갔다 와도 계속 선명하게
+  // 흐림 세기: 보고 싶지 않은 기록은 그 고인의 노출 강도만큼, 흐리게 보기는 적어도 BLUR_ALL_MIN_PX
+  const blurPx = blurAll ? Math.max(exposureBlurPx(exposure), BLUR_ALL_MIN_PX) : exposureBlurPx(exposure);
+  // 지금 선명하게 보이는 사진: 그대로 보기 = 보고 싶지 않은 기록(안 누른 것)만 흐리게, 흐리게 보기 = 누른 것만 선명
+  const clearIds = useMemo(
+    () =>
+      new Set(
+        albumPhotos
+          .filter((photo) =>
+            blurAll
+              ? blurAllRevealedIds.has(photo.driveFileId)
+              : !photo.hiddenReason || revealedIds.has(photo.driveFileId),
+          )
+          .map((photo) => photo.driveFileId),
+      ),
+    [albumPhotos, blurAll, blurAllRevealedIds, revealedIds],
+  );
+  const handleBlurAllChange = (next: boolean) => {
+    setBlurAll(next);
+    setBlurAllRevealedIds(new Set());
+    try {
+      window.sessionStorage.setItem(BLUR_ALL_KEY, next ? "1" : "0");
+    } catch {
+      // 기억하지 못해도 괜찮아요
+    }
+  };
+  // 눌러서 본 사진: 보고 싶지 않은 기록이면 서버에 기억 → 나갔다 와도 계속 선명하게
   const revealPhoto = (driveFileId: string) => {
-    if (revealedIds.has(driveFileId)) return;
+    if (blurAll) setBlurAllRevealedIds((prev) => new Set(prev).add(driveFileId));
+    const photo = albumPhotos.find((item) => item.driveFileId === driveFileId);
+    if (!photo?.hiddenReason || revealedIds.has(driveFileId)) return;
     setRevealedIds((prev) => new Set(prev).add(driveFileId));
     if (sectionId) {
       void fetch(
@@ -446,23 +479,6 @@ function RecapviewPageContent() {
     return () => clearTimeout(timer);
   }, [saveNotice]);
 
-  // 저장 안 된 노출 강도를 지금 바로 저장. keepalive → 화면을 떠나는 중에도 요청이 끝까지 감
-  const flushExposure = () => {
-    if (exposureSaveTimerRef.current) {
-      clearTimeout(exposureSaveTimerRef.current);
-      exposureSaveTimerRef.current = null;
-    }
-    const pending = pendingExposureRef.current;
-    if (!pending) return;
-    pendingExposureRef.current = null;
-    void fetch(`/api/characters/${encodeURIComponent(pending.characterId)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emotionLevel: pending.value }),
-      keepalive: true,
-    });
-  };
-
   // 사이드바에서 넘김 속도를 바꾸면 바로 반영하고, 잠깐 뒤 설정(기록을 마주할 방법)에도 저장
   const handleSlideSecondsChange = (seconds: number) => {
     const next = Math.min(SLIDE_SECONDS_MAX, Math.max(SLIDE_SECONDS_MIN, seconds));
@@ -477,29 +493,6 @@ function RecapviewPageContent() {
       });
     }, 500);
   };
-
-  // 보는 중에 노출 강도를 바꾸면 바로 반영하고, 잠깐 뒤 캐릭터에 저장 (여러 번 눌러도 한 번만)
-  const handleExposureChange = (value: number) => {
-    setExposure(value);
-    if (!characterId) return;
-    pendingExposureRef.current = { characterId, value };
-    if (exposureSaveTimerRef.current) clearTimeout(exposureSaveTimerRef.current);
-    exposureSaveTimerRef.current = setTimeout(flushExposure, 300);
-  };
-
-  // 화면을 떠날 때(다른 화면으로 이동·새로고침·탭 닫기) 남은 값 저장
-  const flushExposureRef = useRef(flushExposure);
-  useEffect(() => {
-    flushExposureRef.current = flushExposure;
-  });
-  useEffect(() => {
-    const handlePageHide = () => flushExposureRef.current();
-    window.addEventListener("pagehide", handlePageHide);
-    return () => {
-      window.removeEventListener("pagehide", handlePageHide);
-      flushExposureRef.current();
-    };
-  }, []);
 
   // 감상 마치기: 끝까지 본 뒤 마음 기록 화면으로 (언제든 빠져나오는 건 "중단하기")
   const handleStop = () => {
@@ -542,7 +535,7 @@ function RecapviewPageContent() {
               setDrawings((prev) => ({ ...prev, [spreadIndex]: strokes }))
             }
             blurPx={blurPx}
-            revealedIds={revealedIds}
+            revealedIds={clearIds}
             savedIds={savedIds}
             onToggleSave={toggleSavePhoto}
             onReveal={revealPhoto}
@@ -690,7 +683,6 @@ function RecapviewPageContent() {
                   className="mt-8"
                   onExit={() => {
                     setIsPlaying(false);
-                    flushExposure();
                   }}
                 />
               </div>
@@ -764,9 +756,9 @@ function RecapviewPageContent() {
                                   }
                                 }}
                                 className="relative max-h-full max-w-full object-contain"
-                                style={exposureBlurStyle(blurPx, revealedIds.has(photo.driveFileId))}
+                                style={exposureBlurStyle(blurPx, clearIds.has(photo.driveFileId))}
                               />
-                              {!revealedIds.has(photo.driveFileId) && (
+                              {!clearIds.has(photo.driveFileId) && (
                                 <RevealOverlay onReveal={() => revealPhoto(photo.driveFileId)} />
                               )}
                               <SavePhotoButton
@@ -873,8 +865,8 @@ function RecapviewPageContent() {
         slideSeconds={slideSeconds}
         onChangeSeconds={handleSlideSecondsChange}
         showExposure={albumPhotos.length > 0}
-        exposure={exposure}
-        onChangeExposure={handleExposureChange}
+        blurAll={blurAll}
+        onChangeBlurAll={handleBlurAllChange}
       />
 
       <TopNav

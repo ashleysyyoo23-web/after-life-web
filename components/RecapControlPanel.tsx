@@ -1,6 +1,5 @@
 "use client";
 
-import { EXPOSURE_STEPS, exposureStepIndex } from "@/lib/exposure";
 import { Pause, Play } from "lucide-react";
 
 // 넘김 속도 세 단계 (사진 한 장에 머무는 초). 설정의 1~10초 중 가장 가까운 단계가 골라져 보여요.
@@ -8,6 +7,12 @@ export const SPEED_PRESETS = [
   { label: "느리게", seconds: 5 },
   { label: "보통", seconds: 3 },
   { label: "빠르게", seconds: 2 },
+] as const;
+
+// 흐림 두 가지: 그대로 보기(보고 싶지 않은 기록만 흐리게) / 흐리게 보기(모든 사진)
+const BLUR_OPTIONS = [
+  { label: "그대로 보기", blurAll: false, hint: "보고 싶지 않다고 한 기록만 흐리게, 나머지는 그대로" },
+  { label: "흐리게 보기", blurAll: true, hint: "모든 사진을 흐리게 (눌러서 하나씩 보기)" },
 ] as const;
 
 const nearestPreset = (seconds: number) =>
@@ -24,8 +29,8 @@ export function RecapControlPanel({
   slideSeconds,
   onChangeSeconds,
   showExposure,
-  exposure,
-  onChangeExposure,
+  blurAll,
+  onChangeBlurAll,
 }: {
   showPlayback: boolean;
   isPlaying: boolean;
@@ -33,11 +38,10 @@ export function RecapControlPanel({
   slideSeconds: number;
   onChangeSeconds: (seconds: number) => void;
   showExposure: boolean;
-  exposure: number;
-  onChangeExposure: (value: number) => void;
+  blurAll: boolean;
+  onChangeBlurAll: (blurAll: boolean) => void;
 }) {
   if (!showPlayback && !showExposure) return null;
-  const currentStep = exposureStepIndex(exposure);
   const currentSpeed = nearestPreset(slideSeconds);
 
   return (
@@ -70,31 +74,25 @@ export function RecapControlPanel({
       {showExposure && (
         <div className="flex flex-col gap-2 px-1 py-4">
           <p className="text-base font-semibold">흐림</p>
-          <div role="radiogroup" aria-label="노출 강도 (사진을 얼마나 흐리게 볼지)" className="relative flex items-center justify-between">
-            {/* 점 사이를 잇는 선 */}
-            <span className="absolute inset-x-3 top-1/2 h-px -translate-y-1/2 bg-[#AF9083]/60" aria-hidden />
-            {EXPOSURE_STEPS.map((step, index) => (
-              <button
-                key={step.value}
-                type="button"
-                role="radio"
-                aria-checked={index === currentStep}
-                aria-label={step.label}
-                title={step.label}
-                onClick={() => onChangeExposure(step.value)}
-                className="relative flex h-8 w-7 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
-              >
-                <span
-                  className={`block rounded-full transition-all ${
-                    index === currentStep ? "h-5 w-5 bg-[#AF9083]" : "h-3 w-3 border border-[#AF9083] bg-[#FBF7F4]"
+          <div role="radiogroup" aria-label="사진 흐림" className="flex flex-col gap-1 rounded-2xl bg-[#F3ECE8] p-1">
+            {BLUR_OPTIONS.map((option) => {
+              const selected = option.blurAll === blurAll;
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  title={option.hint}
+                  onClick={() => onChangeBlurAll(option.blurAll)}
+                  className={`h-9 w-full cursor-pointer rounded-xl border-0 text-sm transition-colors ${
+                    selected ? "bg-white font-semibold text-[#4A423C] shadow-sm" : "bg-transparent text-[#6B5F58] hover:text-[#4A423C]"
                   }`}
-                />
-              </button>
-            ))}
-          </div>
-          <div className="flex justify-between text-xs text-[#6B5F58]">
-            <span>흐리게</span>
-            <span>선명하게</span>
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
