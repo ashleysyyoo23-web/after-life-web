@@ -3,6 +3,7 @@
 import { ANNIVERSARY_SHOWN_KEY_PREFIX } from "@/lib/anniversary";
 import { MAP_TUTORIAL_KEY_PREFIX } from "@/components/MapTutorial";
 import { GUIDE_KEY_PREFIX } from "@/lib/guide";
+import { TODAY_NOTE_SHOWN_KEY_PREFIX, TODAY_RECAP_VIEWED_KEY_PREFIX } from "@/lib/today-note";
 import { EXPOSURE_STEPS, exposureStepIndex } from "@/lib/exposure";
 import {
   DEFAULT_RECAP_VIEW,
@@ -230,7 +231,12 @@ export default function FacilitatorPage() {
           return false; // 브라우저 저장소를 못 쓰면 넘어감
         }
       };
-      const clearedAnniversaryShown = resetAnniversaryShown && clearLocal(ANNIVERSARY_SHOWN_KEY_PREFIX);
+      // 오늘의 쪽지도 다시 날아오게 (+ 쪽지의 "리캡 보기" ✓ 기억)
+      const clearedAnniversaryShown =
+        resetAnniversaryShown &&
+        clearLocal(ANNIVERSARY_SHOWN_KEY_PREFIX) &&
+        clearLocal(TODAY_NOTE_SHOWN_KEY_PREFIX) &&
+        clearLocal(TODAY_RECAP_VIEWED_KEY_PREFIX);
       const clearedMapTutorial = resetMapTutorial && clearLocal(MAP_TUTORIAL_KEY_PREFIX);
       // 안내 빛: 섬 방문·리캡 보기·끄기 기억을 지워서 처음 단계부터 다시 빛나게
       const clearedGuide = resetGuide && clearLocal(GUIDE_KEY_PREFIX);
@@ -256,7 +262,7 @@ export default function FacilitatorPage() {
           data.resetViewSettings
             ? `넘김 속도 ${startView.slideSeconds}초 · 처음 화면 ${startView.recapView === "book" ? "책" : "슬라이드쇼"}로`
             : null,
-          clearedAnniversaryShown ? "기일 안내 창이 다시 저절로 뜨게" : null,
+          clearedAnniversaryShown ? "기일 안내 창·오늘의 쪽지가 다시 저절로 뜨게" : null,
           clearedMapTutorial ? "섬지기 둘러보기가 다시 뜨게" : null,
           clearedGuide ? "안내 빛이 처음부터 다시 빛나게" : null,
           pc
@@ -443,10 +449,10 @@ export default function FacilitatorPage() {
                 />
                 <span className="flex flex-col gap-1 text-sm">
                   <span>
-                    마이 랜드 <b>기일 안내 창</b>이 다시 저절로 뜨게
+                    마이 랜드 <b>기일 안내 창</b>·<b>오늘의 쪽지</b>가 다시 저절로 뜨게
                   </span>
                   <span className="text-xs text-[#898787]">
-                    기일 7일 전~3일 후면 마이 랜드에 들어올 때 하루 한 번 떠요. 그 &ldquo;오늘 띄움&rdquo; 기억을 이 브라우저에서 지워요.
+                    기일 안내 창(기일 7일 전~3일 후)과 오늘의 쪽지는 마이 랜드에 들어올 때 하루 한 번 떠요. 그 &ldquo;오늘 띄움&rdquo; 기억을 이 브라우저에서 지워요.
                   </span>
                 </span>
               </label>
@@ -521,7 +527,7 @@ export default function FacilitatorPage() {
                     {restoreCaptions ? ", 사진 글을 시작 상태로" : ""}
                     {clearMemos ? `, 메모 ${status.memoCount}개를 지우고` : ""}
                     {resetView ? `, 넘김 속도를 ${startView.slideSeconds}초로` : ""}
-                    {resetAnniversaryShown ? ", 기일 안내 창이 다시 뜨게" : ""}
+                    {resetAnniversaryShown ? ", 기일 안내 창·오늘의 쪽지가 다시 뜨게" : ""}
                     {resetMapTutorial ? ", 섬지기 둘러보기가 다시 뜨게" : ""}
                     {resetGuide ? ", 안내 빛이 처음부터 다시 빛나게" : ""}
                     {clearParticipant && participantStart ? `, ${formatStart(participantStart)} 이후 참가자 기록을 지우고` : ""} 되돌릴까요?

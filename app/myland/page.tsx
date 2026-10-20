@@ -22,6 +22,9 @@ import { SettingsModal } from "@/app/components/SettingsModal";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { EmotionReviewModal } from "@/components/EmotionReviewModal";
+import { Mailbox } from "@/components/Mailbox";
+import { TodayNote } from "@/components/TodayNote";
+import { readDayFlag, TODAY_NOTE_SHOWN_KEY_PREFIX, writeDayFlag } from "@/lib/today-note";
 import { ANNIVERSARY_SHOWN_KEY_PREFIX, ISLAND_DAYS_BEFORE, seoulToday, type UpcomingAnniversary } from "@/lib/anniversary";
 import { isPetRelation } from "@/lib/character-fields";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -208,6 +211,20 @@ function MylandPageContent() {
   }, [sessionStatus]);
   const [showRecordTypeModal, setShowRecordTypeModal] = useState(false);
   const [showEmotionModal, setShowEmotionModal] = useState(false);
+  // 오늘의 쪽지: 그날 처음 마이 랜드에 오면 저절로 날아와요 (기일 안내 창이 떠 있으면 닫힌 뒤에). 우체통으로 다시 열기
+  const [noteRequested, setNoteRequested] = useState(false);
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    // 섬 그림이 뜬 뒤 살짝 기다렸다가 날아오게
+    const timer = window.setTimeout(() => {
+      const today = seoulToday();
+      if (readDayFlag(TODAY_NOTE_SHOWN_KEY_PREFIX, today)) return;
+      writeDayFlag(TODAY_NOTE_SHOWN_KEY_PREFIX, today);
+      setNoteRequested(true);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [sessionStatus]);
+  const showNote = noteRequested && !showAnniversaryModal;
   const [selectedRecordTypes, setSelectedRecordTypes] = useState<string[]>([]);
   const hintRef = useRef<HTMLParagraphElement>(null);
   // 캐릭터 끌어서 옮기기
@@ -560,6 +577,14 @@ function MylandPageContent() {
             containerType: "size",
           }}
         >
+          {/* 섬 왼쪽 모래 위 우체통 (오늘의 쪽지) */}
+          {!isLoggedOut && (
+            <Mailbox
+              hasNote={!showNote}
+              onOpen={() => setNoteRequested(true)}
+              style={{ left: "19.5%", top: "72.5%", height: "15cqh", aspectRatio: "132 / 200" }}
+            />
+          )}
           {[
             ...characters.map((character) => ({
               key: character.id,
@@ -965,6 +990,13 @@ function MylandPageContent() {
         </div>
       )}
       {showEmotionModal && <EmotionReviewModal onClose={() => setShowEmotionModal(false)} />}
+      {showNote && (
+        <TodayNote
+          onClose={() => setNoteRequested(false)}
+          onAddCharacter={() => setShowAddModal(true)}
+          onOpenEmotion={() => setShowEmotionModal(true)}
+        />
+      )}
     </>
   );
 }

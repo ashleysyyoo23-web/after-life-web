@@ -11,6 +11,8 @@ import { RevealOverlay } from "@/components/safety/RevealOverlay";
 import { SavePhotoButton } from "@/components/SavePhotoButton";
 import { DEFAULT_EXPOSURE, exposureBlurPx, exposureBlurStyle } from "@/lib/exposure";
 import { markGuideVisited } from "@/lib/guide";
+import { seoulToday } from "@/lib/anniversary";
+import { TODAY_RECAP_VIEWED_KEY_PREFIX, writeDayFlag } from "@/lib/today-note";
 import type { DrawingStroke } from "@/lib/album-sections";
 import { getTravelAlbumSticker } from "@/lib/travel-album-stickers";
 import Image from "next/image";
@@ -193,6 +195,8 @@ function RecapviewPageContent() {
         setAlbumPhotos(data.photos);
         // 안내 빛: 리캡 보기 완료 (마지막 단계)
         markGuideVisited("recap");
+        // 오늘의 쪽지: "리캡 보기" ✓
+        writeDayFlag(TODAY_RECAP_VIEWED_KEY_PREFIX, seoulToday());
         setDrawings(data.drawings ?? {});
         setCharacterNickname(data.characterNickname ?? null);
         setExposure(data.emotionLevel ?? DEFAULT_EXPOSURE);
