@@ -11,6 +11,10 @@ import {
   type PhotoCategory,
 } from "@/lib/photo-categories";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { RichText } from "@/components/RichText";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.album;
 
 const TITLE_MAX_LENGTH = 20;
 
@@ -48,7 +52,7 @@ function ModalShell({ heading, onClose, children, wide = false }: ModalShellProp
             type="button"
             onClick={onClose}
             className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]"
-            aria-label="닫기"
+            aria-label={t.closeLabel}
           >
             X
           </button>
@@ -106,7 +110,7 @@ function SubmitButton({
       disabled={disabled || saving}
       className={`mt-6 w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a] transition-opacity disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glow && !disabled && !saving)}`}
     >
-      {saving ? "저장하는 중..." : children}
+      {saving ? t.saving : children}
     </button>
   );
 }
@@ -159,14 +163,14 @@ export function CreateAlbumModal({
       }
 
       if (!res.ok) {
-        throw new Error(await readError(res, "앨범을 만들지 못했어요."));
+        throw new Error(await readError(res, t.createFailed));
       }
 
       const data = (await res.json()) as { book: CreatedBook };
       onCreated(data.book);
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : "앨범을 만들지 못했어요.",
+        submitError instanceof Error ? submitError.message : t.createFailed,
       );
     } finally {
       setSaving(false);
@@ -174,19 +178,19 @@ export function CreateAlbumModal({
   };
 
   return (
-    <ModalShell heading="새 앨범 만들기" onClose={onClose}>
+    <ModalShell heading={t.createHeading} onClose={onClose}>
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col">
         <TitleField
-          label="앨범의 제목을 적어주세요."
+          label={t.createTitleLabel}
           value={title}
-          placeholder="예: 함께한 여행, 할머니표 음식들"
+          placeholder={t.createTitlePlaceholder}
           onChange={setTitle}
         />
         {error && (
           <p className="mt-2 font-mulish text-sm text-red-600">{error}</p>
         )}
         <SubmitButton disabled={!title.trim()} saving={saving} glow={guiding}>
-          앨범 만들기
+          {t.createButton}
         </SubmitButton>
       </form>
     </ModalShell>
@@ -213,10 +217,10 @@ type SortMode = "folder" | "name" | "date" | "category";
 type CategoryFilter = PhotoCategory | "all" | "unclassified";
 
 const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
-  { value: "folder", label: "폴더 순서" },
-  { value: "name", label: "이름순" },
-  { value: "date", label: "찍은 날짜순" },
-  { value: "category", label: "AI 분류순" },
+  { value: "folder", label: t.sortOptions.folder },
+  { value: "name", label: t.sortOptions.name },
+  { value: "date", label: t.sortOptions.date },
+  { value: "category", label: t.sortOptions.category },
 ];
 
 const CATEGORY_ORDER: PhotoCategory[] = ["face", "solo", "group", "scenery", "hospital", "farewell", "chat", "video"];
@@ -306,7 +310,7 @@ export function SectionPhotosModal({
           driveConnected = false;
         } else if (!filesRes.ok) {
           const json = (await filesRes.json().catch(() => null)) as { error?: string } | null;
-          throw new Error(json?.error ?? "Drive 사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+          throw new Error(json?.error ?? t.drivePhotosFailed);
         } else {
           const data = (await filesRes.json()) as {
             files: DriveFile[];
@@ -318,8 +322,7 @@ export function SectionPhotosModal({
           if (!cancelled) setAiReady(Boolean(data.aiReady));
           if (!cancelled && data.folderName) {
             setFolderNote(
-              `'${data.folderName}' 폴더(하위 폴더 포함)의 사진이에요.` +
-                (data.truncated ? " 사진이 많아서 일부만 보여요." : ""),
+              t.folderNote(data.folderName) + (data.truncated ? t.truncatedNote : ""),
             );
           }
         }
@@ -327,7 +330,7 @@ export function SectionPhotosModal({
         if (sectionRes) {
           if (!sectionRes.ok) {
             throw new Error(
-              "섹션 정보를 불러오지 못했어요. 창을 닫고 새로고침한 뒤 다시 시도해 주세요.",
+              t.sectionLoadFailed,
             );
           }
 
@@ -364,7 +367,7 @@ export function SectionPhotosModal({
           setLoadError(
             loadFailure instanceof Error
               ? loadFailure.message
-              : "사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.",
+              : t.photosLoadFailed,
           );
           setFilesState("error");
         }
@@ -462,7 +465,7 @@ export function SectionPhotosModal({
           // 잠깐 연결이 끊긴 경우: 같은 묶음을 줄 앞에 되돌리고 조금 쉬었다 다시
           queue.unshift(...batch);
           waitsWithoutProgress += 1;
-          if (waitsWithoutProgress > MAX_RATE_LIMIT_WAITS) stoppedMessage = "연결이 계속 끊겨서 멈췄어요. 다시 누르면 이어서 분류해요.";
+          if (waitsWithoutProgress > MAX_RATE_LIMIT_WAITS) stoppedMessage = t.stoppedDisconnected;
           pause(10);
           continue;
         }
@@ -498,7 +501,7 @@ export function SectionPhotosModal({
         if (res.status === 429) {
           waitsWithoutProgress = handled.size > 0 ? 0 : waitsWithoutProgress + 1;
           if (waitsWithoutProgress > MAX_RATE_LIMIT_WAITS) {
-            stoppedMessage = "Google 사용량 한도가 풀리지 않아 멈췄어요. 조금 뒤 다시 누르면 이어서 분류해요.";
+            stoppedMessage = t.stoppedQuota;
             return;
           }
           pause(Math.min(Math.max(data?.retryAfterSeconds ?? 30, 5), 120) + 2);
@@ -506,7 +509,7 @@ export function SectionPhotosModal({
         }
 
         // 키·모델·표 준비 같은 문제는 기다려도 안 풀려서 멈춤
-        stoppedMessage = data?.error ?? "AI 분류를 멈췄어요.";
+        stoppedMessage = data?.error ?? t.stoppedOther;
         return;
       }
     };
@@ -517,10 +520,10 @@ export function SectionPhotosModal({
     setAnalyzeMessage(
       stoppedMessage ??
         (stopAnalyzeRef.current
-          ? `멈췄어요. ${done}/${total}장 분류했어요. 다시 누르면 이어서 분류해요.`
+          ? t.stoppedByUser(done, total)
           : failed > 0
-            ? `분류를 마쳤어요. ${failed}장은 분류하지 못했어요.`
-            : `분류를 마쳤어요. ${total}장 모두 분류했어요.`),
+            ? t.finishedWithFailures(failed)
+            : t.finishedAll(total)),
     );
   };
 
@@ -536,7 +539,7 @@ export function SectionPhotosModal({
         body: JSON.stringify({ categories: tagEditing.categories }),
       });
       const data = (await res.json().catch(() => null)) as { categories?: PhotoCategory[]; error?: string } | null;
-      if (!res.ok) throw new Error(data?.error ?? "태그를 저장하지 못했어요.");
+      if (!res.ok) throw new Error(data?.error ?? t.tagSaveFailed);
       const saved = data?.categories ?? tagEditing.categories;
       setFiles((prev) =>
         prev.map((file) =>
@@ -547,7 +550,7 @@ export function SectionPhotosModal({
       );
       setTagEditing(null);
     } catch (saveError) {
-      setTagError(saveError instanceof Error ? saveError.message : "태그를 저장하지 못했어요.");
+      setTagError(saveError instanceof Error ? saveError.message : t.tagSaveFailed);
     } finally {
       setTagSaving(false);
     }
@@ -627,14 +630,14 @@ export function SectionPhotosModal({
       );
 
       if (!res.ok) {
-        throw new Error(await readError(res, "섹션을 저장하지 못했어요."));
+        throw new Error(await readError(res, t.sectionSaveFailed));
       }
 
       const data = (await res.json()) as { section: CreatedSection };
       onSaved(data.section);
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : "섹션을 저장하지 못했어요.",
+        submitError instanceof Error ? submitError.message : t.sectionSaveFailed,
       );
     } finally {
       setSaving(false);
@@ -642,13 +645,13 @@ export function SectionPhotosModal({
   };
 
   return (
-    <ModalShell heading={isEdit ? "섹션 사진 편집" : "새 섹션 추가하기"} onClose={onClose} wide>
+    <ModalShell heading={isEdit ? t.sectionHeadingEdit : t.sectionHeadingNew} onClose={onClose} wide>
       <form onSubmit={handleSubmit} className="mt-8 flex min-h-0 flex-1 flex-col">
         <div className="max-w-xl">
           <TitleField
-            label="1  섹션의 이름을 적어주세요."
+            label={t.sectionTitleLabel}
             value={title}
-            placeholder="예: 제주 여행, 봄나들이"
+            placeholder={t.sectionTitlePlaceholder}
             onChange={setTitle}
           />
         </div>
@@ -656,8 +659,7 @@ export function SectionPhotosModal({
         <div className="mt-2 flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="font-mulish text-sm text-[#AF9083]">
-              2  섹션에 담을 사진을 골라주세요. 사진의 <b>대표로</b>를 누르면
-              대표 이미지가 바뀌어요.
+              <RichText text={t.photosLabel} />
             </span>
 
             {filesState === "ready" && files.length > 0 && (
@@ -666,8 +668,8 @@ export function SectionPhotosModal({
                   className="rounded-full bg-[#FDD9BD]/50 px-3 py-1 font-mulish text-sm font-semibold text-[#4A423C]"
                   aria-live="polite"
                 >
-                  {selectedIds.length}장 선택됨
-                  <span className="font-normal text-[#898787]"> / {files.length}장</span>
+                  {t.selectedCount(selectedIds.length)}
+                  <span className="font-normal text-[#898787]">{t.totalCount(files.length)}</span>
                 </span>
                 <button
                   type="button"
@@ -675,7 +677,7 @@ export function SectionPhotosModal({
                   disabled={allSelected}
                   className={`cursor-pointer rounded-full border border-[#AF9083] bg-white px-4 py-1.5 font-mulish text-sm text-[#AF9083] transition-colors hover:bg-[#FAF6F0] disabled:cursor-not-allowed disabled:opacity-40${guideGlow(guiding && selectedIds.length === 0)}`}
                 >
-                  {visibleFiles.length < files.length ? "보이는 사진 모두 선택" : "모두 선택"}
+                  {visibleFiles.length < files.length ? t.selectVisible : t.selectAll}
                 </button>
                 <button
                   type="button"
@@ -683,7 +685,7 @@ export function SectionPhotosModal({
                   disabled={selectedIds.length === 0}
                   className="cursor-pointer rounded-full border border-[#C0BDBD] bg-white px-4 py-1.5 font-mulish text-sm text-[#898787] transition-colors hover:bg-[#FAF6F0] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  모두 지우기
+                  {t.clearAll}
                 </button>
               </div>
             )}
@@ -698,7 +700,7 @@ export function SectionPhotosModal({
             <div className="flex flex-col gap-3 rounded-xl bg-[#FAF6F0] px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 font-mulish text-sm text-[#4A423C]">
-                  정렬
+                  {t.sortLabel}
                   <select
                     value={sortMode}
                     onChange={(event) => setSortMode(event.target.value as SortMode)}
@@ -715,8 +717,8 @@ export function SectionPhotosModal({
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="이름이나 AI 설명으로 찾기 (예: 바다)"
-                  aria-label="사진 찾기"
+                  placeholder={t.searchPlaceholder}
+                  aria-label={t.searchLabel}
                   className="min-w-[220px] flex-1 rounded-lg border border-[#E8DDD5] bg-white px-3 py-1.5 font-mulish text-sm placeholder:text-[#AF9083]"
                 />
                 {characterId && (
@@ -724,28 +726,28 @@ export function SectionPhotosModal({
                     type="button"
                     onClick={() => (analyzing ? (stopAnalyzeRef.current = true) : setAskConsent(true))}
                     disabled={!analyzing && (!aiReady || unanalyzed.length === 0)}
-                    title={!aiReady ? "GEMINI_API_KEY 가 설정되면 쓸 수 있어요" : undefined}
+                    title={!aiReady ? t.aiKeyMissingTitle : undefined}
                     className="cursor-pointer rounded-full border border-[#AF9083] bg-white px-4 py-1.5 font-mulish text-sm font-semibold text-[#AF9083] transition-colors hover:bg-[#FDD9BD] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {analyzing
                       ? analyzing.waitSeconds
-                        ? `한도로 잠시 쉬는 중 · ${analyzing.waitSeconds}초 뒤 이어서 (${analyzing.done}/${analyzing.total}) · 멈추기`
-                        : `분류 중 ${analyzing.done}/${analyzing.total} · 멈추기`
+                        ? t.analyzeWaiting(analyzing.waitSeconds, analyzing.done, analyzing.total)
+                        : t.analyzeRunning(analyzing.done, analyzing.total)
                       : unanalyzed.length > 0
-                        ? `AI로 분류하기 (${unanalyzed.length}장)`
-                        : "모두 분류됨"}
+                        ? t.analyzeStart(unanalyzed.length)
+                        : t.analyzeAllDone}
                   </button>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="분류로 걸러 보기">
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t.filterLabel}>
                 {([
-                  { key: "all", label: `전체 ${files.length}` },
+                  { key: "all", label: t.filterAll(files.length) },
                   ...PHOTO_CATEGORIES.map((category) => ({
                     key: category.key,
                     label: `${category.label} ${categoryCounts.get(category.key) ?? 0}`,
                   })),
-                  { key: "unclassified", label: `아직 분류 안 됨 ${unanalyzed.length}` },
+                  { key: "unclassified", label: t.filterUnclassified(unanalyzed.length) },
                 ] as Array<{ key: CategoryFilter; label: string }>).map((chip) => (
                   <button
                     key={chip.key}
@@ -766,22 +768,21 @@ export function SectionPhotosModal({
               {askConsent && (
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#E8DDD5] bg-white px-4 py-3 font-mulish text-sm text-[#4A423C]">
                   <span className="flex-1">
-                    아직 분류 안 한 사진 {unanalyzed.length}장을 <b>작게 줄여 Google Gemini(AI)로 보내</b> 분류해요. 분류
-                    결과와 한 줄 설명만 저장하고, 사진은 따로 보관하지 않아요.
+                    <RichText text={t.consent(unanalyzed.length)} />
                   </span>
                   <button
                     type="button"
                     onClick={() => setAskConsent(false)}
                     className="cursor-pointer rounded-full border border-[#C0BDBD] bg-white px-3 py-1 text-sm text-[#666]"
                   >
-                    취소
+                    {t.cancel}
                   </button>
                   <button
                     type="button"
                     onClick={() => void runAnalyze("new")}
                     className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-3 py-1 text-sm text-white hover:bg-[#9a7d71]"
                   >
-                    분류 시작
+                    {t.consentStart}
                   </button>
                 </div>
               )}
@@ -792,31 +793,30 @@ export function SectionPhotosModal({
                   onClick={() => void runAnalyze("redo")}
                   className="self-start cursor-pointer border-0 bg-transparent p-0 font-mulish text-xs text-[#AF9083] underline underline-offset-2"
                 >
-                  예전 기준으로 분류한 {outdated.length}장을 새 기준(작별 직전 포함)으로 다시 분류하기
+                  {t.redoOutdated(outdated.length)}
                 </button>
               )}
               {!aiReady && characterId && (
                 <p className="font-mulish text-xs text-[#898787]">
-                  AI 분류는 Gemini API 키를 설정하면 쓸 수 있어요. 이름순·날짜순 정렬과 검색은 지금도 돼요.
+                  {t.aiUnavailable}
                 </p>
               )}
             </div>
           )}
 
           {filesState === "ready" && files.length > 0 && visibleFiles.length === 0 && (
-            <p className="font-mulish text-sm text-[#898787]">조건에 맞는 사진이 없어요.</p>
+            <p className="font-mulish text-sm text-[#898787]">{t.noMatch}</p>
           )}
 
           {filesState === "loading" && (
             <p className="font-mulish text-sm text-[#898787]">
-              Drive 사진을 불러오는 중이에요...
+              {t.loadingPhotos}
             </p>
           )}
 
           {filesState === "not-connected" && (
             <p className="rounded-xl bg-[#FAF6F0] px-4 py-4 font-mulish text-sm text-[#4A423C]">
-              Drive가 연결되어 있지 않아요. 오른쪽 위 설정 → 내가 남길 기록에서
-              Google Drive를 먼저 연결해 주세요.
+              {t.notConnected}
             </p>
           )}
 
@@ -828,7 +828,7 @@ export function SectionPhotosModal({
 
           {filesState === "ready" && files.length === 0 && (
             <p className="font-mulish text-sm text-[#898787]">
-              연결된 폴더에 사진이 없어요.
+              {t.noPhotos}
             </p>
           )}
 
@@ -845,7 +845,7 @@ export function SectionPhotosModal({
                       type="button"
                       onClick={() => togglePhoto(file.id)}
                       aria-pressed={isSelected}
-                      aria-label={`${file.name} ${isSelected ? "선택 해제" : "선택"}`}
+                      aria-label={t.photoToggleLabel(file.name, isSelected)}
                       className={`h-full w-full cursor-pointer overflow-hidden rounded-lg border-[3px] bg-[#FAF6F0] p-0 transition-all ${
                         isSelected
                           ? "border-[#AF9083]"
@@ -900,13 +900,13 @@ export function SectionPhotosModal({
                             categories: (file.categories ?? []).filter((category) => category !== "video"),
                           });
                         }}
-                        aria-label={`${file.name} 태그 고치기`}
-                        title={file.manual ? "직접 고친 태그예요" : "태그 고치기"}
+                        aria-label={t.tagEditLabel(file.name)}
+                        title={file.manual ? t.tagManualTitle : t.tagEditTitle}
                         className={`absolute bottom-2 right-2 cursor-pointer rounded-full border-0 px-2 py-1 font-mulish text-[11px] transition-colors ${
                           file.manual ? "bg-[#AF9083] text-white" : "bg-white/85 text-[#4A423C] hover:bg-white"
                         }`}
                       >
-                        ✎{file.manual ? " 직접" : ""}
+                        ✎{file.manual ? t.tagManualMark : ""}
                       </button>
                     )}
 
@@ -925,7 +925,7 @@ export function SectionPhotosModal({
                     {isSelected &&
                       (isCover ? (
                         <span className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-[#FDD9BD] px-2.5 py-1 font-mulish text-xs font-semibold text-[#4A423C]">
-                          대표 이미지
+                          {t.coverBadge}
                         </span>
                       ) : (
                         <button
@@ -933,7 +933,7 @@ export function SectionPhotosModal({
                           onClick={() => setCoverId(file.id)}
                           className="absolute bottom-2 left-2 cursor-pointer rounded-full border-0 bg-white/85 px-2.5 py-1 font-mulish text-xs text-[#4A423C] transition-colors hover:bg-white"
                         >
-                          대표로
+                          {t.makeCover}
                         </button>
                       ))}
                   </div>
@@ -950,7 +950,7 @@ export function SectionPhotosModal({
               if (event.target === event.currentTarget && !tagSaving) setTagEditing(null);
             }}
           >
-            <div role="dialog" aria-modal="true" aria-label="사진 태그 고치기" className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-6 shadow-lg">
+            <div role="dialog" aria-modal="true" aria-label={t.tagDialogLabel} className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-6 shadow-lg">
               {(() => {
                 const file = files.find((item) => item.id === tagEditing.fileId);
                 return (
@@ -960,7 +960,7 @@ export function SectionPhotosModal({
                       <img src={file.thumbnailUrl} alt="" referrerPolicy="no-referrer" className="h-16 w-16 rounded-lg object-cover" />
                     )}
                     <div className="flex min-w-0 flex-col">
-                      <span className="font-mulish text-sm font-semibold text-[#4A423C]">태그 고치기</span>
+                      <span className="font-mulish text-sm font-semibold text-[#4A423C]">{t.tagDialogTitle}</span>
                       <span className="truncate font-mulish text-xs text-[#898787]">{file?.description || file?.name}</span>
                     </div>
                   </div>
@@ -985,7 +985,7 @@ export function SectionPhotosModal({
                 })}
               </div>
               <p className="font-mulish text-xs text-[#898787]">
-                직접 고친 태그는 저장되고, AI로 다시 분류해도 바뀌지 않아요. 혼자·단체는 둘 중 하나만 고를 수 있어요.
+                {t.tagHelp}
               </p>
               {tagError && <p className="font-mulish text-xs text-[#9E2121]">{tagError}</p>}
               <div className="flex justify-end gap-2">
@@ -995,7 +995,7 @@ export function SectionPhotosModal({
                   disabled={tagSaving}
                   className="cursor-pointer rounded-full border border-[#C0BDBD] bg-white px-4 py-1.5 font-mulish text-sm text-[#666]"
                 >
-                  취소
+                  {t.cancel}
                 </button>
                 <button
                   type="button"
@@ -1003,7 +1003,7 @@ export function SectionPhotosModal({
                   disabled={tagSaving}
                   className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-1.5 font-mulish text-sm text-white hover:bg-[#9a7d71] disabled:opacity-60"
                 >
-                  {tagSaving ? "저장 중..." : "저장"}
+                  {tagSaving ? t.tagSaving : t.tagSave}
                 </button>
               </div>
             </div>
@@ -1019,10 +1019,10 @@ export function SectionPhotosModal({
           glow={guiding}
         >
           {isEdit
-            ? `사진 ${selectedIds.length}장으로 저장하기`
+            ? t.saveEdit(selectedIds.length)
             : selectedIds.length > 0
-              ? `사진 ${selectedIds.length}장으로 섹션 추가하기`
-              : "섹션 추가하기"}
+              ? t.addSectionWithPhotos(selectedIds.length)
+              : t.addSection}
         </SubmitButton>
       </form>
     </ModalShell>

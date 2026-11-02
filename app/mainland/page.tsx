@@ -18,6 +18,10 @@ import { WavingFlag } from "@/components/WavingFlag";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { RichText } from "@/components/RichText";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.mainland;
 
 // 지금 기일 기간인 개인 추모 랜드 (/api/mainland/islands)
 type AnniversaryIsland = {
@@ -32,7 +36,7 @@ type AnniversaryIsland = {
 // 고정 섬의 클릭 영역(화면 기준)과 나무 팻말 자리(지도 무대 기준: 기둥이 땅에 닿는 곳)
 const mainlandIslands = [
   {
-    label: "커뮤니티 추모 랜드",
+    label: t.islands.community,
     href: "/community",
     left: "14.5%",
     top: "50.0%",
@@ -41,7 +45,7 @@ const mainlandIslands = [
     sign: { x: "26.5%", y: "50.8%" },
   },
   {
-    label: "마이 랜드",
+    label: t.islands.myland,
     href: "/myland",
     left: "51.0%",
     top: "61.2%",
@@ -50,7 +54,7 @@ const mainlandIslands = [
     sign: { x: "41.5%", y: "62.5%" },
   },
   {
-    label: "저장소",
+    label: t.islands.storage,
     href: "/storage",
     left: "86.6%",
     top: "48.0%",
@@ -189,7 +193,7 @@ function MainlandPageContent() {
             <Link
               key={island.deceasedId}
               href={`/island/${island.deceasedId}`}
-              aria-label={`${island.nickname}의 섬 (${daysUntilLabel(island.daysUntil, isPetRelation(island.relation))})`}
+              aria-label={t.islandLabel(island.nickname, daysUntilLabel(island.daysUntil, isPetRelation(island.relation)))}
               className="group pointer-events-auto absolute z-[2] block animate-[island-rise_1.4s_ease-out]"
               style={placement.style}
             >
@@ -201,7 +205,7 @@ function MainlandPageContent() {
                 style={placement.flip ? { transform: "scaleX(-1)" } : undefined}
               />
               <IslandSign
-                label={`${island.nickname}의 섬`}
+                label={t.islandName(island.nickname)}
                 sub={daysUntilLabel(island.daysUntil, isPetRelation(island.relation))}
                 x={`${placement.flip ? 100 - ANNIVERSARY_SIGN_SPOT[placement.shape].x : ANNIVERSARY_SIGN_SPOT[placement.shape].x}%`}
                 y={`${ANNIVERSARY_SIGN_SPOT[placement.shape].y}%`}
@@ -226,7 +230,7 @@ function MainlandPageContent() {
                   style={placement.flip ? { transform: "scaleX(-1)" } : undefined}
                 />
                 <IslandSign
-                  label="개인 추모 랜드"
+                  label={t.personalIsland}
                   x={`${placement.flip ? 100 - ANNIVERSARY_SIGN_SPOT[placement.shape].x : ANNIVERSARY_SIGN_SPOT[placement.shape].x}%`}
                   y={`${ANNIVERSARY_SIGN_SPOT[placement.shape].y}%`}
                 />
@@ -276,7 +280,7 @@ function MainlandPageContent() {
       {/* 닫아 둔 개인 추모 랜드: 이번 기일 기간엔 다시 묻지 않지만 여기서 언제든 열 수 있어요 */}
       {laterIslands.length > 0 && !asking && (
         <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-white/85 px-4 py-2 font-mulish text-sm text-[#4A423C] shadow">
-          <span className="text-[#898787]">닫아 둔 개인 추모 랜드</span>
+          <span className="text-[#898787]">{t.laterTitle}</span>
           {laterIslands.map((island) => (
             <button
               key={island.deceasedId}
@@ -285,7 +289,7 @@ function MainlandPageContent() {
               disabled={answering}
               className="cursor-pointer rounded-full border border-[#AF9083] bg-white px-3 py-1 font-mulish text-xs text-[#AF9083] hover:bg-[#FDD9BD] disabled:opacity-60"
             >
-              {island.nickname}의 섬 열기
+              {t.openLater(island.nickname)}
             </button>
           ))}
         </div>
@@ -310,12 +314,10 @@ function MainlandPageContent() {
             <div className="flex flex-col gap-2">
               <p className="font-mulish text-sm text-[#AF9083]">{daysUntilLabel(asking.daysUntil, isPetRelation(asking.relation))}</p>
               <h2 id="anniversary-title" className="font-jeju-myeongjo text-2xl text-[#4A423C]">
-                {asking.nickname}의 개인 추모 랜드를 열까요?
+                {t.ask.title(asking.nickname)}
               </h2>
               <p className="font-mulish text-sm leading-relaxed text-[#898787]">
-                {isPetRelation(asking.relation) ? "그날 즈음" : "기일 동안"} 지도에 {asking.nickname}의 섬이 떠올라요.
-                <br />
-                섬에서 함께 기억하는 가족과 마음을 남길 수 있어요.
+                <RichText text={t.ask.body(asking.nickname, isPetRelation(asking.relation))} />
               </p>
             </div>
             <div className="flex w-full flex-col gap-2">
@@ -326,7 +328,7 @@ function MainlandPageContent() {
                 disabled={answering}
                 className={`h-12 w-full cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] font-mulish text-base font-semibold text-black hover:bg-[#C4836E] hover:text-white disabled:opacity-60${guideGlow(guideStep === "island")}`}
               >
-                섬 열기
+                {t.ask.open}
               </button>
               <button
                 type="button"
@@ -334,10 +336,10 @@ function MainlandPageContent() {
                 disabled={answering}
                 className="h-11 w-full cursor-pointer rounded-xl border border-[#E8DDD5] bg-white font-mulish text-sm text-[#666] hover:bg-[#FAF6F0] disabled:opacity-60"
               >
-                나중에
+                {t.ask.later}
               </button>
               <p className="font-mulish text-xs text-[#AF9083]">
-                &lsquo;나중에&rsquo;를 고르면 이번 {isPetRelation(asking.relation) ? "기간" : "기일"} 동안 다시 묻지 않아요. 지도 아래에서 언제든 열 수 있어요.
+                {t.ask.laterNote(isPetRelation(asking.relation))}
               </p>
             </div>
           </div>
@@ -351,7 +353,7 @@ function MainlandPageContent() {
           onClick={() => setTutorialStep(0)}
           className="fixed bottom-6 right-6 z-20 cursor-pointer rounded-full border border-[#E8B4A0] bg-white/85 px-4 py-2 font-jeju-myeongjo text-sm text-[#5A3A30] shadow-sm transition-colors hover:bg-[#FFFBF6]"
         >
-          🚣 섬지기와 둘러보기
+          {t.tourButton}
         </button>
       )}
 

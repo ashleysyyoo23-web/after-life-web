@@ -433,6 +433,136 @@ export const ko = {
     },
   },
 
+  // 앨범 만들기 · 섹션 추가/사진 편집 창 (components/AlbumModals.tsx)
+  // 사진 분류 이름(혼자·단체…)은 lib/photo-categories.ts 에 있어요
+  album: {
+    closeLabel: "닫기",
+    saving: "저장하는 중...",
+    // 새 앨범
+    createHeading: "새 앨범 만들기",
+    createTitleLabel: "앨범의 제목을 적어주세요.",
+    createTitlePlaceholder: "예: 함께한 여행, 할머니표 음식들",
+    createButton: "앨범 만들기",
+    createFailed: "앨범을 만들지 못했어요.",
+    // 섹션
+    sectionHeadingNew: "새 섹션 추가하기",
+    sectionHeadingEdit: "섹션 사진 편집",
+    sectionTitleLabel: "1  섹션의 이름을 적어주세요.",
+    sectionTitlePlaceholder: "예: 제주 여행, 봄나들이",
+    photosLabel: "2  섹션에 담을 사진을 골라주세요. 사진의 **대표로**를 누르면 대표 이미지가 바뀌어요.",
+    selectedCount: (n: number) => `${n}장 선택됨`,
+    totalCount: (n: number) => ` / ${n}장`,
+    selectVisible: "보이는 사진 모두 선택",
+    selectAll: "모두 선택",
+    clearAll: "모두 지우기",
+    sortLabel: "정렬",
+    sortOptions: { folder: "폴더 순서", name: "이름순", date: "찍은 날짜순", category: "AI 분류순" },
+    searchPlaceholder: "이름이나 AI 설명으로 찾기 (예: 바다)",
+    searchLabel: "사진 찾기",
+    folderNote: (folder: string) => `'${folder}' 폴더(하위 폴더 포함)의 사진이에요.`,
+    truncatedNote: " 사진이 많아서 일부만 보여요.",
+    // AI 분류
+    aiKeyMissingTitle: "GEMINI_API_KEY 가 설정되면 쓸 수 있어요",
+    analyzeWaiting: (seconds: number, done: number, total: number) =>
+      `한도로 잠시 쉬는 중 · ${seconds}초 뒤 이어서 (${done}/${total}) · 멈추기`,
+    analyzeRunning: (done: number, total: number) => `분류 중 ${done}/${total} · 멈추기`,
+    analyzeStart: (n: number) => `AI로 분류하기 (${n}장)`,
+    analyzeAllDone: "모두 분류됨",
+    filterLabel: "분류로 걸러 보기",
+    filterAll: (n: number) => `전체 ${n}`,
+    filterUnclassified: (n: number) => `아직 분류 안 됨 ${n}`,
+    consent: (n: number) =>
+      `아직 분류 안 한 사진 ${n}장을 **작게 줄여 Google Gemini(AI)로 보내** 분류해요. 분류 결과와 한 줄 설명만 저장하고, 사진은 따로 보관하지 않아요.`,
+    cancel: "취소",
+    consentStart: "분류 시작",
+    redoOutdated: (n: number) => `예전 기준으로 분류한 ${n}장을 새 기준(작별 직전 포함)으로 다시 분류하기`,
+    aiUnavailable: "AI 분류는 Gemini API 키를 설정하면 쓸 수 있어요. 이름순·날짜순 정렬과 검색은 지금도 돼요.",
+    stoppedDisconnected: "연결이 계속 끊겨서 멈췄어요. 다시 누르면 이어서 분류해요.",
+    stoppedQuota: "Google 사용량 한도가 풀리지 않아 멈췄어요. 조금 뒤 다시 누르면 이어서 분류해요.",
+    stoppedOther: "AI 분류를 멈췄어요.",
+    stoppedByUser: (done: number, total: number) => `멈췄어요. ${done}/${total}장 분류했어요. 다시 누르면 이어서 분류해요.`,
+    finishedWithFailures: (failed: number) => `분류를 마쳤어요. ${failed}장은 분류하지 못했어요.`,
+    finishedAll: (total: number) => `분류를 마쳤어요. ${total}장 모두 분류했어요.`,
+    // 사진 목록 상태
+    noMatch: "조건에 맞는 사진이 없어요.",
+    loadingPhotos: "Drive 사진을 불러오는 중이에요...",
+    notConnected: "Drive가 연결되어 있지 않아요. 오른쪽 위 설정 → 내가 남길 기록에서 Google Drive를 먼저 연결해 주세요.",
+    noPhotos: "연결된 폴더에 사진이 없어요.",
+    drivePhotosFailed: "Drive 사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.",
+    sectionLoadFailed: "섹션 정보를 불러오지 못했어요. 창을 닫고 새로고침한 뒤 다시 시도해 주세요.",
+    photosLoadFailed: "사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.",
+    // 사진 한 장
+    photoToggleLabel: (name: string, selected: boolean) => `${name} ${selected ? "선택 해제" : "선택"}`,
+    tagEditLabel: (name: string) => `${name} 태그 고치기`,
+    tagManualTitle: "직접 고친 태그예요",
+    tagEditTitle: "태그 고치기",
+    tagManualMark: " 직접",
+    coverBadge: "대표 이미지",
+    makeCover: "대표로",
+    // 태그 고치기 창
+    tagDialogLabel: "사진 태그 고치기",
+    tagDialogTitle: "태그 고치기",
+    tagHelp: "직접 고친 태그는 저장되고, AI로 다시 분류해도 바뀌지 않아요. 혼자·단체는 둘 중 하나만 고를 수 있어요.",
+    tagSave: "저장",
+    tagSaving: "저장 중...",
+    tagSaveFailed: "태그를 저장하지 못했어요.",
+    // 아래 버튼
+    saveEdit: (n: number) => `사진 ${n}장으로 저장하기`,
+    addSectionWithPhotos: (n: number) => `사진 ${n}장으로 섹션 추가하기`,
+    addSection: "섹션 추가하기",
+    sectionSaveFailed: "섹션을 저장하지 못했어요.",
+  },
+
+  // 설정 → 내가 남길 기록의 "6 나의 사진 고르기" (components/LegacyMyPhotos.tsx)
+  legacyPhotos: {
+    step: "남길 기록으로 보여줄 나의 사진을 골라주세요. 사진을 눌러 포함/제외할 수 있어요.",
+    folderNote: (folder: string) => `‘${folder}’ 폴더(하위 폴더 포함)의 사진이에요.`,
+    loading: "Drive 사진을 불러오는 중...",
+    loadFailed: "사진을 불러오지 못했어요.",
+    photosTab: (n: number) => `사진 ${n}장`,
+    hiddenTab: (n: number) => `삭제한 사진 ${n}장`,
+    markedCount: (n: number) => `${n}장 표시됨`,
+    selectedCount: (n: number) => `남길 기록 ${n}장 선택됨`,
+    deselectAll: "전체 해제",
+    selectAll: "전체 선택",
+    restore: "목록으로 되돌리기",
+    hide: "목록에서 삭제",
+    cancel: "취소",
+    edit: "편집",
+    restoreHelp: "되돌릴 사진을 눌러 표시한 뒤 '목록으로 되돌리기'를 눌러 주세요.",
+    hideHelp: "삭제할 사진을 눌러 표시해 주세요. 목록에서만 빠지고 Drive 원본은 그대로예요.",
+    noHidden: "삭제한 사진이 없어요.",
+    noPhotos: "이 폴더에 사진이 없어요.",
+    truncated: "사진이 많아서 앞의 1,000장까지만 보여요.",
+    needsSql: "저장하려면 supabase/step_legacy_my_photos.sql 실행이 필요해요.",
+    unsaved: "저장하지 않은 변경이 있어요.",
+    saveButton: "사진 선택 저장하기",
+    savingButton: "저장 중...",
+    saved: (n: number) => `저장했어요. 남길 기록 사진 ${n}장`,
+    saveFailed: "저장하지 못했어요.",
+  },
+
+  // 전체 지도 (app/mainland/page.tsx)
+  mainland: {
+    islands: { community: "커뮤니티 추모 랜드", myland: "마이 랜드", storage: "저장소" },
+    personalIsland: "개인 추모 랜드",
+    islandName: (nickname: string) => `${nickname}의 섬`,
+    islandLabel: (nickname: string, when: string) => `${nickname}의 섬 (${when})`,
+    laterTitle: "닫아 둔 개인 추모 랜드",
+    openLater: (nickname: string) => `${nickname}의 섬 열기`,
+    tourButton: "🚣 섬지기와 둘러보기",
+    // 기일이 다가오면 뜨는 "섬 열기" 창
+    ask: {
+      title: (nickname: string) => `${nickname}의 개인 추모 랜드를 열까요?`,
+      body: (nickname: string, isPet: boolean) =>
+        `${isPet ? "그날 즈음" : "기일 동안"} 지도에 ${nickname}의 섬이 떠올라요.\n섬에서 함께 기억하는 가족과 마음을 남길 수 있어요.`,
+      open: "섬 열기",
+      later: "나중에",
+      laterNote: (isPet: boolean) =>
+        `‘나중에’를 고르면 이번 ${isPet ? "기간" : "기일"} 동안 다시 묻지 않아요. 지도 아래에서 언제든 열 수 있어요.`,
+    },
+  },
+
   // 오늘의 마음 (app/moodcheck/page.tsx)
   // 기분 이름(평온·무기력·무덤덤·그리움)은 기록에 그대로 저장되는 값이라 여기 두지 않았어요
   moodcheck: {
