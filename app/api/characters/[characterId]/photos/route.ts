@@ -42,6 +42,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
         files: await withAnalyses(supabase, userEmail, files),
         truncated: false,
         folderName: null,
+        photoSource: "upload",
         aiReady: isGeminiConfigured(),
       });
     } catch (listError) {
@@ -69,6 +70,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       files: await withAnalyses(supabase, userEmail, files),
       truncated,
       folderName: access.folderName,
+      photoSource: "drive",
       // Gemini 키가 있어야 "AI로 분류하기"를 쓸 수 있어요
       aiReady: isGeminiConfigured(),
     });

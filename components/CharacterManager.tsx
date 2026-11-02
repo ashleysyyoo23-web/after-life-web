@@ -31,6 +31,9 @@ type Detail = {
   appearance: CharacterAppearance;
   folderName: string | null;
   bookCount: number;
+  // 휴대폰에서 사진을 올린 인물이면 "upload"와 올린 사진 수 (지우기 확인 창에서 알려 줌)
+  photoSource?: "drive" | "upload";
+  uploadCount?: number;
   // 열람방식 설정하기 (캐릭터 만들기 4단계와 같은 항목)
   emotionLevel: number | null; // 노출 강도 (기록 사진을 얼마나 흐리게 볼지)
   excludedTypes: string[];
@@ -54,7 +57,12 @@ export function CharacterManager() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<{ id: string; nickname: string; bookCount: number } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    id: string;
+    nickname: string;
+    bookCount: number;
+    uploadCount: number | null; // 휴대폰 사진 인물이 아니면 null
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
   // "+ 인물 추가": 마이 랜드의 "+ 고인 불러오기"와 같은 만들기 창
   const [creating, setCreating] = useState(false);
@@ -102,13 +110,18 @@ export function CharacterManager() {
   const askDelete = async (id: string, nickname: string) => {
     setMessage(null);
     // 책장에 책이 몇 권 있는지 함께 알려 줌
-    let bookCount = editing?.id === id ? editing.bookCount : 0;
-    if (editing?.id !== id) {
+    let detail: Detail | null | undefined = editing?.id === id ? editing : null;
+    if (!detail) {
       const res = await fetch(`/api/characters/${encodeURIComponent(id)}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as { character?: Detail } | null;
-      bookCount = data?.character?.bookCount ?? 0;
+      detail = data?.character;
     }
-    setConfirmDelete({ id, nickname, bookCount });
+    setConfirmDelete({
+      id,
+      nickname,
+      bookCount: detail?.bookCount ?? 0,
+      uploadCount: detail?.photoSource === "upload" ? (detail.uploadCount ?? 0) : null,
+    });
   };
 
   const handleSave = async () => {
@@ -191,12 +204,19 @@ export function CharacterManager() {
         </h3>
         <div className="flex flex-col gap-2 rounded-xl bg-[#FAF6F0] p-4 font-mulish text-sm text-[#4A423C]">
           <p>{t.deleteBody}</p>
-          <p className="text-xs text-[#898787]">
-            {confirmDelete.bookCount > 0
-              ? t.deleteKeepsBooks(confirmDelete.bookCount)
-              : t.deleteCanRecreate}
-            {" "}{t.deleteDriveSafe}
-          </p>
+          {confirmDelete.uploadCount !== null ? (
+            // 휴대폰 사진 인물: 올린 사진과 앨범도 함께 지워져요
+            <p className="text-xs text-[#9E2121]">
+              {t.deleteUploadsToo(confirmDelete.uploadCount, confirmDelete.bookCount)} {t.deletePhoneSafe}
+            </p>
+          ) : (
+            <p className="text-xs text-[#898787]">
+              {confirmDelete.bookCount > 0
+                ? t.deleteKeepsBooks(confirmDelete.bookCount)
+                : t.deleteCanRecreate}
+              {" "}{t.deleteDriveSafe}
+            </p>
+          )}
         </div>
         <div className="flex justify-end gap-2">
           <button

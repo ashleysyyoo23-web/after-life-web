@@ -12,6 +12,7 @@ import {
 } from "@/lib/photo-categories";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RichText } from "@/components/RichText";
+import { uploadPhotos } from "@/lib/shrink-photo";
 import { ko } from "@/lib/copy/ko";
 
 const t = ko.album;
@@ -281,6 +282,11 @@ export function SectionPhotosModal({
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [folderNote, setFolderNote] = useState<string | null>(null);
+  // 휴대폰에서 사진을 올린 인물이면 이 창에서도 사진을 더 올릴 수 있어요
+  const [photoSource, setPhotoSource] = useState<"drive" | "upload">("drive");
+  const [uploadingMore, setUploadingMore] = useState<{ done: number; total: number } | null>(null);
+  const [uploadMoreMessage, setUploadMoreMessage] = useState<string | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   // 사진 정리: 정렬 · 분류 걸러 보기 · 검색 · AI 분류
   const [sortMode, setSortMode] = useState<SortMode>("folder");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
@@ -322,8 +328,10 @@ export function SectionPhotosModal({
             folderName?: string | null;
             truncated?: boolean;
             aiReady?: boolean;
+            photoSource?: "drive" | "upload";
           };
           driveFiles = data.files;
+          if (!cancelled && data.photoSource) setPhotoSource(data.photoSource);
           if (!cancelled) setAiReady(Boolean(data.aiReady));
           if (!cancelled && data.folderName) {
             setFolderNote(
@@ -383,6 +391,30 @@ export function SectionPhotosModal({
       cancelled = true;
     };
   }, [sectionId, characterId]);
+
+  // 휴대폰에서 사진 더 올리기: 올린 뒤 목록을 새로 받아 오고, 새 사진은 골라 둔 상태로
+  const uploadMore = async (list: FileList | null) => {
+    const picked = [...(list ?? [])].filter((file) => file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name));
+    if (!characterId || picked.length === 0) return;
+    setUploadMoreMessage(null);
+    const { uploadedIds, failed } = await uploadPhotos(characterId, picked, (done, total) => setUploadingMore({ done, total }));
+    try {
+      const res = await fetch(`/api/characters/${characterId}/photos`, { cache: "no-store" });
+      if (res.ok) {
+        const data = (await res.json()) as { files: DriveFile[] };
+        const fresh = new Set(data.files.map((file) => file.id));
+        // 이 섹션에만 남은 사진(목록에 없는 사진)은 그대로 앞쪽에
+        setFiles((current) => [...current.filter((file) => !fresh.has(file.id) && file.thumbnailUrl?.startsWith("/api/album-sections/")), ...data.files]);
+        setSelectedIds((current) => [...current, ...uploadedIds.filter((id) => !current.includes(id))].slice(0, MAX_PHOTOS_PER_SECTION));
+        setFilesState("ready");
+      }
+    } finally {
+      setUploadingMore(null);
+      setUploadMoreMessage(
+        failed.length > 0 ? t.uploadMoreFailed(failed.length) : uploadedIds.length > 0 ? t.uploadedMore(uploadedIds.length) : null,
+      );
+    }
+  };
 
   // 분류 걸러 보기 · 검색 · 정렬을 적용한 사진 목록
   const visibleFiles = useMemo(() => {
@@ -704,6 +736,36 @@ export function SectionPhotosModal({
             <p className="font-mulish text-xs text-[#898787]">{folderNote}</p>
           )}
 
+          {photoSource === "upload" && filesState === "ready" && (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-mulish text-xs text-[#898787]">{t.uploadedNote}</span>
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  void uploadMore(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                disabled={Boolean(uploadingMore)}
+                onClick={() => uploadInputRef.current?.click()}
+                className="cursor-pointer rounded-full border border-[#AF9083] bg-white px-4 py-1.5 font-mulish text-sm text-[#AF9083] transition-colors hover:bg-[#FAF6F0] disabled:cursor-wait disabled:opacity-60"
+              >
+                {uploadingMore ? t.uploadingMore(uploadingMore.done, uploadingMore.total) : t.uploadMoreButton}
+              </button>
+              {uploadMoreMessage && (
+                <span role="status" className="font-mulish text-xs text-[#4A423C]">
+                  {uploadMoreMessage}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* 사진 정리: 정렬 · 분류로 걸러 보기 · 검색 · AI 분류 */}
           {filesState === "ready" && files.length > 0 && (
             <div className="flex flex-col gap-3 rounded-xl bg-[#FAF6F0] px-4 py-3">
@@ -837,7 +899,7 @@ export function SectionPhotosModal({
 
           {filesState === "ready" && files.length === 0 && (
             <p className="font-mulish text-sm text-[#898787]">
-              {t.noPhotos}
+              {photoSource === "upload" ? t.noUploads : t.noPhotos}
             </p>
           )}
 

@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "개인정보처리방침 | After Life",
 };
 
-const UPDATED = "2026년 10월 6일";
+const UPDATED = "2026년 11월 3일";
 const CONTACT_EMAIL = "ashleyyoo521@gmail.com";
 
 const SECTIONS: Array<{ title: string; body: ReactNode }> = [
@@ -32,6 +32,11 @@ const SECTIONS: Array<{ title: string; body: ReactNode }> = [
           <b>Google Drive 읽기 권한</b>(drive.readonly): 사용자가 직접 연결한 폴더의 사진·동영상 목록과 파일을 <b>읽기만</b> 해요. Drive의
           파일을 고치거나 지우거나 새로 만들지 않아요. 리캡의 사진은 서비스 서버에 따로 복사해 두지 않고, 화면에 보여줄 때마다 Drive에서 바로
           불러와요. 단, 추모 공간 메시지에 사용자가 직접 골라 공유한 사진은 메시지와 함께 보관해요.
+        </li>
+        <li>
+          <b>휴대폰에서 직접 올린 사진</b>: Google Drive 대신 휴대폰(또는 컴퓨터)에서 사진을 골라 올린 경우, 그 사진을 긴 쪽 2,000px 정도로
+          줄인 복사본과 파일 이름, 파일 날짜를 서비스의 비공개 저장공간에 보관해요. 올린 사람 본인만 볼 수 있고, 휴대폰의 원본 사진은 건드리지
+          않아요.
         </li>
         <li>
           <b>사용자가 서비스 안에서 남긴 기록</b>: 인물(고인) 정보와 기념일, 앨범·섹션 구성, 사진에 붙인 글과 메모, 그날의 기분 기록, 추모
@@ -101,6 +106,9 @@ const SECTIONS: Array<{ title: string; body: ReactNode }> = [
           에서 언제든 서비스의 접근 권한을 직접 끊을 수 있어요.
         </li>
         <li>추모 공간에 남긴 내 메시지는 카드의 삭제 버튼으로 지울 수 있어요.</li>
+        <li>
+          휴대폰에서 올린 사진은 그 인물을 지우면(설정 › 마이 랜드의 인물 편집) 그 인물의 앨범과 함께 바로 지워지고, 되돌릴 수 없어요.
+        </li>
       </ul>
     ),
   },
@@ -108,7 +116,7 @@ const SECTIONS: Array<{ title: string; body: ReactNode }> = [
     title: "7. 안전하게 지키는 방법",
     body: (
       <p>
-        데이터베이스는 서버에서만 접근하도록 막아 두었고(행 단위 보안 적용), 다른 사용자가 내 기록이나 Drive 사진을 볼 수 없도록 요청마다
+        데이터베이스는 서버에서만 접근하도록 막아 두었고(행 단위 보안 적용), 다른 사용자가 내 기록이나 Drive 사진, 내가 올린 사진을 볼 수 없도록 요청마다
         로그인과 권한을 확인해요. 추모 공간의 메시지는 그 공간에 들어올 수 있는 사람에게만 보여요.
       </p>
     ),

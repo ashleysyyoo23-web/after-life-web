@@ -10,6 +10,7 @@ import {
   toSpecialDate,
 } from "@/lib/character-fields";
 import { clampToSand } from "@/lib/myland-area";
+import { deleteCharacterUploads, getUploadCharacter } from "@/lib/uploaded-photos-server";
 
 type RouteParams = {
   params: Promise<{ characterId: string }>;
@@ -45,6 +46,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   const deceased = (Array.isArray(row.deceased) ? row.deceased[0] : row.deceased) as DeceasedJoin | null;
 
+  // 휴대폰에서 사진을 올린 인물이면 올린 사진 수 (지우기 확인 창에서 알려 줌)
+  const source = await getUploadCharacter(supabase, userEmail, row.id);
+  const photoSource = source.ok ? source.photoSource : "drive";
+  const { count: uploadCount } =
+    photoSource === "upload"
+      ? await supabase.from("uploaded_photos").select("id", { count: "exact", head: true }).eq("user_character_id", row.id)
+      : { count: 0 };
+
   // 이 고인에 대해 내가 적은 특별한 날짜들
   const { data: dateRows } = await supabase
     .from("deceased_dates")
@@ -62,6 +71,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       appearance: sanitizeAppearance(row.appearance),
       folderName: deceased?.drive_folder_name ?? null,
       bookCount: bookCount ?? 0,
+      photoSource,
+      uploadCount: uploadCount ?? 0,
       // 열람방식 설정하기 (캐릭터 만들기 4단계와 같은 항목)
       // 노출 강도 (0 = 슬픔이 파도처럼 → 아주 흐리게 … 100 = 잔잔해요 → 거의 선명하게)
       emotionLevel: row.emotion_level,
@@ -205,13 +216,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   });
 }
 
-// 인물 지우기: 마이 랜드에서 사라짐. 책장(앨범)은 지우지 않고 보관 →
-// 같은 폴더로 인물을 다시 만들면 책장이 그대로 돌아와요.
+// 인물 지우기: 마이 랜드에서 사라짐.
+// - Drive 인물: 책장(앨범)은 지우지 않고 보관 → 같은 폴더로 인물을 다시 만들면 책장이 그대로 돌아와요.
+// - 휴대폰 사진 인물: 다시 되살릴 폴더가 없어서 올린 사진과 앨범도 함께 지워요.
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const context = await getSessionContext();
   if (!context.ok) return context.response;
   const { supabase, userEmail } = context;
   const { characterId } = await params;
+
+  const source = await getUploadCharacter(supabase, userEmail, characterId);
 
   const { data, error } = await supabase
     .from("user_characters")
@@ -227,6 +241,15 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   }
   if (!data) {
     return NextResponse.json({ error: "캐릭터를 찾을 수 없어요." }, { status: 404 });
+  }
+
+  // 인물은 이미 숨겼으니, 사진 정리가 중간에 실패해도 마이 랜드에서는 사라져 있어요
+  if (source.ok && source.photoSource === "upload") {
+    try {
+      await deleteCharacterUploads(supabase, userEmail, characterId);
+    } catch (cleanupError) {
+      console.error("[characters] deleting uploads failed", cleanupError);
+    }
   }
 
   return NextResponse.json({ ok: true });

@@ -237,7 +237,7 @@ export function CharacterCreateModal({
   const runUploads = async (character: CreatedCharacter, files: File[]) => {
     setFailedFiles([]);
     setError(null);
-    const failed = await uploadPhotos(character.id, files, (done, total) => setUploadProgress({ done, total }));
+    const { failed } = await uploadPhotos(character.id, files, (done, total) => setUploadProgress({ done, total }));
     setUploadProgress(null);
     if (failed.length === 0) {
       onCreated(character);

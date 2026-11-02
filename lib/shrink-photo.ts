@@ -45,13 +45,14 @@ export async function uploadPhoto(characterId: string, file: File): Promise<{ id
   }
 }
 
-// 여러 장을 2장씩 동시에 올려요. onProgress(올린 수, 전체 수). 못 올린 파일을 돌려줘요.
+// 여러 장을 2장씩 동시에 올려요. onProgress(올린 수, 전체 수). 올린 사진 번호와 못 올린 파일을 돌려줘요.
 export async function uploadPhotos(
   characterId: string,
   files: File[],
   onProgress: (done: number, total: number) => void,
 ) {
   const failed: File[] = [];
+  const uploadedIds: string[] = [];
   let next = 0;
   let done = 0;
   onProgress(0, files.length);
@@ -61,10 +62,11 @@ export async function uploadPhotos(
       const file = files[next++];
       const result = await uploadPhoto(characterId, file);
       if ("error" in result) failed.push(file);
+      else uploadedIds.push(result.id);
       done += 1;
       onProgress(done, files.length);
     }
   };
   await Promise.all([worker(), worker()]);
-  return failed;
+  return { uploadedIds, failed };
 }

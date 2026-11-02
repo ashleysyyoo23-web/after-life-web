@@ -208,3 +208,40 @@ export async function uploadedPhotoResponse(
     },
   });
 }
+
+// 인물을 지울 때: 그 인물에게 올린 사진을 모두 지우고(보관함 파일·AI 분류·저장한 사진 포함),
+// 그 인물의 앨범도 지워요. 업로드 인물은 Drive 폴더가 없어 "같은 폴더로 다시 만들어 되살리기"가 안 되기 때문.
+// 섹션을 지우면 섹션 사진·페이지·저장한 사진·리캡 메모는 함께 지워져요(ON DELETE CASCADE). 책은 섹션을 지운 뒤에.
+export async function deleteCharacterUploads(supabase: SupabaseClient, ownerEmail: string, characterId: string) {
+  const { data } = await supabase
+    .from("uploaded_photos")
+    .select("id, storage_path")
+    .eq("user_character_id", characterId)
+    .eq("owner_email", ownerEmail);
+  const rows = (data ?? []) as Array<{ id: string; storage_path: string }>;
+
+  for (let i = 0; i < rows.length; i += 100) {
+    const chunk = rows.slice(i, i + 100);
+    const photoIds = chunk.map((row) => toUploadedPhotoId(row.id));
+    await supabase.storage.from(UPLOADED_PHOTOS_BUCKET).remove(chunk.map((row) => row.storage_path));
+    await Promise.all([
+      supabase.from("photo_analyses").delete().eq("owner_email", ownerEmail).in("drive_file_id", photoIds),
+      supabase.from("saved_photos").delete().eq("owner_email", ownerEmail).in("drive_file_id", photoIds),
+      supabase.from("album_section_photos").delete().in("drive_file_id", photoIds),
+    ]);
+  }
+  await supabase.from("uploaded_photos").delete().eq("user_character_id", characterId).eq("owner_email", ownerEmail);
+
+  const { data: books } = await supabase
+    .from("album_books")
+    .select("id")
+    .eq("user_character_id", characterId)
+    .eq("owner_email", ownerEmail);
+  const bookIds = (books ?? []).map((book) => book.id as string);
+  if (bookIds.length > 0) {
+    await supabase.from("album_sections").delete().in("book_id", bookIds).eq("owner_email", ownerEmail);
+    await supabase.from("album_books").delete().in("id", bookIds).eq("owner_email", ownerEmail);
+  }
+
+  return { photos: rows.length, books: bookIds.length };
+}

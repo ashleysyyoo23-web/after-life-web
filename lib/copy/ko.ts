@@ -274,6 +274,10 @@ export const ko = {
         `책장의 앨범 ${count}권은 지우지 않고 보관해요. 같은 폴더로 인물을 다시 만들면 책장이 그대로 돌아와요.`,
       deleteCanRecreate: "같은 폴더로 인물을 다시 만들 수 있어요.",
       deleteDriveSafe: "Drive의 사진은 그대로예요.",
+      // 휴대폰에서 사진을 올린 인물
+      deleteUploadsToo: (photos: number, books: number) =>
+        `올린 사진 ${photos}장${books > 0 ? `과 앨범 ${books}권` : ""}도 함께 지워지고, 되돌릴 수 없어요.`,
+      deletePhoneSafe: "휴대폰의 원본 사진은 그대로예요.",
       cancel: "취소",
       confirmDelete: "지우기",
       deleting: "지우는 중…",
@@ -507,6 +511,13 @@ export const ko = {
     loadingPhotos: "Drive 사진을 불러오는 중이에요.",
     notConnected: "Drive가 연결되어 있지 않아요. 오른쪽 위 설정 › 내가 남길 기록에서 Google Drive를 먼저 연결해 주세요.",
     noPhotos: "연결된 폴더에 사진이 없어요.",
+    // 휴대폰에서 사진을 올린 인물
+    uploadedNote: "휴대폰에서 올린 사진이에요.",
+    noUploads: "아직 올린 사진이 없어요. ‘휴대폰에서 사진 더 올리기’로 올려 주세요.",
+    uploadMoreButton: "📱 휴대폰에서 사진 더 올리기",
+    uploadingMore: (done: number, total: number) => `사진 올리는 중… ${done}/${total}`,
+    uploadedMore: (n: number) => `${n}장을 올리고 선택해 두었어요.`,
+    uploadMoreFailed: (n: number) => `${n}장은 올리지 못했어요. 잠시 뒤 다시 올려 주세요.`,
     drivePhotosFailed: "Drive 사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.",
     sectionLoadFailed: "섹션 정보를 불러오지 못했어요. 창을 닫고 새로고침한 뒤 다시 시도해 주세요.",
     photosLoadFailed: "사진을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.",
