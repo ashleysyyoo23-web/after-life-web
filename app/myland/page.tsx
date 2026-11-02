@@ -27,7 +27,8 @@ import { TodayNote } from "@/components/TodayNote";
 import { readDayFlag, TODAY_NOTE_SHOWN_KEY_PREFIX, writeDayFlag } from "@/lib/today-note";
 import { ANNIVERSARY_SHOWN_KEY_PREFIX, ISLAND_DAYS_BEFORE, seoulToday, type UpcomingAnniversary } from "@/lib/anniversary";
 import { isPetRelation } from "@/lib/character-fields";
-import { josa } from "@/lib/josa";
+import { RichText } from "@/components/RichText";
+import { ko } from "@/lib/copy/ko";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 // 캐릭터를 끌어서 옮기기: 이만큼(px) 이상 움직여야 "끌기"로 봄 (그보다 적으면 그냥 클릭)
@@ -63,56 +64,46 @@ type DriveMenu = {
 const RECORD_TYPE_CARDS = [
   {
     id: "appearance",
-    title: "고인의 모습",
-    subtitle: "고인께서 직접 남기신 사진, 표정, 일상의 모습",
     image: "/images/record-types/deceased-appearance-71b3a1.png",
   },
   {
     id: "memories",
-    title: "함께한 기억",
-    subtitle: "같이 찍은 사진, 여행, 소중한 순간들",
     image: "/images/record-types/shared-memories-7e986a.png",
   },
   {
     id: "places",
-    title: "좋아했던 장소",
-    subtitle: "자주 갔던 곳, 의미 있는 공간의 사진",
     image: "/images/record-types/favorite-places-4ce59b.png",
   },
   {
     id: "words",
-    title: "남긴 말",
-    subtitle: "메시지, 편지, 목소리로 녹음한 말",
     image: "/images/record-types/left-words.svg",
   },
   {
     id: "daily",
-    title: "일상의 기록",
-    subtitle: "즐겨 듣던 음악, SNS, 즐겨 보던 것들",
     image: "/images/record-types/daily-records-43c662.png",
   },
   {
     id: "special",
-    title: "특별한 날의 기록",
-    subtitle: "생일, 기념일, 명절에 남긴 기록",
     image: "/images/record-types/special-days-e5a970.png",
   },
 ] as const;
 
+const t = ko.myland;
+
 // 기일 안내 창의 글 (반려동물이면 "님" 없이, "기일" 대신 "그날")
 function anniversaryTexts(item: UpcomingAnniversary) {
   const isPet = isPetRelation(item.relation);
-  const dayWord = isPet ? "그날" : "기일";
-  const dayName = item.label?.trim() || (isPet ? "무지개다리 건넌 날" : "기일");
+  const dayWord = t.anniversary.dayWord(isPet);
+  const dayName = item.label?.trim() || t.anniversary.dayNameFallback(isPet);
   return {
-    who: isPet ? `'${item.nickname}'` : `'${item.nickname}' 님`,
-    when: `${dayName} ${item.month}월 ${item.day}일`,
+    who: t.anniversary.who(item.nickname, isPet),
+    when: t.anniversary.when(dayName, item.month, item.day),
     headline:
       item.daysUntil === 0
-        ? `오늘이 ${josa(dayWord, "이에요/예요")}.`
+        ? t.anniversary.headlineToday(dayWord)
         : item.daysUntil > 0
-          ? `${item.daysUntil} 일 후 ${josa(dayWord, "이에요/예요")}.`
-          : `${josa(dayWord, "이/가")} ${-item.daysUntil}일 지났어요.`,
+          ? t.anniversary.headlineBefore(item.daysUntil, dayWord)
+          : t.anniversary.headlineAfter(-item.daysUntil, dayWord),
   };
 }
 
@@ -304,7 +295,7 @@ function MylandPageContent() {
 
     void (async () => {
       if (!characterId || !connectedEmail) {
-        setDriveNotice("Drive를 다시 연결했어요.");
+        setDriveNotice(t.notices.driveReconnected);
         return;
       }
 
@@ -316,11 +307,11 @@ function MylandPageContent() {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
 
       if (!res.ok) {
-        setDriveNotice(data?.error ?? "인물에게 계정을 이어 주지 못했어요.");
+        setDriveNotice(data?.error ?? t.notices.driveLinkFailed);
         return;
       }
 
-      setDriveNotice(`${connectedEmail} 계정으로 다시 연결했어요.`);
+      setDriveNotice(t.notices.driveReconnectedAs(connectedEmail));
       setCharacters((prev) =>
         prev.map((item) =>
           item.id === characterId ? { ...item, drive: { googleEmail: connectedEmail, needsReconnect: false } } : item,
@@ -479,7 +470,7 @@ function MylandPageContent() {
       if (!res.ok) throw new Error();
     } catch {
       setFigurePosition(drag.key, drag.originX, drag.originY);
-      setDriveNotice("자리를 저장하지 못했어요. 잠시 뒤 다시 옮겨 주세요.");
+      setDriveNotice(t.notices.positionSaveFailed);
     }
   };
 
@@ -503,7 +494,7 @@ function MylandPageContent() {
       setMyCharacter(
         profile.appearance
           ? {
-              name: profile.displayName || "나",
+              name: profile.displayName || t.myCharacterFallbackName,
               appearance: profile.appearance,
               positionX: profile.positionX,
               positionY: profile.positionY,
@@ -567,7 +558,7 @@ function MylandPageContent() {
         <MoodSkyBackground scene="myland-empty" clouds />
         {/* 바다 물결·살랑이는 야자수와 꽃·걷는 갈매기·하늘 새 (캐릭터 뒤) */}
         <SceneMotion config={MYLAND_MOTION} className="z-10" />
-        <h1 className="sr-only">마이 랜드</h1>
+        <h1 className="sr-only">{t.pageTitle}</h1>
         {/* 배경(16:9)과 같은 크기의 무대 위에 캐릭터를 % 위치로 세움 */}
         <div
           ref={stageRef}
@@ -593,7 +584,7 @@ function MylandPageContent() {
               appearance: character.appearance,
               positionX: character.positionX,
               positionY: character.positionY,
-              label: `${character.nickname}의 기록 보기`,
+              label: t.characterLabel(character.nickname),
               // 안내 빛: 기록 정리·리캡 단계면 처음 불러온 고인이 반짝여요
               glow: (guideStep === "records" || guideStep === "recap") && character.id === characters[0]?.id,
               // 연결이 지워졌거나(설정에서 연결 해제) 만료된 인물
@@ -608,7 +599,7 @@ function MylandPageContent() {
                   appearance: myCharacter.appearance,
                   positionX: myCharacter.positionX,
                   positionY: myCharacter.positionY,
-                  label: `나의 캐릭터 (${myCharacter.name}) 꾸미기`,
+                  label: t.myCharacterLabel(myCharacter.name),
                   disconnected: false,
                   glow: false,
                   onContextMenu: undefined,
@@ -640,7 +631,7 @@ function MylandPageContent() {
                 onPointerCancel={handleFigurePointerCancel}
                 onContextMenu={character.onContextMenu}
                 onDoubleClick={(event) => event.stopPropagation()}
-                aria-label={`${character.label} (끌어서 자리 옮기기)`}
+                aria-label={t.dragLabel(character.label)}
                 className={`group pointer-events-auto absolute -translate-x-1/2 -translate-y-full touch-none border-0 bg-transparent p-0 select-none ${
                   draggingKey === character.key
                     ? "z-10 cursor-grabbing"
@@ -657,7 +648,7 @@ function MylandPageContent() {
                 <span className={`pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] transition-opacity duration-200 group-hover:opacity-100 ${character.glow ? "opacity-100" : "opacity-0"}`}>
                   {character.name}
                   {character.disconnected && (
-                    <span className="ml-2 font-mulish text-xs text-[#9E2121]">Drive 연결 끊김 · 우클릭</span>
+                    <span className="ml-2 font-mulish text-xs text-[#9E2121]">{t.driveDisconnectedTag}</span>
                   )}
                 </span>
               </button>
@@ -667,7 +658,7 @@ function MylandPageContent() {
       {driveMenu && (
         <div
           role="menu"
-          aria-label={`${driveMenu.nickname}의 Drive 연결`}
+          aria-label={t.driveMenu.label(driveMenu.nickname)}
           onMouseDown={(event) => event.stopPropagation()}
           className="fixed z-50 flex w-72 flex-col gap-3 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
           style={{
@@ -677,8 +668,8 @@ function MylandPageContent() {
         >
           <p className="font-jeju-myeongjo text-base text-[#4A423C]">{driveMenu.nickname}</p>
           <div className="flex flex-col gap-1 font-mulish text-xs text-[#898787]">
-            <span>연결된 계정: {driveMenu.googleEmail ?? "없음"}</span>
-            {driveMenu.folderName && <span>폴더: {driveMenu.folderName}</span>}
+            <span>{t.driveMenu.account(driveMenu.googleEmail)}</span>
+            {driveMenu.folderName && <span>{t.driveMenu.folder(driveMenu.folderName)}</span>}
             <span
               className={
                 driveMenu.status === "ok"
@@ -688,15 +679,7 @@ function MylandPageContent() {
                     : "text-[#9E2121]"
               }
             >
-              {
-                {
-                  checking: "연결 상태를 확인하는 중...",
-                  ok: "잘 연결되어 있어요.",
-                  needs_reconnect: "연결이 끊어졌어요. 다시 연결해 주세요.",
-                  not_connected: "연결이 끊어졌어요. 폴더를 공유받은 계정으로 다시 연결해 주세요.",
-                  error: "연결 상태를 확인하지 못했어요.",
-                }[driveMenu.status]
-              }
+              {t.driveMenu.status[driveMenu.status]}
             </span>
           </div>
           <button
@@ -705,7 +688,7 @@ function MylandPageContent() {
             onClick={() => handleReconnectDrive(driveMenu.characterId, driveMenu.googleEmail)}
             className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-2 font-mulish text-sm text-white transition-colors hover:bg-[#9a7d71]"
           >
-            Drive 다시 연결하기
+            {t.driveMenu.reconnectButton}
           </button>
         </div>
       )}
@@ -719,11 +702,9 @@ function MylandPageContent() {
       )}
       {charactersLoaded && characters.length === 0 && !myCharacter && !showAddModal && (
         <p className="pointer-events-none fixed top-[38%] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 text-center font-mulish font-normal text-[#1a1a1a]">
-          아직 섬에 아무도 없어요.
+          {t.emptyTitle}
           <br />
-          {isLoggedOut
-            ? "로그인하면 기억하고 싶은 분을 불러올 수 있어요."
-            : "오른쪽 위 ‘+ 고인 불러오기’로 기억하고 싶은 분을 불러와 주세요."}
+          {isLoggedOut ? t.emptyLoggedOut : t.emptyLoggedIn}
         </p>
       )}
       {showHint && characters.length > 0 && (
@@ -731,9 +712,7 @@ function MylandPageContent() {
           ref={hintRef}
           className="fixed top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a] opacity-100 transition-opacity duration-1000"
         >
-          고인의 캐릭터를 클릭하여 기록을 열람해보세요.
-          <br />
-          캐릭터를 끌면 섬 위 자리를 옮길 수 있어요.
+          <RichText text={t.hint} />
         </p>
       )}
       <TopNav
@@ -759,14 +738,14 @@ function MylandPageContent() {
         }}
         className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]${guideGlow(guideStep === "character" && !showAddModal)}`}
       >
-        + 고인 불러오기
+        {t.addCharacterButton}
       </button>
       <button
         type="button"
         onClick={() => setShowEmotionModal(true)}
         className="fixed top-[calc(128px+57px+12px)] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
       >
-        📄 감정 기록 돌아보기
+        {t.emotionReviewButton}
       </button>
       {/* 기일 안내 창 열기 (기일을 적은 분이 있을 때만). 기일이 가까우면 점으로 알려 줌 */}
       {anniversaries && anniversaries.length > 0 && (
@@ -775,8 +754,8 @@ function MylandPageContent() {
           onClick={openAnniversaryModal}
           className="fixed top-[calc(128px+57px+12px+57px+12px)] right-12 z-40 flex cursor-pointer items-center gap-2 rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
         >
-          🕯 다가오는 기일
-          {anniversarySoon && <span className="h-2.5 w-2.5 rounded-full bg-[#FDD9BD]" aria-label="기일이 가까워요" />}
+          {t.anniversaryButton}
+          {anniversarySoon && <span className="h-2.5 w-2.5 rounded-full bg-[#FDD9BD]" aria-label={t.anniversarySoonLabel} />}
         </button>
       )}
       {showAddModal && (
@@ -806,28 +785,26 @@ function MylandPageContent() {
                 type="button"
                 onClick={() => setShowAnniversaryModal(false)}
                 className="flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-sm text-[#C0BDBD]"
-                aria-label="닫기"
+                aria-label={t.closeLabel}
               >
                 ✕
               </button>
             </div>
 
             {anniversaries === null ? (
-              <p className="py-24 text-center font-mulish text-base text-[#898787]">기일을 불러오는 중이에요...</p>
+              <p className="py-24 text-center font-mulish text-base text-[#898787]">{t.anniversary.loading}</p>
             ) : !anniversary ? (
               <div className="flex flex-col items-center gap-10 px-[74px] py-10 text-center">
-                <p className="font-newsreader text-3xl font-normal text-black">아직 기일을 적은 분이 없어요.</p>
+                <p className="font-newsreader text-3xl font-normal text-black">{t.anniversary.emptyTitle}</p>
                 <p className="font-mulish text-base leading-normal text-black">
-                  설정 → 마이랜드의 인물 편집에서
-                  <br />
-                  특별한 날짜에 기일을 넣어 보세요.
+                  <RichText text={t.anniversary.emptyBody} />
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowAnniversaryModal(false)}
                   className="flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#776257] bg-white font-mulish text-base font-normal text-[#898787] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
                 >
-                  닫기
+                  {t.closeLabel}
                 </button>
               </div>
             ) : (
@@ -841,9 +818,7 @@ function MylandPageContent() {
                   {anniversaryTexts(anniversary).headline}
                 </p>
                 <p className="text-center font-mulish text-base font-normal leading-normal text-black">
-                  {anniversary.nickname}의 기록이 기다리고 있어요.
-                  <br />
-                  마음의 준비가 되셨다면 기록 유형을 선택해주세요.
+                  <RichText text={t.anniversary.body(anniversary.nickname)} />
                 </p>
               </div>
 
@@ -856,14 +831,14 @@ function MylandPageContent() {
                   }}
                   className="flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#D99B82] bg-[#FDD9BD] font-mulish text-base font-normal text-black shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
                 >
-                  기록 유형 선택하기
+                  {t.anniversary.chooseTypeButton}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAnniversaryModal(false)}
                   className="flex h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#776257] bg-white font-mulish text-base font-normal text-[#898787] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
                 >
-                  오늘은 넘어가기
+                  {t.anniversary.skipButton}
                 </button>
                 {anniversaries.length > 1 && (
                   <button
@@ -871,7 +846,7 @@ function MylandPageContent() {
                     onClick={() => setAnniversaryIndex((index) => (index + 1) % anniversaries.length)}
                     className="cursor-pointer self-center border-0 bg-transparent font-mulish text-sm text-[#AF9083] underline underline-offset-2 hover:opacity-70"
                   >
-                    다른 분 보기 ›
+                    {t.anniversary.otherPersonButton}
                   </button>
                 )}
               </div>
@@ -888,7 +863,7 @@ function MylandPageContent() {
                 type="button"
                 onClick={() => setShowRecordTypeModal(false)}
                 className="flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-sm text-[#C0BDBD]"
-                aria-label="닫기"
+                aria-label={t.closeLabel}
               >
                 ✕
               </button>
@@ -904,10 +879,10 @@ function MylandPageContent() {
 
                 <div className="flex flex-col items-center gap-4 text-center">
                   <h2 className="font-newsreader text-[36px] font-normal text-black">
-                    어떤 기록을 열어보실건가요?
+                    {t.recordTypes.title}
                   </h2>
                   <p className="font-mulish text-xl font-semibold text-[#8F8F8F]">
-                    한 가지를 선택하거나 여러 개를 함께 볼 수 있어요.
+                    {t.recordTypes.subtitle}
                   </p>
                 </div>
 
@@ -932,14 +907,14 @@ function MylandPageContent() {
                               isSelected ? "text-white" : "text-[#2F2F2F]"
                             }`}
                           >
-                            {card.title}
+                            {t.recordTypes.cards[card.id].title}
                           </span>
                           <span
                             className={`font-mulish text-xs font-normal ${
                               isSelected ? "text-white" : "text-[#807E7E]"
                             }`}
                           >
-                            {card.subtitle}
+                            {t.recordTypes.cards[card.id].subtitle}
                           </span>
                         </div>
                         <div className="relative flex h-[184px] flex-1 items-center justify-center overflow-hidden bg-white">
@@ -967,7 +942,7 @@ function MylandPageContent() {
                   className="flex h-14 w-[204px] cursor-pointer items-center justify-center gap-1 rounded-xl border border-[#C0BDBD] bg-[#FFFEFB] font-mulish text-base font-normal text-[#898787] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
                 >
                   <span aria-hidden="true">‹</span>
-                  뒤로가기
+                  {t.recordTypes.backButton}
                 </button>
                 <button
                   type="button"
@@ -982,7 +957,7 @@ function MylandPageContent() {
                   }}
                   className="flex h-14 flex-1 cursor-pointer items-center justify-center gap-1 rounded-xl border border-[#D99B82] bg-[#FDD9BD] font-mulish text-base font-normal text-black shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
                 >
-                  다음으로
+                  {t.recordTypes.nextButton}
                   <span aria-hidden="true">›</span>
                 </button>
               </div>

@@ -7,9 +7,12 @@ import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import type { FrameSummary } from "@/lib/storage-frames";
+import { ko } from "@/lib/copy/ko";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const t = ko.storage;
 
 export default function StoragePage() {
   const router = useRouter();
@@ -59,7 +62,7 @@ export default function StoragePage() {
       </div>
 
       <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
-        저장소
+        {t.title}
       </WoodPlank>
 
       {renderHint && (
@@ -71,12 +74,12 @@ export default function StoragePage() {
             {counts && (
               <p className="mb-1 text-center font-mulish text-base text-[#776257]">
                 {counts.photos + counts.messages > 0
-                  ? `저장한 사진 ${counts.photos}장 · 메시지 ${counts.messages}개가 있어요.`
-                  : "리캡에서 🔖 저장하거나 메시지를 북마크하면 여기에 모여요."}
+                  ? t.entranceSummary(counts.photos, counts.messages)
+                  : t.entranceEmpty}
               </p>
             )}
             <p className="text-center font-mulish text-lg text-[#1a1a1a]">
-              화면을 클릭하여 저장소로 들어가주세요.
+              {t.entranceHint}
             </p>
           </div>
         </div>

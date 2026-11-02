@@ -12,6 +12,9 @@ import {
 } from "@/lib/community";
 import { DrivePhotoPicker } from "@/components/community/DrivePhotoPicker";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 type KYHMessageModalProps = {
   isOpen: boolean;
@@ -166,10 +169,10 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
         cache: "no-store",
       });
       const data = (await res.json().catch(() => null)) as ({ error?: string } & Partial<DrivePreview>) | null;
-      if (!res.ok || !data?.previewUrl) throw new Error(data?.error ?? "사진을 불러오지 못했어요.");
+      if (!res.ok || !data?.previewUrl) throw new Error(data?.error ?? t.modal.photoLoadFailed);
       setDrivePreview({ name: data.name ?? "", previewUrl: data.previewUrl });
     } catch (checkError) {
-      setDriveError(checkError instanceof Error ? checkError.message : "사진을 불러오지 못했어요.");
+      setDriveError(checkError instanceof Error ? checkError.message : t.modal.photoLoadFailed);
     } finally {
       setCheckingDrive(false);
     }
@@ -181,15 +184,15 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
     const trimmedMessage = message.trim();
 
     if (!trimmedNickname) {
-      setSubmitError("1번 닉네임을 적어 주세요.");
+      setSubmitError(t.modal.nicknameRequired);
       return;
     }
     if (!trimmedMessage) {
-      setSubmitError("2번 메시지를 적어 주세요.");
+      setSubmitError(t.modal.messageRequired);
       return;
     }
     if (driveUrl.trim() && !drivePreview) {
-      setSubmitError("3번 사진 주소를 '불러오기'로 먼저 확인해 주세요. (공유하지 않으려면 주소를 지워 주세요)");
+      setSubmitError(t.modal.photoCheckRequired);
       return;
     }
 
@@ -212,14 +215,14 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        throw new Error(res.status === 401 ? "로그인한 뒤 메시지를 남길 수 있어요." : (data?.error ?? "메시지를 남기지 못했어요."));
+        throw new Error(res.status === 401 ? t.modal.loginRequired : (data?.error ?? t.modal.submitFailed));
       }
 
       resetForm();
       onClose();
       router.push(`/KYHleaving?wall=${wall}${returnView ? `&view=${returnView}` : ""}`);
     } catch (uploadError) {
-      setSubmitError(uploadError instanceof Error ? uploadError.message : "메시지를 남기지 못했어요.");
+      setSubmitError(uploadError instanceof Error ? uploadError.message : t.modal.submitFailed);
     } finally {
       setSubmitting(false);
     }
@@ -406,7 +409,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
             type="button"
             onClick={handleClose}
             className="flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
-            aria-label="닫기"
+            aria-label={t.closeLabel}
           >
             <Image
               src="/icons/kyh-message-modal/close.svg"
@@ -424,7 +427,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                 type="button"
                 onClick={handlePenClick}
                 className={toolButtonClass(activeTool === "pen")}
-                aria-label="연필"
+                aria-label={t.modal.pencilLabel}
                 aria-pressed={activeTool === "pen"}
               >
                 <Image
@@ -442,7 +445,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                 type="button"
                 onClick={handleEraserClick}
                 className={toolButtonClass(activeTool === "eraser")}
-                aria-label="지우개"
+                aria-label={t.modal.eraserLabel}
                 aria-pressed={activeTool === "eraser"}
               >
                 <Image
@@ -460,7 +463,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                 type="button"
                 onClick={handleUndo}
                 className={toolButtonClass(false)}
-                aria-label="뒤로가기"
+                aria-label={t.modal.undoLabel}
               >
                 <Image
                   src="/icons/kyh-message-modal/tool-undo-outline.svg"
@@ -502,7 +505,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                             ? "border-2 border-[#AF9083]"
                             : "border-2 border-transparent"
                         }`}
-                        aria-label={`브러시 크기 ${String(brush.id).padStart(2, "0")}`}
+                        aria-label={t.modal.brushLabel(String(brush.id).padStart(2, "0"))}
                         aria-pressed={selectedSize === brush.id}
                       >
                         <Image
@@ -537,7 +540,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                           type="button"
                           onClick={() => handleColorSelect(swatch.color)}
                           className="cursor-pointer border-0 bg-transparent p-0"
-                          aria-label={`색상 ${swatch.color}`}
+                          aria-label={t.modal.colorLabel(swatch.color)}
                           aria-pressed={selectedColor === swatch.color}
                         >
                           <span
@@ -567,21 +570,21 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
               <div className="flex flex-col gap-[18px]">
                 <div className="flex gap-2 font-mulish text-sm text-[#4A423C]">
                   <span>1</span>
-                  <span>메시지를 남기고 싶은 닉네임을 설정해주세요.</span>
+                  <span>{t.modal.nicknameStep}</span>
                 </div>
                 {myProfile && (myProfile.handle || myProfile.appearance) && (
-                  <p className="-mt-2 flex items-center gap-2 font-mulish text-xs text-[#776257]">
+                  <div className="-mt-2 flex items-center gap-2 font-mulish text-xs text-[#776257]">
                     <ProfileAvatar appearance={myProfile.appearance} size={24} />
-                    {myProfile.handle ? `@${myProfile.handle} 프로필로 남겨요` : "내 캐릭터 프로필로 남겨요"}
-                    <span className="text-[#AF9083]">(설정 → 나의 프로필에서 바꿀 수 있어요)</span>
-                  </p>
+                    {myProfile.handle ? t.modal.profileHandle(myProfile.handle) : t.modal.profileCharacter}
+                    <span className="text-[#AF9083]">{t.modal.profileHelp}</span>
+                  </div>
                 )}
                 <input
                   type="text"
                   value={nickname}
                   onChange={(event) => setNickname(event.target.value)}
                   maxLength={COMMUNITY_NICKNAME_MAX}
-                  placeholder="어떤 이름으로 기록을 남기고 싶으신가요?(최대 10자)"
+                  placeholder={t.modal.nicknamePlaceholder}
                   className="w-full rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-newsreader text-sm text-[#4A423C] placeholder:text-[#898787]"
                 />
               </div>
@@ -589,13 +592,13 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
               <div className="flex flex-col gap-[18px]">
                 <div className="flex gap-2 font-mulish text-sm text-[#4A423C]">
                   <span>2</span>
-                  <span>남기고 싶은 메시지를 작성해주세요.</span>
+                  <span>{t.modal.messageStep}</span>
                 </div>
                 <textarea
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
                   maxLength={COMMUNITY_MESSAGE_MAX}
-                  placeholder="(최대 100자)"
+                  placeholder={t.modal.messagePlaceholder}
                   className="h-[184px] w-full resize-none rounded-[7px] border border-[#C0BDBD] bg-white p-6 font-newsreader text-sm text-[#4A423C] placeholder:text-[#898787]"
                 />
               </div>
@@ -603,7 +606,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
               <div className="flex flex-col gap-[18px]">
                 <div className="flex gap-2 font-mulish text-sm text-[#4A423C]">
                   <span>3</span>
-                  <span>함께 나누고 싶은 이미지를 공유해주세요.</span>
+                  <span>{t.modal.photoStep}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <input
@@ -617,7 +620,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                     onKeyDown={(event) => {
                       if (event.key === "Enter") void handleCheckDrive();
                     }}
-                    placeholder="Drive 사진 주소를 붙여넣거나, 비워 두고 '불러오기'로 고르기 (선택)"
+                    placeholder={t.modal.photoPlaceholder}
                     className="h-[42px] w-full max-w-[575px] rounded-[7px] border border-[#C0BDBD] bg-white px-6 font-mulish text-sm text-[#4A423C] placeholder:text-[#898787]"
                   />
                   {drivePreview ? (
@@ -629,7 +632,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                       }}
                       className="shrink-0 cursor-pointer rounded-lg border border-[#C0BDBD] bg-white px-4 py-[11px] font-mulish text-base text-[#4A423C]"
                     >
-                      빼기
+                      {t.modal.removePhoto}
                     </button>
                   ) : (
                     <button
@@ -638,7 +641,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                       disabled={checkingDrive}
                       className="shrink-0 cursor-pointer rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-base text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {checkingDrive ? "확인 중..." : "불러오기"}
+                      {checkingDrive ? t.modal.checkingPhoto : t.modal.loadPhoto}
                     </button>
                   )}
                 </div>
@@ -651,11 +654,11 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={drivePreview.previewUrl}
-                      alt="공유할 사진 미리보기"
+                      alt={t.modal.previewAlt}
                       className="h-20 w-20 rounded-lg object-cover"
                     />
                     <p className="font-mulish text-xs text-[#6E8A3E]">
-                      {drivePreview.name} — 올리면 이 사진의 복사본이 추모비에 함께 보여요.
+                      {t.modal.photoNote(drivePreview.name)}
                     </p>
                   </div>
                 )}
@@ -672,7 +675,7 @@ export function KYHMessageModal({ isOpen, onClose, wall, returnView }: KYHMessag
                   guiding && !submitting && Boolean(nickname.trim() && message.trim()),
                 )}`}
               >
-                {submitting ? "올리는 중..." : "추모비에 업로드하기"}
+                {submitting ? t.modal.submitting : t.modal.submitButton}
               </button>
             </div>
           </div>

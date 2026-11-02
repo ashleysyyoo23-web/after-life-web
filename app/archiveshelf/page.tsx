@@ -8,6 +8,7 @@ import { BookTitleForm } from "@/components/BookTitleForm";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { arrangeBooksFromCenter, type ShelfBookData } from "@/lib/book-styles";
+import { ko } from "@/lib/copy/ko";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -15,7 +16,8 @@ import { Suspense, useEffect, useState } from "react";
 const WALL_COLOR = "#FDF0E8";
 const FLOOR_COLOR = "#F1CFB4";
 
-const EMPTY_HINT = "제목을 설정하여 앨범을 생성해주세요.";
+const t = ko.archive;
+const EMPTY_HINT = t.shelfEmpty;
 
 // 앨범이 하나도 없을 때 보여주는 제목 없는 책
 const EMPTY_BOOK: ShelfBookData = {
@@ -135,7 +137,7 @@ function ArchiveshelfPageContent() {
                   book={book}
                   onSelect={handleSelectBook}
                   onContextMenu={isEmpty ? undefined : handleBookContextMenu}
-                  emptyLabel="눌러서 앨범 만들기"
+                  emptyLabel={t.emptyBookLabel}
                   glow={book.id === glowBookId}
                 />
               ))}
@@ -150,10 +152,10 @@ function ArchiveshelfPageContent() {
           onClick={() => router.push("/myland?from=moodcheck")}
           className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
         >
-          ← 마이 랜드로
+          {t.backToMyland}
         </button>
         {nickname && (
-          <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">{nickname}의 책장</h1>
+          <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">{t.shelfTitle(nickname)}</h1>
         )}
       </div>
 
@@ -162,14 +164,14 @@ function ArchiveshelfPageContent() {
           <div className="fixed inset-0 z-40" onMouseDown={() => setRenaming(null)} aria-hidden="true" />
           <div
             role="dialog"
-            aria-label="앨범 이름 바꾸기"
+            aria-label={t.renameAlbum}
             className="fixed z-50 w-80 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
             style={{
               left: `min(${renaming.x}px, calc(100vw - 21rem))`,
               top: `max(1rem, calc(${renaming.y}px - 9rem))`,
             }}
           >
-            <p className="mb-3 font-mulish text-xs text-[#AF9083]">앨범 이름 바꾸기</p>
+            <p className="mb-3 font-mulish text-xs text-[#AF9083]">{t.renameAlbum}</p>
             <BookTitleForm
               bookId={renaming.bookId}
               initialTitle={renaming.title}
@@ -185,7 +187,7 @@ function ArchiveshelfPageContent() {
 
       {!isEmpty && loaded && (
         <p className="pointer-events-none fixed bottom-6 left-1/2 z-20 -translate-x-1/2 font-mulish text-xs text-[#AF9083]">
-          책을 우클릭하면 이름을 바꿀 수 있어요.
+          {t.renameHint}
         </p>
       )}
 
@@ -200,7 +202,7 @@ function ArchiveshelfPageContent() {
         onClick={() => setShowCreateModal(true)}
         className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]${guideGlow(glowCreate)}`}
       >
-        + 앨범 만들기
+        {t.createAlbumButton}
       </button>
 
       {/* 중단하기: "+ 앨범 만들기" 바로 아래, 기록 화면마다 같은 오른쪽 위 자리 */}

@@ -8,13 +8,15 @@ import { KYHMessageModal } from "@/components/KYHMessageModal";
 import { daysUntilLabel } from "@/lib/anniversary";
 import { markGuideVisited } from "@/lib/guide";
 import { isPetRelation } from "@/lib/character-fields";
-import { josa } from "@/lib/josa";
 import { deceasedWall } from "@/lib/community";
 import { islandLook, islandSoloStyle } from "@/lib/islands";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 type IslandInfo = {
   deceasedId: string;
@@ -40,7 +42,7 @@ export default function IslandPage() {
       const res = await fetch(`/api/islands/${encodeURIComponent(deceasedId)}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as { island?: IslandInfo; error?: string } | null;
       if (!res.ok || !data?.island) {
-        setInfoError(res.status === 401 ? "로그인하면 개인 추모 랜드에 들어갈 수 있어요." : (data?.error ?? "개인 추모 랜드를 불러오지 못했어요."));
+        setInfoError(res.status === 401 ? t.island.loginRequired : (data?.error ?? t.island.loadFailed));
         return;
       }
       setInfo(data.island);
@@ -54,7 +56,7 @@ export default function IslandPage() {
       <div className="mx-auto flex max-w-[1400px] flex-col items-center px-8 pt-[150px] pb-16">
         <div className="flex w-full items-start justify-between gap-4">
           <Link href="/mainland" className="font-mulish text-sm text-[#AF9083] hover:opacity-70">
-            ← 전체 지도로
+            {t.island.backToMap}
           </Link>
           {info && (
             <button
@@ -63,7 +65,7 @@ export default function IslandPage() {
               className="flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-xl font-semibold text-white"
             >
               <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
-              메시지 남기기
+              {t.leaveMessageButton}
             </button>
           )}
         </div>
@@ -75,7 +77,7 @@ export default function IslandPage() {
           {info && (
             <div className="flex flex-col items-center gap-1 text-center">
               <WoodPlank as="h1" className="mb-2">
-                {info.nickname}의 섬
+                {t.island.title(info.nickname)}
               </WoodPlank>
               {info.daysUntil !== null && (
                 <p className="font-mulish text-sm text-[#AF9083]">
@@ -83,7 +85,7 @@ export default function IslandPage() {
                 </p>
               )}
               <p className="font-mulish text-sm text-[#898787]">
-                {josa(info.nickname, "을/를")} 함께 기억하는 가족이 남긴 마음이 모여요.
+                {t.island.intro(info.nickname)}
               </p>
             </div>
           )}
@@ -100,7 +102,7 @@ export default function IslandPage() {
             </div>
             {loaded && (error || messages.length === 0) && (
               <p className="mt-10 text-center font-mulish text-sm text-[#4A423C]">
-                {error ?? "아직 남겨진 마음이 없어요. '메시지 남기기'로 첫 마음을 남겨 주세요."}
+                {error ?? t.island.empty}
               </p>
             )}
           </div>

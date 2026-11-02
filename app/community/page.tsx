@@ -12,6 +12,9 @@ import { GridMessageCard, HoverMessageCard, useWallMessages } from "@/components
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 // 커뮤니티 추모 랜드 7곳 (메시지 벽 이름 = lib/community.ts 의 COMMUNITY_WALLS). 함께하는 사람 수는 예시 숫자
 const COUNTS: Record<CommunityStoneWall, number> = {
@@ -190,7 +193,7 @@ function CommunityContent() {
                   <button
                     key={stone.wall}
                     type="button"
-                    aria-label={`${COMMUNITY_WALLS[stone.wall].title} 들어가기`}
+                    aria-label={t.enterWallLabel(COMMUNITY_WALLS[stone.wall].title)}
                     onMouseEnter={() => setHoveredStone(index)}
                     onMouseLeave={() => setHoveredStone(null)}
                     onFocus={() => setHoveredStone(index)}
@@ -229,7 +232,7 @@ function CommunityContent() {
         </WoodPlank>
       ) : (
         <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
-          커뮤니티 추모 랜드
+          {t.landTitle}
         </WoodPlank>
       )}
 
@@ -241,7 +244,7 @@ function CommunityContent() {
           aria-expanded={isListOpen}
           aria-haspopup="listbox"
         >
-          <span className="whitespace-nowrap">커뮤니티 목록 펼쳐보기</span>
+          <span className="whitespace-nowrap">{t.openListButton}</span>
           <span className="flex h-[39px] w-[39px] shrink-0 items-center justify-center p-1">
             <Image
               src="/icons/community/dropdown-chevron.svg"
@@ -292,7 +295,7 @@ function CommunityContent() {
                             isSelected ? "text-white" : "text-[#938B8B]"
                           }`}
                         >
-                          {count.toLocaleString("ko-KR")}명
+                          {t.peopleCount(count)}
                         </span>
                       </div>
                     </div>
@@ -309,7 +312,7 @@ function CommunityContent() {
           onClick={() => openStone(null)}
           className="fixed left-12 top-[160px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-white/90 px-4 font-mulish text-lg font-semibold text-[#4B3F39] hover:bg-white"
         >
-          ← 섬 전체 보기
+          {t.backToIsland}
         </button>
       )}
 
@@ -340,7 +343,7 @@ function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowSto
           onClick={onShowStone}
           className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-white px-4 font-mulish text-lg font-semibold text-[#4B3F39] hover:bg-[#FDD9BD]"
         >
-          돌에서 보기
+          {t.stoneViewButton}
         </button>
         <button
           type="button"
@@ -348,21 +351,21 @@ function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowSto
           className={`pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 font-mulish text-lg font-semibold text-white${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
         >
           <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
-          메시지 남기기
+          {t.leaveMessageButton}
         </button>
       </div>
 
       <div className="absolute inset-x-0 top-[232px] flex flex-col items-center gap-1 text-center">
         <WoodPlank as="h1">{COMMUNITY_WALLS[wall].title}</WoodPlank>
         <p className="font-mulish text-sm text-[#AF9083]">
-          함께하는 사람 {COUNTS[wall].toLocaleString("ko-KR")}명{loaded && !error ? ` · 남겨진 마음 ${messages.length}개` : ""}
+          {t.togetherCount(COUNTS[wall])}{loaded && !error ? t.heartsCount(messages.length) : ""}
         </p>
       </div>
 
       <div className="scrollbar-thin absolute inset-x-0 bottom-0 top-[330px] overflow-y-auto px-12 pb-16 pt-2">
         {loaded && (error || messages.length === 0) ? (
           <p className="mt-16 text-center font-mulish text-base text-[#898787]">
-            {error ?? "아직 남겨진 메시지가 없어요. '메시지 남기기'로 첫 메시지를 남겨 주세요."}
+            {error ?? t.emptyMessages}
           </p>
         ) : (
           <div className="mx-auto max-w-[1400px] columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
@@ -490,7 +493,7 @@ function StoneMessages({
             <button
               key={message.id}
               type="button"
-              aria-label={`${message.nickname}님의 메시지 보기`}
+              aria-label={t.viewMessageLabel(message.nickname)}
               onMouseEnter={() => enter(index)}
               onMouseLeave={leave}
               onFocus={() => enter(index)}
@@ -535,7 +538,7 @@ function StoneMessages({
         className={`fixed left-12 top-[224px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-lg font-semibold text-white${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
       >
         <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
-        메시지 남기기
+        {t.leaveMessageButton}
       </button>
 
       {loaded && (
@@ -543,8 +546,8 @@ function StoneMessages({
           <span>
             {error ??
               (messages.length === 0
-                ? "아직 남겨진 메시지가 없어요. '메시지 남기기'로 첫 메시지를 남겨 주세요."
-                : `꽃에 마우스를 올리면 남겨진 마음을 볼 수 있어요. (최근 ${placed.length}개 / 전체 ${messages.length}개)`)}
+                ? t.emptyMessages
+                : t.flowerHint(placed.length, messages.length))}
           </span>
           {messages.length > 0 && (
             <button
@@ -552,7 +555,7 @@ function StoneMessages({
               onClick={() => setShowAll(true)}
               className="cursor-pointer rounded-full border border-[#AF9083] px-3 py-1 text-xs font-semibold text-[#AF9083] hover:bg-[#FDD9BD]"
             >
-              전체 보기
+              {t.viewAllButton}
             </button>
           )}
         </div>
@@ -563,20 +566,20 @@ function StoneMessages({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={`${COMMUNITY_WALLS[stone.wall].title} 전체 메시지`}
+            aria-label={t.allMessagesLabel(COMMUNITY_WALLS[stone.wall].title)}
             className="flex max-h-[80vh] w-full max-w-[1100px] flex-col gap-5 overflow-hidden rounded-3xl bg-[#FAF6F0] p-8"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between">
               <h2 className="font-jeju-myeongjo text-2xl text-[#2F2622]">
-                {COMMUNITY_WALLS[stone.wall].title} · 메시지 {messages.length}개
+                {t.wallMessageCount(COMMUNITY_WALLS[stone.wall].title, messages.length)}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAll(false)}
                 className="cursor-pointer rounded-full border border-[#E8DDD5] bg-white px-4 py-2 font-mulish text-sm text-[#4A423C] hover:bg-[#FDD9BD]"
               >
-                닫기
+                {t.closeButton}
               </button>
             </div>
             <div className="scrollbar-thin grid grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2 lg:grid-cols-4">

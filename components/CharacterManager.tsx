@@ -14,8 +14,11 @@ import {
   type SpecialDate,
 } from "@/lib/character-fields";
 import { appearanceForRelation, type CharacterAppearance } from "@/lib/character-parts";
+import { ko } from "@/lib/copy/ko";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+
+const t = ko.character.manager;
 
 // 마이 랜드가 열려 있으면 인물을 다시 불러오게 알림
 export const CHARACTERS_UPDATED_EVENT = "afterlife:characters-updated";
@@ -60,10 +63,10 @@ export function CharacterManager() {
     try {
       const res = await fetch("/api/characters", { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as { characters?: CreatedCharacter[]; error?: string } | null;
-      if (!res.ok) throw new Error(res.status === 401 ? "로그인하면 인물을 편집할 수 있어요." : (data?.error ?? ""));
+      if (!res.ok) throw new Error(res.status === 401 ? t.loginRequired : (data?.error ?? ""));
       return { characters: data?.characters ?? [] };
     } catch (loadError) {
-      return { error: loadError instanceof Error && loadError.message ? loadError.message : "인물 목록을 불러오지 못했어요." };
+      return { error: loadError instanceof Error && loadError.message ? loadError.message : t.listLoadFailed };
     }
   };
 
@@ -83,14 +86,14 @@ export function CharacterManager() {
     try {
       const res = await fetch(`/api/characters/${encodeURIComponent(id)}`, { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as { character?: Detail; error?: string } | null;
-      if (!res.ok || !data?.character) throw new Error(data?.error ?? "인물 정보를 불러오지 못했어요.");
+      if (!res.ok || !data?.character) throw new Error(data?.error ?? t.detailLoadFailed);
       // 날짜가 하나도 없으면 만들 때처럼 빈 줄 하나
       setEditing({
         ...data.character,
         specialDates: data.character.specialDates.length > 0 ? data.character.specialDates : [emptySpecialDate()],
       });
     } catch (openError) {
-      setMessage(openError instanceof Error ? openError.message : "인물 정보를 불러오지 못했어요.");
+      setMessage(openError instanceof Error ? openError.message : t.detailLoadFailed);
     } finally {
       setLoadingId(null);
     }
@@ -112,7 +115,7 @@ export function CharacterManager() {
     if (!editing || saving) return;
     const nickname = editing.nickname.trim();
     if (!nickname) {
-      setMessage("호칭을 적어 주세요.");
+      setMessage(t.nicknameRequired);
       return;
     }
 
@@ -135,7 +138,7 @@ export function CharacterManager() {
         }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) throw new Error(data?.error ?? "저장하지 못했어요.");
+      if (!res.ok) throw new Error(data?.error ?? t.saveFailed);
 
       setCharacters((prev) =>
         prev?.map((item) =>
@@ -146,9 +149,9 @@ export function CharacterManager() {
       );
       notifyMyland();
       setEditing(null);
-      setMessage(`'${nickname}' 인물을 저장했어요.`);
+      setMessage(t.saved(nickname));
     } catch (saveError) {
-      setMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
+      setMessage(saveError instanceof Error ? saveError.message : t.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -160,14 +163,14 @@ export function CharacterManager() {
     try {
       const res = await fetch(`/api/characters/${encodeURIComponent(confirmDelete.id)}`, { method: "DELETE" });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) throw new Error(data?.error ?? "지우지 못했어요.");
+      if (!res.ok) throw new Error(data?.error ?? t.deleteFailed);
 
       setCharacters((prev) => prev?.filter((item) => item.id !== confirmDelete.id) ?? prev);
       if (editing?.id === confirmDelete.id) setEditing(null);
       notifyMyland();
-      setMessage(`'${confirmDelete.nickname}' 인물을 지웠어요.`);
+      setMessage(t.deleted(confirmDelete.nickname));
     } catch (deleteError) {
-      setMessage(deleteError instanceof Error ? deleteError.message : "지우지 못했어요.");
+      setMessage(deleteError instanceof Error ? deleteError.message : t.deleteFailed);
     } finally {
       setDeleting(false);
       setConfirmDelete(null);
@@ -184,15 +187,15 @@ export function CharacterManager() {
     >
       <div role="alertdialog" aria-modal="true" aria-labelledby="delete-person-title" className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-7 shadow-lg">
         <h3 id="delete-person-title" className="font-newsreader text-2xl text-black">
-          &lsquo;{confirmDelete.nickname}&rsquo; 인물을 지울까요?
+          {t.deleteTitle(confirmDelete.nickname)}
         </h3>
         <div className="flex flex-col gap-2 rounded-xl bg-[#FAF6F0] p-4 font-mulish text-sm text-[#4A423C]">
-          <p>마이 랜드에서 이 인물이 사라져요.</p>
+          <p>{t.deleteBody}</p>
           <p className="text-xs text-[#898787]">
             {confirmDelete.bookCount > 0
-              ? `책장의 앨범 ${confirmDelete.bookCount}권은 지우지 않고 보관해요. 같은 폴더로 인물을 다시 만들면 책장이 그대로 돌아와요.`
-              : "같은 폴더로 인물을 다시 만들 수 있어요."}
-            {" "}Drive의 사진은 그대로예요.
+              ? t.deleteKeepsBooks(confirmDelete.bookCount)
+              : t.deleteCanRecreate}
+            {" "}{t.deleteDriveSafe}
           </p>
         </div>
         <div className="flex justify-end gap-2">
@@ -203,7 +206,7 @@ export function CharacterManager() {
             disabled={deleting}
             className="cursor-pointer rounded-full border border-[#C0BDBD] bg-white px-5 py-2 font-mulish text-sm text-[#666] hover:bg-[#FAF6F0]"
           >
-            취소
+            {t.cancel}
           </button>
           <button
             type="button"
@@ -211,7 +214,7 @@ export function CharacterManager() {
             disabled={deleting}
             className="cursor-pointer rounded-full border-0 bg-[#9E2121] px-5 py-2 font-mulish text-sm text-white hover:bg-[#861C1C] disabled:opacity-60"
           >
-            {deleting ? "지우는 중..." : "지우기"}
+            {deleting ? t.deleting : t.confirmDelete}
           </button>
         </div>
       </div>
@@ -232,28 +235,28 @@ export function CharacterManager() {
             }}
             className="cursor-pointer border-0 bg-transparent p-0 font-mulish text-sm text-[#AF9083] hover:opacity-70"
           >
-            ← 인물 목록
+            {t.backToList}
           </button>
           {editing.folderName && (
-            <span className="font-mulish text-xs text-[#898787]">연결 폴더: {editing.folderName}</span>
+            <span className="font-mulish text-xs text-[#898787]">{t.linkedFolder(editing.folderName)}</span>
           )}
         </div>
 
-        <h2 className="font-newsreader text-[32px] leading-tight text-black">&lsquo;{editing.nickname || "이름 없음"}&rsquo; 편집하기</h2>
+        <h2 className="font-newsreader text-[32px] leading-tight text-black">{t.editTitle(editing.nickname)}</h2>
 
         <section className="flex flex-col gap-3">
-          <span className="font-mulish text-sm text-[#898787]">호칭</span>
+          <span className="font-mulish text-sm text-[#898787]">{t.nicknameLabel}</span>
           <input
             value={editing.nickname}
             maxLength={CHARACTER_NICKNAME_MAX}
             onChange={(event) => setEditing({ ...editing, nickname: event.target.value })}
             className={inputClass}
-            aria-label="호칭"
+            aria-label={t.nicknameLabel}
           />
         </section>
 
         <section className="flex flex-col gap-3">
-          <span className="font-mulish text-sm text-[#898787]">관계</span>
+          <span className="font-mulish text-sm text-[#898787]">{t.relationLabel}</span>
           <div className="flex flex-wrap gap-2">
             {CHARACTER_RELATIONS.map((item) => (
               <button
@@ -273,29 +276,29 @@ export function CharacterManager() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <span className="font-mulish text-sm text-[#898787]">{isPetRelation(editing.relation) ? "어떤 아이였나요?" : "어떤 분이셨나요?"} (최대 {CHARACTER_DESCRIPTION_MAX}자)</span>
+          <span className="font-mulish text-sm text-[#898787]">{t.descriptionLabel(isPetRelation(editing.relation), CHARACTER_DESCRIPTION_MAX)}</span>
           <textarea
             value={editing.description}
             maxLength={CHARACTER_DESCRIPTION_MAX}
             onChange={(event) => setEditing({ ...editing, description: event.target.value })}
             className={`${inputClass} h-28 resize-none`}
-            aria-label="소개"
+            aria-label={t.descriptionAria}
           />
         </section>
 
         <section className="flex flex-col gap-3">
-          <span className="font-mulish text-sm text-[#898787]">모습</span>
+          <span className="font-mulish text-sm text-[#898787]">{t.appearanceLabel}</span>
           <CharacterPartsPicker
             appearance={editing.appearance}
             onChange={(appearance) => setEditing({ ...editing, appearance })}
-            previewLabel={editing.nickname || "인물"}
+            previewLabel={editing.nickname || t.previewFallback}
             pet={isPetRelation(editing.relation)}
           />
         </section>
 
         {/* 캐릭터 만들기 4단계 "열람방식 설정하기"와 같은 항목 */}
         <section className="flex flex-col gap-4">
-          <h3 className="font-newsreader text-2xl text-[#1a1a1a]">기록을 어떻게 마주하고 싶으신가요?</h3>
+          <h3 className="font-newsreader text-2xl text-[#1a1a1a]">{t.preferencesTitle}</h3>
           <ViewingPreferencesFields
             value={{
               emotionLevel: editing.emotionLevel ?? DEFAULT_EXPOSURE,
@@ -315,7 +318,7 @@ export function CharacterManager() {
             onClick={() => void askDelete(editing.id, editing.nickname)}
             className="cursor-pointer rounded-full border border-[#9E2121] bg-white px-5 py-2 font-mulish text-sm text-[#9E2121] hover:bg-[#FBEAEA]"
           >
-            이 인물 지우기
+            {t.deletePersonButton}
           </button>
           <div className="flex items-center gap-3">
             {message && <p className="font-mulish text-sm text-[#4A423C]">{message}</p>}
@@ -325,7 +328,7 @@ export function CharacterManager() {
               disabled={saving}
               className="cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] px-8 py-2.5 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "저장 중..." : "저장하기"}
+              {saving ? t.savingButton : t.saveButton}
             </button>
           </div>
         </div>
@@ -346,21 +349,21 @@ export function CharacterManager() {
               onCreated={(character) => {
                 setCreating(false);
                 setCharacters((prev) => [...(prev ?? []), character]);
-                setMessage(`'${character.nickname}' 인물을 추가했어요. 마이 랜드에서 만날 수 있어요.`);
+                setMessage(t.added(character.nickname));
                 notifyMyland();
               }}
             />
           </div>,
           document.body,
         )}
-      <h2 className="font-newsreader text-[32px] leading-tight text-black">마이랜드의 인물을 편집해보세요.</h2>
+      <h2 className="font-newsreader text-[32px] leading-tight text-black">{t.title}</h2>
 
       {message && <p className="font-mulish text-sm text-[#4A423C]">{message}</p>}
       {listError && <p className="font-mulish text-sm text-[#9E2121]">{listError}</p>}
-      {!listError && characters === null && <p className="font-mulish text-sm text-[#898787]">불러오는 중...</p>}
+      {!listError && characters === null && <p className="font-mulish text-sm text-[#898787]">{t.loading}</p>}
       {characters?.length === 0 && (
         <p className="font-mulish text-sm text-[#898787]">
-          아직 인물이 없어요. &lsquo;+ 인물 추가&rsquo;를 눌러 만들어 보세요.
+          {t.empty}
         </p>
       )}
 
@@ -376,8 +379,8 @@ export function CharacterManager() {
               className="flex h-full min-h-[130px] w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#D9C9BC] bg-[#FAF6F0] p-4 font-mulish text-[#AF9083] transition-colors hover:border-[#AF9083] hover:bg-[#FDD9BD]/30"
             >
               <span className="text-2xl leading-none">+</span>
-              <span className="text-base font-semibold">인물 추가</span>
-              <span className="text-xs text-[#898787]">기억하고 싶은 사람이나 반려동물</span>
+              <span className="text-base font-semibold">{t.addButton}</span>
+              <span className="text-xs text-[#898787]">{t.addHelp}</span>
             </button>
           </li>
           {characters.map((character) => (
@@ -388,7 +391,7 @@ export function CharacterManager() {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="truncate font-jeju-myeongjo text-lg text-[#4A423C]">{character.nickname}</p>
                 <p className="truncate font-mulish text-xs text-[#898787]">
-                  {[character.relation, character.folderName && `폴더: ${character.folderName}`].filter(Boolean).join(" · ") || "관계 없음"}
+                  {[character.relation, character.folderName && t.folder(character.folderName)].filter(Boolean).join(" · ") || t.noRelation}
                 </p>
                 <div className="mt-2 flex gap-2">
                   <button
@@ -397,14 +400,14 @@ export function CharacterManager() {
                     disabled={loadingId === character.id}
                     className="cursor-pointer rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-1.5 font-mulish text-xs text-white hover:bg-[#5E4E47] disabled:opacity-60"
                   >
-                    {loadingId === character.id ? "여는 중..." : "편집"}
+                    {loadingId === character.id ? t.openingButton : t.editButton}
                   </button>
                   <button
                     type="button"
                     onClick={() => void askDelete(character.id, character.nickname)}
                     className="cursor-pointer rounded-lg border border-[#C0BDBD] bg-white px-4 py-1.5 font-mulish text-xs text-[#9E2121] hover:bg-[#FBEAEA]"
                   >
-                    삭제
+                    {t.deleteButton}
                   </button>
                 </div>
               </div>
@@ -414,7 +417,7 @@ export function CharacterManager() {
       )}
 
       <p className="font-mulish text-xs text-[#898787]">
-        자리는 마이 랜드에서 인물을 끌어서 옮길 수 있고, Drive 연결은 인물을 우클릭해서 다시 이을 수 있어요.
+        {t.footerNote}
       </p>
     </div>
   );

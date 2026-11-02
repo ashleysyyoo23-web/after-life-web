@@ -8,6 +8,9 @@ import { islandLook, islandSoloStyle } from "@/lib/islands";
 import { fetchMyProfile } from "@/lib/use-my-profile";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 // 메시지를 남긴 뒤: 메시지를 남긴 섬(개인 추모 랜드) 또는 돌(커뮤니티 추모 랜드)에서
 // 나의 캐릭터가 붓으로 그림을 그리고, 붓이 닿은 자리에 꽃이 피어나요. 잠시 뒤 원래 화면으로.
@@ -93,7 +96,7 @@ function sceneFor(wall: CommunityWall | null, nickname: string | null, isPet: bo
     return {
       kind: "island",
       src: look.src,
-      to: nickname ? `'${nickname}'에게` : "그분의 섬에",
+      to: nickname ? t.leaving.toPerson(nickname) : t.leaving.toPersonFallback,
       layout: islandLayouts(isPet)[look.shape],
       style: islandSoloStyle(look.shape),
     };
@@ -102,7 +105,7 @@ function sceneFor(wall: CommunityWall | null, nickname: string | null, isPet: bo
   return {
     kind: "stone",
     src: `/scenes/community-stone-${wall}.webp`,
-    to: `'${fixed?.title ?? "커뮤니티 추모 랜드"}'에`,
+    to: t.leaving.toWall(fixed?.title ?? t.leaving.wallFallback),
     layout: stoneLayout(wall, isPet),
     style: STONE_STYLE,
   };
@@ -194,7 +197,7 @@ export default function KYHLeavingPage() {
     <>
       {scene.to}
       <br />
-      마음을 전달 완료했습니다.
+      {t.leaving.done}
     </>
   );
 
@@ -242,7 +245,7 @@ export default function KYHLeavingPage() {
             className="absolute origin-bottom -translate-x-1/2 animate-[paint-stroke_0.9s_ease-in-out_3]"
             style={{ left: `${layout.char.x}%`, bottom: `${layout.char.bottom}%`, height: `${layout.char.h}%`, aspectRatio: "220 / 300" }}
           >
-            <CharacterAvatar appearance={painter} painting className="h-full w-full" title="그림을 그리는 나의 캐릭터" />
+            <CharacterAvatar appearance={painter} painting className="h-full w-full" title={t.leaving.painterTitle} />
           </div>
         )}
       </div>
