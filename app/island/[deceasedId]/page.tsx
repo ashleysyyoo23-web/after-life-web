@@ -8,6 +8,7 @@ import { KYHMessageModal } from "@/components/KYHMessageModal";
 import { daysUntilLabel } from "@/lib/anniversary";
 import { markGuideVisited } from "@/lib/guide";
 import { isPetRelation } from "@/lib/character-fields";
+import { josa } from "@/lib/josa";
 import { deceasedWall } from "@/lib/community";
 import { islandLook, islandSoloStyle } from "@/lib/islands";
 import Image from "next/image";
@@ -82,7 +83,7 @@ export default function IslandPage() {
                 </p>
               )}
               <p className="font-mulish text-sm text-[#898787]">
-                {info.nickname}을(를) 함께 기억하는 가족이 남긴 마음이 모여요.
+                {josa(info.nickname, "을/를")} 함께 기억하는 가족이 남긴 마음이 모여요.
               </p>
             </div>
           )}

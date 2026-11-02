@@ -7,26 +7,30 @@ import {
   type SpecialDate,
   type ViewingPreferences,
 } from "@/lib/character-fields";
+import { josa } from "@/lib/josa";
 
 // "기록을 어떻게 마주하고 싶으신가요?" (캐릭터 만들기 4단계 · 설정의 인물 편집에서 같이 씀)
-// isPet: 관계가 반려동물이면 "고인" 대신 "그 아이", 날짜 예시는 "무지개다리 건넌 날"
+// name: 그분의 이름 (질문에 이름이 들어감, 비어 있으면 "고인" · 반려동물은 "그 아이")
+// isPet: 관계가 반려동물이면 날짜 예시는 "무지개다리 건넌 날"
 export function ViewingPreferencesFields({
   value,
   onChange,
+  name = "",
   isPet = false,
 }: {
   value: ViewingPreferences;
   onChange: (value: ViewingPreferences) => void;
+  name?: string;
   isPet?: boolean;
 }) {
-  const who = isPet ? "그 아이" : "고인";
+  const who = name.trim() || (isPet ? "그 아이" : "고인");
   const { emotionLevel, excludedTypes, specialDates, allowRecommendation } = value;
   const set = (patch: Partial<ViewingPreferences>) => onChange({ ...value, ...patch });
 
   return (
     <div>
       <section>
-        <p className="mb-4 font-mulish text-sm text-[#666]">1&nbsp;&nbsp;{who}를 떠올릴 때 마음이 어떠신가요?</p>
+        <p className="mb-4 font-mulish text-sm text-[#666]">1&nbsp;&nbsp;{josa(who, "을/를")} 떠올릴 때 마음이 어떠신가요?</p>
         <div className="flex items-center justify-between gap-4 font-mulish text-sm text-[#666]">
           <span>슬픔이 파도처럼 밀려와요</span>
           <span>감정이 잔잔해요</span>
@@ -34,7 +38,7 @@ export function ViewingPreferencesFields({
         <input
           type="range" min={0} max={100} value={emotionLevel}
           onChange={(e) => set({ emotionLevel: Number(e.target.value) })}
-          aria-label={`${who}를 떠올릴 때 마음`}
+          aria-label={`${josa(who, "을/를")} 떠올릴 때 마음`}
           className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-[#E8DDD5] accent-[#9BB073] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#9BB073]"
           style={{ background: `linear-gradient(to right, #9BB073 0%, #9BB073 ${emotionLevel}%, #E8DDD5 ${emotionLevel}%, #E8DDD5 100%)` }}
         />
@@ -44,7 +48,7 @@ export function ViewingPreferencesFields({
       </section>
       <div className="my-6 border-t border-[#E8DDD5]" />
       <section>
-        <p className="mb-4 font-mulish text-sm text-[#666]">2&nbsp;&nbsp;{who}와 관련해서 보고싶지 않은 기록이 있나요? 선택하신 기록은 언제든 바꿀 수 있어요.</p>
+        <p className="mb-4 font-mulish text-sm text-[#666]">2&nbsp;&nbsp;{josa(who, "과/와")} 관련해서 보고싶지 않은 기록이 있나요? 선택하신 기록은 언제든 바꿀 수 있어요.</p>
         <div className="grid grid-cols-3 gap-3">
           {CHARACTER_EXCLUDED_TYPES.map((type) => {
             const isSelected = excludedTypes.includes(type);

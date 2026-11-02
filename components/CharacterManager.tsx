@@ -304,6 +304,7 @@ export function CharacterManager() {
               allowRecommendation: editing.allowRecommendation,
             }}
             onChange={(next) => setEditing({ ...editing, ...next })}
+            name={editing.nickname}
             isPet={isPetRelation(editing.relation)}
           />
         </section>

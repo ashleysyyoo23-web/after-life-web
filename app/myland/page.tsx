@@ -27,6 +27,7 @@ import { TodayNote } from "@/components/TodayNote";
 import { readDayFlag, TODAY_NOTE_SHOWN_KEY_PREFIX, writeDayFlag } from "@/lib/today-note";
 import { ANNIVERSARY_SHOWN_KEY_PREFIX, ISLAND_DAYS_BEFORE, seoulToday, type UpcomingAnniversary } from "@/lib/anniversary";
 import { isPetRelation } from "@/lib/character-fields";
+import { josa } from "@/lib/josa";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 // 캐릭터를 끌어서 옮기기: 이만큼(px) 이상 움직여야 "끌기"로 봄 (그보다 적으면 그냥 클릭)
@@ -108,10 +109,10 @@ function anniversaryTexts(item: UpcomingAnniversary) {
     when: `${dayName} ${item.month}월 ${item.day}일`,
     headline:
       item.daysUntil === 0
-        ? `오늘이 ${dayWord}이에요.`
+        ? `오늘이 ${josa(dayWord, "이에요/예요")}.`
         : item.daysUntil > 0
-          ? `${item.daysUntil} 일 후 ${dayWord}이에요.`
-          : `${dayWord}이 ${-item.daysUntil}일 지났어요.`,
+          ? `${item.daysUntil} 일 후 ${josa(dayWord, "이에요/예요")}.`
+          : `${josa(dayWord, "이/가")} ${-item.daysUntil}일 지났어요.`,
   };
 }
 

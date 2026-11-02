@@ -412,6 +412,7 @@ export function CharacterCreateModal({
                     setSpecialDates(next.specialDates);
                     setAllowRecommendation(next.allowRecommendation);
                   }}
+                  name={nickname}
                   isPet={isPet}
                 />
               </div>
