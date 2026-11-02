@@ -6,6 +6,8 @@ import {
   getValidAccessTokenForConnection,
   streamDriveFileMedia,
 } from "@/lib/deceased-drive-token";
+import { isUploadedPhotoId } from "@/lib/uploaded-photos";
+import { uploadedPhotoResponse } from "@/lib/uploaded-photos-server";
 
 type RouteParams = {
   params: Promise<{ sectionId: string }>;
@@ -27,6 +29,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   if (error || !section?.cover_drive_file_id) {
     return NextResponse.json({ error: "Cover not found" }, { status: 404 });
+  }
+
+  // 휴대폰에서 올린 사진은 우리 보관함에서
+  if (isUploadedPhotoId(section.cover_drive_file_id)) {
+    const response = await uploadedPhotoResponse(supabase, userEmail, section.cover_drive_file_id);
+    return response ?? NextResponse.json({ error: "Cover not found" }, { status: 404 });
   }
 
   const connection = section.drive_connection_id

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSessionContext } from "@/lib/api-session";
 import { sanitizeAppearance } from "@/lib/character-parts";
 import {
@@ -35,13 +36,15 @@ type CharacterRow = {
   position_x: number | null;
   position_y: number | null;
   drive_connection_id: string | null;
+  photo_source?: "drive" | "upload"; // SQL(step_uploaded_photos) 실행 전에는 없음
   deceased: DeceasedJoin | DeceasedJoin[] | null;
 };
 
 type DeceasedJoin = { id: string; kind: string; drive_folder_name: string | null; drive_connection_id: string | null };
 
-const CHARACTER_SELECT =
+const CHARACTER_SELECT_BASE =
   "id, nickname, relation, appearance, position_x, position_y, drive_connection_id, deceased(id, kind, drive_folder_name, drive_connection_id)";
+const CHARACTER_SELECT = `${CHARACTER_SELECT_BASE}, photo_source`;
 
 // 캐릭터가 쓰는 Drive 연결 (내 연결 → 준비된 고인이면 관리자 연결)
 function connectionIdOf(row: CharacterRow) {
@@ -61,6 +64,8 @@ function toClient(row: CharacterRow, drive: DriveInfo | null = null) {
     positionX: row.position_x,
     positionY: row.position_y,
     folderName: deceased?.drive_folder_name ?? null,
+    // 사진 출처: drive = Drive 폴더, upload = 휴대폰에서 올린 사진
+    photoSource: row.photo_source ?? "drive",
     // 연결된 Google 계정과 "다시 연결 필요" 여부 (마이랜드 우클릭 메뉴용)
     drive,
   };
@@ -72,18 +77,22 @@ export async function GET() {
   if (!context.ok) return context.response;
   const { supabase, userEmail } = context;
 
-  const { data, error } = await supabase
-    .from("user_characters")
-    .select(CHARACTER_SELECT)
-    .eq("owner_email", userEmail)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true });
+  const list = (columns: string) =>
+    supabase
+      .from("user_characters")
+      .select(columns)
+      .eq("owner_email", userEmail)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true });
+  let { data, error } = await list(CHARACTER_SELECT);
+  // photo_source 칸이 아직 없으면(SQL 실행 전) 그 칸 없이 → 모두 Drive 인물
+  if (error?.code === "42703") ({ data, error } = await list(CHARACTER_SELECT_BASE));
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const rows = (data ?? []) as CharacterRow[];
+  const rows = (data ?? []) as unknown as CharacterRow[];
   const connectionIds = [...new Set(rows.map(connectionIdOf).filter((id): id is string => Boolean(id)))];
   const drives = new Map<string, DriveInfo>();
 
@@ -106,7 +115,8 @@ export async function GET() {
   });
 }
 
-// 캐릭터 만들기: 기본 정보 + 꾸미기 + Drive 연결·폴더 + 열람 방식
+// 캐릭터 만들기: 기본 정보 + 꾸미기 + (Drive 연결·폴더 또는 휴대폰 사진 올리기) + 열람 방식
+// photoSource: "upload" 면 Drive 없이 만들고, 사진은 만든 뒤 /api/characters/[id]/uploads 로 한 장씩 올려요.
 export async function POST(request: NextRequest) {
   const context = await getSessionContext();
   if (!context.ok) return context.response;
@@ -133,6 +143,11 @@ export async function POST(request: NextRequest) {
   const allowRecommendation = body.allowRecommendation !== false;
   const connectionId = typeof body.driveConnectionId === "string" ? body.driveConnectionId : "";
   const folderId = typeof body.folderId === "string" ? body.folderId : "";
+  const preferences = { description, emotionLevel, excludedTypes, allowRecommendation };
+
+  if (body.photoSource === "upload") {
+    return createUploadCharacter(supabase, userEmail, { nickname, relation, appearance, ...preferences }, body.specialDates);
+  }
 
   // 1) 내 Drive 연결로 그 폴더를 실제로 열 수 있는지 확인 (폴더 ID 만 알아서 남의 고인에 합류하는 것 방지)
   const connection = connectionId ? await getDriveConnectionById(supabase, connectionId) : null;
@@ -204,15 +219,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 3) 비어 있는 기본 자리
-  const { data: others } = await supabase
-    .from("user_characters")
-    .select("position_x, position_y")
-    .eq("owner_email", userEmail)
-    .is("deleted_at", null);
-  const taken = new Set((others ?? []).map((row) => `${row.position_x},${row.position_y}`));
-  const [positionX, positionY] =
-    DEFAULT_SPOTS.find(([px, py]) => !taken.has(`${px},${py}`)) ??
-    [30 + Math.round(Math.random() * 40), 72 + Math.round(Math.random() * 8)];
+  const [positionX, positionY] = await findEmptySpot(supabase, userEmail);
 
   const characterFields = {
     owner_email: userEmail,
@@ -232,31 +239,109 @@ export async function POST(request: NextRequest) {
   };
 
   // 예전에 지웠던 같은 고인 캐릭터가 있으면 되살려서 다시 씀
+  // (photo_source 는 읽지 않아요 — SQL 실행 전에도 Drive 인물은 만들 수 있게. 기본값이 drive)
   const saved = existing
     ? await supabase.from("user_characters").update(characterFields).eq("id", existing.id)
-        .select(CHARACTER_SELECT).single()
+        .select(CHARACTER_SELECT_BASE).single()
     : await supabase.from("user_characters").insert(characterFields)
-        .select(CHARACTER_SELECT).single();
+        .select(CHARACTER_SELECT_BASE).single();
 
   if (saved.error) {
     return NextResponse.json({ error: saved.error.message }, { status: 500 });
   }
 
   // 4) 의미 있는 날짜 (내 날짜로 저장, 기일은 한 개만)
-  const dateRows = buildSpecialDateRows(body.specialDates).map((row) => ({
-    ...row,
-    deceased_id: deceased.id,
-    owner_email: userEmail,
-  }));
-
-  if (dateRows.length > 0) {
-    // 같은 고인에 대해 전에 넣은 내 날짜는 새로 입력한 것으로 바꿈
-    await supabase.from("deceased_dates").delete().eq("deceased_id", deceased.id).eq("owner_email", userEmail);
-    const { error: datesError } = await supabase.from("deceased_dates").insert(dateRows);
-    if (datesError) {
-      console.error("[characters] saving dates failed", datesError);
-    }
-  }
+  await saveSpecialDates(supabase, userEmail, deceased.id, body.specialDates);
 
   return NextResponse.json({ character: toClient(saved.data as CharacterRow, { googleEmail: connection.google_email, needsReconnect: false }) }, { status: 201 });
+}
+
+// 휴대폰에서 사진을 올리는 인물: Drive 폴더가 없어서 늘 새 고인으로 만들어요 (같은 폴더로 가족이 합류하는 일은 없음)
+async function createUploadCharacter(
+  supabase: SupabaseClient,
+  userEmail: string,
+  fields: {
+    nickname: string;
+    relation: string | null;
+    appearance: ReturnType<typeof sanitizeAppearance>;
+    description: string;
+    emotionLevel: number | null;
+    excludedTypes: string[];
+    allowRecommendation: boolean;
+  },
+  specialDates: unknown,
+) {
+  const { data: deceased, error: deceasedError } = await supabase
+    .from("deceased")
+    .insert({ kind: "custom", name: fields.nickname, created_by_email: userEmail })
+    .select("id")
+    .single();
+  if (deceasedError) {
+    return NextResponse.json({ error: deceasedError.message }, { status: 500 });
+  }
+
+  const [positionX, positionY] = await findEmptySpot(supabase, userEmail);
+  const saved = await supabase
+    .from("user_characters")
+    .insert({
+      owner_email: userEmail,
+      deceased_id: deceased.id,
+      nickname: fields.nickname,
+      relation: fields.relation,
+      description: fields.description || null,
+      appearance: fields.appearance,
+      photo_source: "upload",
+      emotion_level: fields.emotionLevel,
+      excluded_types: fields.excludedTypes,
+      allow_recommendation: fields.allowRecommendation,
+      position_x: positionX,
+      position_y: positionY,
+    })
+    .select(CHARACTER_SELECT)
+    .single();
+
+  if (saved.error) {
+    await supabase.from("deceased").delete().eq("id", deceased.id);
+    // photo_source 칸이 없음 (SQL 실행 전): 읽을 때 42703, 저장할 때 PGRST204
+    if (saved.error.code === "42703" || saved.error.code === "PGRST204") {
+      return NextResponse.json(
+        { error: "사진을 올리려면 supabase/step_uploaded_photos.sql 실행이 필요해요.", code: "needs_sql" },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json({ error: saved.error.message }, { status: 500 });
+  }
+
+  await saveSpecialDates(supabase, userEmail, deceased.id, specialDates);
+  return NextResponse.json({ character: toClient(saved.data as CharacterRow) }, { status: 201 });
+}
+
+// 마이 랜드에서 비어 있는 기본 자리 (다 찼으면 모래 위 아무 데나)
+async function findEmptySpot(supabase: SupabaseClient, userEmail: string): Promise<[number, number]> {
+  const { data: others } = await supabase
+    .from("user_characters")
+    .select("position_x, position_y")
+    .eq("owner_email", userEmail)
+    .is("deleted_at", null);
+  const taken = new Set((others ?? []).map((row) => `${row.position_x},${row.position_y}`));
+  return (
+    DEFAULT_SPOTS.find(([px, py]) => !taken.has(`${px},${py}`)) ??
+    [30 + Math.round(Math.random() * 40), 72 + Math.round(Math.random() * 8)]
+  );
+}
+
+// 의미 있는 날짜 (내 날짜로 저장, 기일은 한 개만). 같은 고인에 대해 전에 넣은 내 날짜는 새로 입력한 것으로 바꿈
+async function saveSpecialDates(supabase: SupabaseClient, userEmail: string, deceasedId: string, specialDates: unknown) {
+  const dateRows = buildSpecialDateRows(specialDates).map((row) => ({
+    ...row,
+    deceased_id: deceasedId,
+    owner_email: userEmail,
+  }));
+  if (dateRows.length === 0) return;
+
+  await supabase.from("deceased_dates").delete().eq("deceased_id", deceasedId).eq("owner_email", userEmail);
+  const { error: datesError } = await supabase.from("deceased_dates").insert(dateRows);
+  if (datesError) {
+    console.error("[characters] saving dates failed", datesError);
+  }
 }

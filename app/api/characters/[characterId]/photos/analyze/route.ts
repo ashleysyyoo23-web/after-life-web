@@ -4,6 +4,8 @@ import { getSessionContext } from "@/lib/api-session";
 import { getCharacterDriveAccess } from "@/lib/deceased-drive-token";
 import { classifyPhotos, GeminiError, geminiModel, isGeminiConfigured } from "@/lib/gemini";
 import { ANALYSIS_VERSION, ANALYZE_BATCH_SIZE, type PhotoCategory } from "@/lib/photo-categories";
+import { isUploadedPhotoId } from "@/lib/uploaded-photos";
+import { downloadUploadedPhoto, findUploadedPhoto } from "@/lib/uploaded-photos-server";
 
 type RouteParams = {
   params: Promise<{ characterId: string }>;
@@ -38,6 +40,11 @@ async function smallJpeg(accessToken: string, meta: DriveMeta) {
     source = original;
   }
 
+  return toAiJpeg(source);
+}
+
+// AI 로 보낼 작은 JPEG 로 줄이기
+function toAiJpeg(source: Buffer) {
   return sharp(source)
     .rotate()
     .resize({ width: AI_IMAGE_SIDE, height: AI_IMAGE_SIDE, fit: "inside", withoutEnlargement: true })
@@ -72,8 +79,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ results: {} });
   }
 
-  const access = await getCharacterDriveAccess(supabase, userEmail, characterId);
-  if ("error" in access && access.error) {
+  // Drive 사진이 섞여 있을 때만 Drive 연결이 필요해요 (휴대폰에서 올린 사진은 우리 보관함에서 읽어요)
+  const needsDrive = fileIds.some((id) => !isUploadedPhotoId(id));
+  const access = needsDrive ? await getCharacterDriveAccess(supabase, userEmail, characterId) : null;
+  if (access && "error" in access && access.error) {
     return NextResponse.json({ error: "이 인물의 Drive 사진을 열 수 없어요.", code: access.error }, { status: 409 });
   }
 
@@ -105,6 +114,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const prepared = await Promise.all(
     todo.map(async (fileId) => {
       try {
+        // 휴대폰에서 올린 사진 (이 인물에게 내가 올린 것만)
+        if (isUploadedPhotoId(fileId)) {
+          const row = await findUploadedPhoto(supabase, userEmail, fileId);
+          const original = row && row.user_character_id === characterId ? await downloadUploadedPhoto(supabase, row) : null;
+          if (!row || !original) throw new Error("올린 사진을 찾지 못했어요.");
+          const meta: DriveMeta = { id: fileId, name: row.file_name ?? "사진", mimeType: row.mime_type };
+          return { fileId, meta, jpeg: await toAiJpeg(original) };
+        }
+        if (!access || "error" in access) throw new Error("이 인물의 Drive 사진을 열 수 없어요.");
+
         const metaRes = await fetch(
           `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,thumbnailLink&supportsAllDrives=true`,
           { headers: { Authorization: `Bearer ${access.accessToken}` }, cache: "no-store" },

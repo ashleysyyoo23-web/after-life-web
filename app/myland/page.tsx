@@ -587,10 +587,13 @@ function MylandPageContent() {
               label: t.characterLabel(character.nickname),
               // 안내 빛: 기록 정리·리캡 단계면 처음 불러온 고인이 반짝여요
               glow: (guideStep === "records" || guideStep === "recap") && character.id === characters[0]?.id,
-              // 연결이 지워졌거나(설정에서 연결 해제) 만료된 인물
-              disconnected: !character.drive || character.drive.needsReconnect,
+              // 연결이 지워졌거나(설정에서 연결 해제) 만료된 인물 (휴대폰에서 사진을 올린 인물은 Drive 를 안 써요)
+              disconnected: character.photoSource !== "upload" && (!character.drive || character.drive.needsReconnect),
               onOpen: () => router.push(`/archiveshelf?character=${encodeURIComponent(character.id)}`),
-              onContextMenu: (event: React.MouseEvent) => void openDriveMenu(event, character),
+              onContextMenu:
+                character.photoSource === "upload"
+                  ? undefined
+                  : (event: React.MouseEvent) => void openDriveMenu(event, character),
             })),
             ...(myCharacter
               ? [{

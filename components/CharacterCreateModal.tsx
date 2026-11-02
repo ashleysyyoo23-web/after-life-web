@@ -6,7 +6,8 @@ import { CHARACTER_RELATIONS, emptySpecialDate, isPetRelation, type SpecialDate 
 import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { guideGlow, useGuideStep } from "@/lib/guide";
 import { ko } from "@/lib/copy/ko";
-import { useCallback, useEffect, useState } from "react";
+import { uploadPhotos } from "@/lib/shrink-photo";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const RELATIONS = CHARACTER_RELATIONS;
 const t = ko.character.create;
@@ -14,6 +15,10 @@ const t = ko.character.create;
 const STEPS = t.steps;
 const RECORDS_STEP = 2;
 const LAST_STEP = STEPS.length;
+
+// 휴대폰에서 사진 올리기: 한 번에 고를 수 있는 수, 미리 보여 줄 수 (많이 그리면 휴대폰이 느려져요)
+const PICK_MAX = 200;
+const PREVIEW_COUNT = 24;
 
 // Google 계정을 새로 연결하러 다녀오는 동안 적던 내용을 잠깐 보관 (돌아오면 이어서)
 const DRAFT_KEY = "afterlife:character-draft";
@@ -39,6 +44,8 @@ export type CreatedCharacter = {
   positionX: number | null;
   positionY: number | null;
   folderName: string | null;
+  // 사진 출처: drive = Drive 폴더, upload = 휴대폰에서 올린 사진
+  photoSource?: "drive" | "upload";
   // 연결된 Google 계정 (없으면 null)
   drive?: { googleEmail: string; needsReconnect: boolean } | null;
 };
@@ -121,8 +128,35 @@ export function CharacterCreateModal({
   const [foldersError, setFoldersError] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
 
+  // 사진 출처, 휴대폰에서 고른 사진
+  const [photoSource, setPhotoSource] = useState<"drive" | "upload">("drive");
+  const [pickedFiles, setPickedFiles] = useState<File[]>([]);
+  const [pickNotice, setPickNotice] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // 저장 뒤 사진 올리기: 진행 상황, 만든 인물, 못 올린 사진
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [createdCharacter, setCreatedCharacter] = useState<CreatedCharacter | null>(null);
+  const [failedFiles, setFailedFiles] = useState<File[]>([]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 고른 사진 미리 보기 (앞의 몇 장만). 바뀌거나 창을 닫으면 브라우저 메모리에서 지워요.
+  const previews = useMemo(
+    () => pickedFiles.slice(0, PREVIEW_COUNT).map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [pickedFiles],
+  );
+  useEffect(() => () => previews.forEach((preview) => URL.revokeObjectURL(preview.url)), [previews]);
+
+  const addPickedFiles = (list: FileList | null) => {
+    const images = [...(list ?? [])].filter((file) => file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name));
+    // 같은 사진을 두 번 고르면 한 번만
+    const key = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
+    const seen = new Set(pickedFiles.map(key));
+    const merged = [...pickedFiles, ...images.filter((file) => !seen.has(key(file)))];
+    setPickNotice(merged.length > PICK_MAX ? t.tooManyPicked(PICK_MAX) : null);
+    setPickedFiles(merged.slice(0, PICK_MAX));
+  };
 
   // 연결된 계정 목록 (기록 불러오기 단계에서)
   useEffect(() => {
@@ -189,7 +223,8 @@ export function CharacterCreateModal({
 
   const canNext =
     (step === 1 && nickname.trim().length > 0) ||
-    (step === RECORDS_STEP && Boolean(connectionId && selectedFolder));
+    (step === RECORDS_STEP &&
+      (photoSource === "upload" ? pickedFiles.length > 0 : Boolean(connectionId && selectedFolder)));
 
   // 안내 빛 (고인 불러오기 단계): 지금 누를 수 있는 다음 버튼 하나만
   const guiding = useGuideStep() === "character";
@@ -198,8 +233,23 @@ export function CharacterCreateModal({
     guiding && step === RECORDS_STEP && !connectionId && usableConnections.length > 0 ? usableConnections[0].id : null;
   const glowConnectNew = guiding && step === RECORDS_STEP && connections !== null && usableConnections.length === 0;
 
+  // 고른 사진을 만든 인물에게 올리기. 못 올린 사진이 있으면 다시 올리기 / 이대로 마치기를 보여 줘요.
+  const runUploads = async (character: CreatedCharacter, files: File[]) => {
+    setFailedFiles([]);
+    setError(null);
+    const failed = await uploadPhotos(character.id, files, (done, total) => setUploadProgress({ done, total }));
+    setUploadProgress(null);
+    if (failed.length === 0) {
+      onCreated(character);
+      return;
+    }
+    setFailedFiles(failed);
+    setError(t.uploadSomeFailed(failed.length));
+  };
+
   const handleSave = async () => {
-    if (!connectionId || !selectedFolder) return;
+    const upload = photoSource === "upload";
+    if (upload ? pickedFiles.length === 0 : !connectionId || !selectedFolder) return;
     setSaving(true);
     setError(null);
     try {
@@ -208,16 +258,33 @@ export function CharacterCreateModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nickname, relation, description, appearance,
-          driveConnectionId: connectionId, folderId: selectedFolder.id,
+          ...(upload
+            ? { photoSource: "upload" }
+            : { driveConnectionId: connectionId, folderId: selectedFolder?.id }),
           emotionLevel, excludedTypes, allowRecommendation,
           specialDates: specialDates.filter((d) => d.date.trim()),
         }),
       });
       const json = (await res.json().catch(() => null)) as { character?: CreatedCharacter; error?: string } | null;
       if (!res.ok || !json?.character) throw new Error(json?.error ?? t.saveFailed);
-      onCreated(json.character);
+      if (upload) {
+        setCreatedCharacter(json.character);
+        await runUploads(json.character, pickedFiles);
+      } else {
+        onCreated(json.character);
+      }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t.saveFailed);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const retryUploads = async () => {
+    if (!createdCharacter) return;
+    setSaving(true);
+    try {
+      await runUploads(createdCharacter, failedFiles);
     } finally {
       setSaving(false);
     }
@@ -242,7 +309,13 @@ export function CharacterCreateModal({
               </span>
             ))}
           </p>
-          <button type="button" onClick={onClose} className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]" aria-label={t.closeLabel}>
+          {/* 인물을 이미 만들었으면(사진 일부를 못 올렸어도) 닫을 때 마이 랜드에 보이게 */}
+          <button
+            type="button"
+            onClick={createdCharacter ? () => onCreated(createdCharacter) : onClose}
+            className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]"
+            aria-label={t.closeLabel}
+          >
             X
           </button>
         </div>
@@ -312,7 +385,104 @@ export function CharacterCreateModal({
               </div>
 
               <div className="flex flex-col gap-[18px]">
-                <p className={sectionLabel}><span>2</span><span>{t.accountLabel}</span></p>
+                <p className={sectionLabel}><span>2</span><span>{t.sourceLabel}</span></p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {([
+                    ["drive", t.sourceDrive, t.sourceDriveHelp],
+                    ["upload", t.sourceUpload, t.sourceUploadHelp],
+                  ] as const).map(([source, label, help]) => (
+                    <button
+                      key={source}
+                      type="button"
+                      aria-pressed={photoSource === source}
+                      onClick={() => setPhotoSource(source)}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-left font-mulish transition-colors ${
+                        photoSource === source ? "border-[#AF9083] bg-[#FDD9BD]/30" : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      {source === "drive" ? <GoogleDriveIcon /> : <span aria-hidden="true" className="text-2xl leading-none">📱</span>}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-base text-[#1a1a1a]">{label}</span>
+                        <span className="mt-1 block text-xs text-[#898787]">{help}</span>
+                      </span>
+                      {photoSource === source && <span className="shrink-0 text-sm font-semibold text-[#9BB073]">{t.selected}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {photoSource === "upload" && (
+                <div className="flex flex-col gap-[18px]">
+                  <p className={sectionLabel}><span>3</span><span>{t.uploadLabel(PICK_MAX)}</span></p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      addPickedFiles(event.target.files);
+                      // 같은 사진을 지웠다가 다시 고를 수 있게
+                      event.target.value = "";
+                    }}
+                  />
+                  <div className="flex flex-col gap-3 rounded-xl border border-[#E8DDD5] p-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`cursor-pointer rounded-full bg-[#AF9083] px-5 py-2 font-mulish text-sm font-medium text-white${guideGlow(guiding && pickedFiles.length === 0)}`}
+                      >
+                        {pickedFiles.length > 0 ? t.pickMorePhotos : t.pickPhotos}
+                      </button>
+                      {pickedFiles.length > 0 && (
+                        <>
+                          <span className="font-mulish text-sm text-[#1a1a1a]">{t.pickedCount(pickedFiles.length)}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPickedFiles([]);
+                              setPickNotice(null);
+                            }}
+                            className="cursor-pointer border-0 bg-transparent p-0 font-mulish text-xs text-[#898787] underline underline-offset-2"
+                          >
+                            {t.clearPicked}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {pickNotice && <p className="font-mulish text-xs text-[#9E2121]">{pickNotice}</p>}
+                    {previews.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                        {previews.map(({ file, url }) => (
+                          <div key={url} className="relative aspect-square overflow-hidden rounded-lg bg-[#FAF6F0]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt="" className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              aria-label={t.removePickedPhoto(file.name)}
+                              onClick={() => setPickedFiles((current) => current.filter((item) => item !== file))}
+                              className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-black/55 font-mulish text-xs text-white"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {pickedFiles.length > PREVIEW_COUNT && (
+                          <div className="flex aspect-square items-center justify-center rounded-lg bg-[#FAF6F0] font-mulish text-sm text-[#AF9083]">
+                            {t.morePreviews(pickedFiles.length - PREVIEW_COUNT)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p className="font-mulish text-xs text-[#898787]">{t.uploadNote}</p>
+                  </div>
+                </div>
+              )}
+
+              {photoSource === "drive" && (
+              <div className="flex flex-col gap-[18px]">
+                <p className={sectionLabel}><span>3</span><span>{t.accountLabel}</span></p>
                 {driveError && (
                   <p role="alert" className="rounded-xl border border-[#E8B4A0] bg-[#FDF0EA] px-4 py-3 font-mulish text-sm leading-relaxed text-[#9E2121]">
                     {driveError}
@@ -353,10 +523,11 @@ export function CharacterCreateModal({
                   </button>
                 </div>
               </div>
+              )}
 
-              {connectionId && (
+              {photoSource === "drive" && connectionId && (
                 <div className="flex flex-col gap-[18px]">
-                  <p className={sectionLabel}><span>3</span><span>{t.folderLabel}</span></p>
+                  <p className={sectionLabel}><span>4</span><span>{t.folderLabel}</span></p>
                   <div className="flex flex-col gap-3 rounded-xl border border-[#E8DDD5] p-4">
                     <div className="flex flex-wrap items-center gap-1 font-mulish text-sm text-[#898787]">
                       <span>{t.sharedDrive}</span>
@@ -425,7 +596,26 @@ export function CharacterCreateModal({
         {error && <p className="mt-3 font-mulish text-sm text-red-600">{error}</p>}
 
         <div className="mt-6 flex shrink-0 items-center gap-3">
-          {step > 1 && (
+          {createdCharacter && failedFiles.length > 0 && !saving ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onCreated(createdCharacter)}
+                className="cursor-pointer rounded-xl border border-[#AF9083] bg-white px-6 py-3 font-mulish text-base text-[#AF9083]"
+              >
+                {t.finishAnyway}
+              </button>
+              <button
+                type="button"
+                onClick={() => void retryUploads()}
+                className="flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a]"
+              >
+                {t.retryUpload}
+              </button>
+            </>
+          ) : (
+          <>
+          {step > 1 && !createdCharacter && (
             <button type="button" onClick={() => setStep(step - 1)} className="cursor-pointer rounded-xl border border-[#AF9083] bg-white px-6 py-3 font-mulish text-base text-[#AF9083]">
               {t.backButton}
             </button>
@@ -446,8 +636,14 @@ export function CharacterCreateModal({
               onClick={() => void handleSave()}
               className={`flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(guiding && !saving)}`}
             >
-              {saving ? t.savingButton : t.saveButton}
+              {uploadProgress
+                ? t.uploadingButton(uploadProgress.done, uploadProgress.total)
+                : saving
+                  ? t.savingButton
+                  : t.saveButton}
             </button>
+          )}
+          </>
           )}
         </div>
       </div>

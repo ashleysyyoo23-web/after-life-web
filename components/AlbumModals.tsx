@@ -409,7 +409,7 @@ export function SectionPhotosModal({
     for (const file of files) for (const category of file.categories ?? []) counts.set(category, (counts.get(category) ?? 0) + 1);
     return counts;
   }, [files]);
-  const unanalyzed = files.filter((file) => !file.analyzed && !file.thumbnailUrl?.startsWith("/api/"));
+  const unanalyzed = files.filter((file) => !file.analyzed && !file.thumbnailUrl?.startsWith("/api/album-sections/"));
   const outdated = files.filter((file) => file.outdated);
 
   // AI(Gemini) 분류: 사진 여러 장을 한 요청에 묶어, 요청 ANALYZE_CONCURRENCY 개를 동시에 보냄.
@@ -899,7 +899,7 @@ export function SectionPhotosModal({
                     )}
 
                     {/* 태그 직접 고치기 (오른쪽 아래) */}
-                    {characterId && !file.thumbnailUrl?.startsWith("/api/") && (
+                    {characterId && !file.thumbnailUrl?.startsWith("/api/album-sections/") && (
                       <button
                         type="button"
                         onClick={() => {
