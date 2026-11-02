@@ -272,7 +272,7 @@ export function TopNav({
                     로그인하면 알림을 볼 수 있어요.
                   </p>
                 ) : !notificationsLoaded ? (
-                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">알림을 불러오는 중이에요...</p>
+                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">알림을 불러오는 중이에요.</p>
                 ) : notifications.length === 0 ? (
                   <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">새 알림이 없어요.</p>
                 ) : (

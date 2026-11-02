@@ -293,7 +293,7 @@ export default function FacilitatorPage() {
         </header>
 
         {error && <p className="text-sm text-[#9E2121]">{error}</p>}
-        {!error && !status && <p className="text-sm text-[#898787]">불러오는 중...</p>}
+        {!error && !status && <p className="text-sm text-[#898787]">불러오는 중…</p>}
 
         {status && (
           <>
@@ -397,7 +397,7 @@ export default function FacilitatorPage() {
                 />
                 <span className="flex flex-col gap-2 text-sm">
                   <span>
-                    <b>넘김 속도·보는 방식</b>(설정 → 기록을 마주할 방법)을 시작 값으로
+                    <b>넘김 속도·보는 방식</b>(설정 › 기록을 마주할 방법)을 시작 값으로
                   </span>
                   <span className="text-xs text-[#898787]">
                     지금: {status.viewSettings.slideSeconds}초 ·{" "}
@@ -546,7 +546,7 @@ export default function FacilitatorPage() {
                     disabled={resetting}
                     className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-1.5 text-sm text-white hover:bg-[#9a7d71] disabled:opacity-60"
                   >
-                    {resetting ? "초기화하는 중..." : "초기화하기"}
+                    {resetting ? "초기화하는 중…" : "초기화하기"}
                   </button>
                 </div>
               )}

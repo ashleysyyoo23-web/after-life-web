@@ -31,7 +31,7 @@ export function ViewingPreferencesFields({
   return (
     <div>
       <section>
-        <p className="mb-4 font-mulish text-sm text-[#666]">1&nbsp;&nbsp;{t.feelingQuestion(who)}</p>
+        <p className="mb-4 flex gap-2 font-mulish text-sm text-[#666]"><span>1</span><span>{t.feelingQuestion(who)}</span></p>
         <div className="flex items-center justify-between gap-4 font-mulish text-sm text-[#666]">
           <span>{t.feelingLeft}</span>
           <span>{t.feelingRight}</span>
@@ -49,7 +49,7 @@ export function ViewingPreferencesFields({
       </section>
       <div className="my-6 border-t border-[#E8DDD5]" />
       <section>
-        <p className="mb-4 font-mulish text-sm text-[#666]">2&nbsp;&nbsp;{t.excludeQuestion(who)}</p>
+        <p className="mb-4 flex gap-2 font-mulish text-sm text-[#666]"><span>2</span><span>{t.excludeQuestion(who)}</span></p>
         <div className="grid grid-cols-3 gap-3">
           {CHARACTER_EXCLUDED_TYPES.map((type) => {
             const isSelected = excludedTypes.includes(type);
@@ -73,7 +73,7 @@ export function ViewingPreferencesFields({
       </section>
       <div className="my-6 border-t border-[#E8DDD5]" />
       <section>
-        <p className="mb-4 font-mulish text-sm text-[#666]">3&nbsp;&nbsp;{t.datesQuestion}</p>
+        <p className="mb-4 flex gap-2 font-mulish text-sm text-[#666]"><span>3</span><span>{t.datesQuestion}</span></p>
         <div className="mb-3 grid grid-cols-3 gap-3 font-mulish text-sm text-[#666]">
           <span>{t.dateNameHeader}</span><span>{t.dateHeader}</span><span>{t.dateRecordHeader}</span>
         </div>
@@ -99,7 +99,7 @@ export function ViewingPreferencesFields({
       </section>
       <div className="my-6 border-t border-[#E8DDD5]" />
       <section>
-        <p className="mb-4 font-mulish text-sm text-[#666]">4&nbsp;&nbsp;{t.recommendQuestion}</p>
+        <p className="mb-4 flex gap-2 font-mulish text-sm text-[#666]"><span>4</span><span>{t.recommendQuestion}</span></p>
         <div className="flex gap-3">
           {[true, false].map((option) => (
             <button

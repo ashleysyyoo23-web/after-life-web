@@ -49,7 +49,7 @@ function topMood(logs: EmotionLog[]): Mood | null {
 
 // 표시한 날짜 전 30일과 그 이전을 비교해서 한두 줄 문장
 function summaryLines(logs: EmotionLog[], markerEnd: number): [string, string] {
-  if (logs.length === 0) return ["아직 이 기간에 기록된 감정이 없어요.", "마이랜드에 들어올 때 오늘의 기분을 남겨 보아요."];
+  if (logs.length === 0) return ["아직 이 기간에 기록된 감정이 없어요.", "마이 랜드에 들어올 때 오늘의 기분을 남겨 보아요."];
   const top = topMood(logs);
   const recent = logs.filter((log) => log.time > markerEnd - 30 * DAY_MS);
   const earlier = logs.filter((log) => log.time <= markerEnd - 30 * DAY_MS);
@@ -555,7 +555,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
 
               <p className="absolute left-[33px] top-[76px] max-w-[300px] font-newsreader text-xl leading-6 text-black">
                 {logs === null ? (
-                  "기록을 불러오는 중이에요..."
+                  "기록을 불러오는 중이에요."
                 ) : loadError ? (
                   loadError
                 ) : (

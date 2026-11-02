@@ -64,11 +64,13 @@ function ModalShell({ heading, onClose, children, wide = false }: ModalShellProp
 }
 
 function TitleField({
+  step,
   label,
   value,
   placeholder,
   onChange,
 }: {
+  step?: number;
   label: string;
   value: string;
   placeholder: string;
@@ -76,7 +78,10 @@ function TitleField({
 }) {
   return (
     <label className="flex flex-col gap-[18px]">
-      <span className="font-mulish text-sm text-[#AF9083]">{label}</span>
+      <span className="flex gap-2 font-mulish text-sm text-[#AF9083]">
+        {step && <span>{step}</span>}
+        <span>{label}</span>
+      </span>
       <input
         type="text"
         value={value}
@@ -649,6 +654,7 @@ export function SectionPhotosModal({
       <form onSubmit={handleSubmit} className="mt-8 flex min-h-0 flex-1 flex-col">
         <div className="max-w-xl">
           <TitleField
+            step={1}
             label={t.sectionTitleLabel}
             value={title}
             placeholder={t.sectionTitlePlaceholder}
@@ -658,8 +664,11 @@ export function SectionPhotosModal({
 
         <div className="mt-2 flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="font-mulish text-sm text-[#AF9083]">
-              <RichText text={t.photosLabel} />
+            <span className="flex gap-2 font-mulish text-sm text-[#AF9083]">
+              <span>2</span>
+              <span>
+                <RichText text={t.photosLabel} />
+              </span>
             </span>
 
             {filesState === "ready" && files.length > 0 && (

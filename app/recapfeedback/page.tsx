@@ -156,7 +156,7 @@ export default function RecapfeedbackPage() {
         disabled={saving}
         className="fixed bottom-12 left-1/2 z-20 -translate-x-1/2 cursor-pointer rounded-full border-0 bg-[#AF9083] px-12 py-3 font-mulish font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {saving ? "저장 중..." : "저장하기"}
+        {saving ? "저장 중…" : "저장하기"}
       </button>
       {saveError && (
         <p className="fixed bottom-28 left-1/2 z-20 -translate-x-1/2 rounded-lg bg-white/90 px-4 py-2 font-mulish text-sm text-[#9E2121]">

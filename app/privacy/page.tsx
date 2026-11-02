@@ -133,7 +133,7 @@ export default function PrivacyPage() {
       <article className="mx-auto flex max-w-3xl flex-col gap-10">
         <header className="flex flex-col gap-3">
           <Link href="/" className="font-mulish text-sm text-[#AF9083] hover:opacity-70">
-            ← After Life
+            ‹ After Life
           </Link>
           <h1 className="font-jeju-myeongjo text-4xl">개인정보처리방침</h1>
           <p className="font-mulish text-sm text-[#898787]">최종 수정일: {UPDATED}</p>

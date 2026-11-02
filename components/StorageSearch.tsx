@@ -116,7 +116,7 @@ export function StorageSearch({ className = "" }: { className?: string }) {
       {isOpen && (
         <div className="scrollbar-thin absolute right-0 top-full z-50 mt-2 flex max-h-[60vh] w-[min(395px,28vw)] min-w-[300px] flex-col gap-[13px] overflow-y-auto p-1">
           {items === null ? (
-            <p className="rounded-[10px] bg-[#FFECDD] p-4 font-mulish text-sm text-[#4A423C]">저장한 기록을 불러오는 중이에요...</p>
+            <p className="rounded-[10px] bg-[#FFECDD] p-4 font-mulish text-sm text-[#4A423C]">저장한 기록을 불러오는 중이에요.</p>
           ) : loadError ? (
             <p className="rounded-[10px] bg-[#FFECDD] p-4 font-mulish text-sm text-[#4A423C]">로그인하면 저장한 기록을 찾을 수 있어요.</p>
           ) : items.length === 0 ? (

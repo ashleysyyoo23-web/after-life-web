@@ -88,7 +88,7 @@ const deceasedSettingsItems: {
   {
     id: "edit-person",
     icon: "/icons/settings/edit-person-673177.png",
-    label: "마이랜드의 인물 편집",
+    label: "마이 랜드의 인물 편집",
   },
 ];
 
@@ -666,7 +666,7 @@ export function SettingsModal({
                 disabled={disconnecting}
                 className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-5 py-2 font-mulish text-sm text-white hover:bg-[#9a7d71] disabled:opacity-60"
               >
-                {disconnecting ? "해제하는 중..." : "연결 해제하기"}
+                {disconnecting ? "해제하는 중…" : "연결 해제하기"}
               </button>
             </div>
           </div>
@@ -912,7 +912,7 @@ export function SettingsModal({
                         disabled={viewSaving}
                         className="flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {viewSaving ? "저장 중..." : "저장하기"}
+                        {viewSaving ? "저장 중…" : "저장하기"}
                       </button>
                     </div>
                   )}
@@ -1011,7 +1011,7 @@ export function SettingsModal({
                           disabled={profileSaving}
                           className={`flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:opacity-60${guideGlow(glowSave("profile"))}`}
                         >
-                          {profileSaving ? "저장하는 중..." : "저장하기"}
+                          {profileSaving ? "저장하는 중…" : "저장하기"}
                         </button>
                       </div>
                     </div>
@@ -1288,7 +1288,7 @@ export function SettingsModal({
                               disabled={legacySaving || !legacyLoaded || isLegacyDateRangeInvalid}
                               className={`cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] px-8 py-2.5 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glowSave("legacy"))}`}
                             >
-                              {legacySaving ? "저장 중..." : "기록 설정 저장하기"}
+                              {legacySaving ? "저장 중…" : "기록 설정 저장하기"}
                             </button>
                           </div>
 

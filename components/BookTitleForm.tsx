@@ -87,7 +87,7 @@ export function BookTitleForm({
           disabled={!trimmed || saving}
           className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-1.5 font-mulish text-sm text-white hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving ? "저장 중..." : "저장"}
+          {saving ? "저장 중…" : "저장"}
         </button>
       </div>
     </form>

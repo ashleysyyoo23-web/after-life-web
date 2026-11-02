@@ -916,7 +916,7 @@ function RecapviewPageContent() {
               disabled={!memoText.trim() || memoSaving}
               className="mt-4 w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {memoSaving ? "남기는 중..." : "감정 기록 남기기"}
+              {memoSaving ? "남기는 중…" : "감정 기록 남기기"}
             </button>
           </div>
         </div>
