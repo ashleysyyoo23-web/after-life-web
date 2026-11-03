@@ -33,6 +33,8 @@ type AnniversaryIsland = {
 const mainlandIslands = [
   {
     label: "커뮤니티 추모 랜드",
+    desc: "함께 기억하고 위로를 나누는 공간이에요",
+    bubbleTop: "31%",
     href: "/community",
     left: "14.5%",
     top: "50.0%",
@@ -42,6 +44,8 @@ const mainlandIslands = [
   },
   {
     label: "마이 랜드",
+    desc: "기억하고 싶은 분들이 머무는 나만의 섬이에요",
+    bubbleTop: "32%",
     href: "/myland",
     left: "51.0%",
     top: "61.2%",
@@ -51,6 +55,8 @@ const mainlandIslands = [
   },
   {
     label: "저장소",
+    desc: "담아 둔 기억을 다시 꺼내 볼 수 있어요",
+    bubbleTop: "29%",
     href: "/storage",
     left: "86.6%",
     top: "48.0%",
@@ -93,6 +99,7 @@ function MainlandPageContent() {
   const [islands, setIslands] = useState<AnniversaryIsland[]>([]);
   const [maxOpen, setMaxOpen] = useState(2);
   const [answering, setAnswering] = useState(false);
+  const [hoveredIsland, setHoveredIsland] = useState<string | null>(null);
 
   // 지도 둘러보기(섬지기 튜토리얼): 처음 들어오면 저절로 한 번, 오른쪽 아래 버튼으로 다시 보기
   const { data: session, status: sessionStatus } = useSession();
@@ -250,7 +257,7 @@ function MainlandPageContent() {
         <IslandSeagull />
       </div>
 
-      <div className="absolute inset-0 z-[1]">
+            <div className="absolute inset-0 z-[1]">
         {mainlandIslands.map((island) => {
           const islandStyle = {
             left: island.left,
@@ -265,10 +272,50 @@ function MainlandPageContent() {
               key={island.label}
               href={island.href}
               aria-label={island.label}
-              className="group absolute cursor-pointer bg-transparent transition-all duration-200 hover:bg-white/10"
+              onMouseEnter={() => setHoveredIsland(island.href)}
+              onMouseLeave={() => setHoveredIsland(null)}
+              onFocus={() => setHoveredIsland(island.href)}
+              onBlur={() => setHoveredIsland(null)}
+              className="group absolute cursor-pointer bg-transparent"
               style={islandStyle}
             >
+              {/* 섬 주변을 감싸는 따뜻한 빛 */}
+              <span
+                className="pointer-events-none absolute inset-[-15%] rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100"
+                style={{
+                  background:
+                    "radial-gradient(closest-side, rgba(255,226,150,0.55), rgba(255,210,120,0.25) 55%, transparent 100%)",
+                  filter: "blur(8px)",
+                }}
+              />
             </Link>
+          );
+        })}
+      </div>
+
+            {/* 섬 위 안내 말풍선 (마우스를 올린 섬만) */}
+      <div className="pointer-events-none absolute inset-0 z-[15]">
+        {mainlandIslands.map((island) => {
+          const visible = hoveredIsland === island.href;
+          return (
+            <div
+              key={island.href}
+              aria-hidden="true"
+              className={`absolute -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-xl border border-[#5A3A30] bg-[#FFFAF6] px-4 py-2.5 shadow-[0px_4px_12px_rgba(80,50,30,0.15)] transition-all duration-300 ${
+                visible ? "-mt-2 opacity-100" : "mt-0 opacity-0"
+              }`}
+              style={{
+                left: `clamp(180px, ${island.left}, calc(100% - 180px))`,
+                top: island.bubbleTop,
+              }}
+            >
+              <p className="font-jeju-myeongjo text-lg text-[#4A2E26]">
+                <span className="font-semibold">{island.label}</span>로 가기 →
+              </p>
+              <p className="mt-0.5 font-mulish text-xs text-[#8a7a6c]">{island.desc}</p>
+              {/* 말풍선 꼬리 */}
+              <span className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[#5A3A30] bg-[#FFFAF6]" />
+            </div>
           );
         })}
       </div>

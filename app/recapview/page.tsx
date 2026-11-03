@@ -859,7 +859,7 @@ function RecapviewPageContent() {
 
       {/* 왼쪽 조작 카드: 일시정지 · 흐림 · 속도 (늘 보여요, 책일 때는 흐림만) */}
       <RecapControlPanel
-        showPlayback={!isBookMode && slideCount > 1}
+        showPlayback={!isBookMode}
         isPlaying={isPlaying}
         onTogglePlay={() => setIsPlaying((playing) => !playing)}
         slideSeconds={slideSeconds}
