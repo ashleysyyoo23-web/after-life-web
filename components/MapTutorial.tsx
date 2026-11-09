@@ -106,7 +106,9 @@ export function MapTutorial({
 
   const goTo = (next: number) => {
     if (MAP_TUTORIAL_STEPS[next]?.menu) {
-      setMenuRect(document.querySelector('[data-tutorial="top-menu"]')?.getBoundingClientRect() ?? null);
+      // 위쪽 메뉴는 노트북용·폰용 두 벌이라, 지금 화면에 보이는 쪽(폭이 있는 쪽)을 골라요
+      const rects = [...document.querySelectorAll('[data-tutorial="top-menu"]')].map((el) => el.getBoundingClientRect());
+      setMenuRect(rects.find((rect) => rect.width > 0) ?? null);
     }
     onStep(next);
   };

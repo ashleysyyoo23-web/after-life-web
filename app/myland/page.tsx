@@ -28,6 +28,7 @@ import { readDayFlag, TODAY_NOTE_SHOWN_KEY_PREFIX, writeDayFlag } from "@/lib/to
 import { ANNIVERSARY_SHOWN_KEY_PREFIX, ISLAND_DAYS_BEFORE, seoulToday, type UpcomingAnniversary } from "@/lib/anniversary";
 import { isPetRelation } from "@/lib/character-fields";
 import { RichText } from "@/components/RichText";
+import { Toast } from "@/components/ui/Toast";
 import { ko } from "@/lib/copy/ko";
 import { Suspense, useEffect, useRef, useState } from "react";
 
@@ -224,7 +225,9 @@ function MylandPageContent() {
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
-
+  // 폰(640px 미만): 섬 그림을 옆으로 밀어서 둘러봐요. 처음엔 가운데를 보여 주고, 잠깐 안내를 띄워요
+  const sceneScrollRef = useRef<HTMLDivElement>(null);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
 
   const toggleRecordType = (id: string) => {
     setSelectedRecordTypes((prev) =>
@@ -321,11 +324,23 @@ function MylandPageContent() {
     router.replace("/myland?from=moodcheck");
   }, [router, searchParams]);
 
+  // 폰: 처음 들어오면 섬 그림의 가운데로 (노트북은 넘치는 폭이 없어서 그대로)
   useEffect(() => {
-    if (!driveNotice) return;
-    const timer = setTimeout(() => setDriveNotice(null), 6000);
-    return () => clearTimeout(timer);
-  }, [driveNotice]);
+    const el = sceneScrollRef.current;
+    if (!el) return;
+    const wide = window.matchMedia("(min-width: 640px)");
+    // 폰이면 가운데로, 노트북이면 처음 자리(0)로. 화면 폭이 바뀌어도(창 크기 조절·기기 회전) 다시 맞춰요
+    const align = () => {
+      el.scrollLeft = wide.matches ? 0 : (el.scrollWidth - el.clientWidth) / 2;
+    };
+    align();
+    wide.addEventListener("change", align);
+    const timer = setTimeout(() => setShowSwipeHint(false), 5000);
+    return () => {
+      wide.removeEventListener("change", align);
+      clearTimeout(timer);
+    };
+  }, []);
 
   // 우클릭 메뉴 바깥을 누르면 닫기
   useEffect(() => {
@@ -551,10 +566,18 @@ function MylandPageContent() {
 
   return (
     <>
+      {/* 폰: 가로로 긴 섬 그림을 옆으로 밀어서 둘러봐요 / 노트북(640px 이상): 예전처럼 화면에 맞춰 고정 */}
       <div
-        className="relative h-screen w-screen overflow-hidden"
+        ref={sceneScrollRef}
+        className="relative h-screen w-screen overflow-x-auto overflow-y-hidden [scrollbar-width:none] sm:overflow-hidden"
         onDoubleClick={openAnniversaryModal}
+        onScroll={(event) => {
+          // 처음 가운데로 옮긴 건 빼고, 사용자가 직접 밀었을 때만 안내를 숨겨요
+          const el = event.currentTarget;
+          if (Math.abs(el.scrollLeft - (el.scrollWidth - el.clientWidth) / 2) > 8) setShowSwipeHint(false);
+        }}
       >
+      <div className="relative h-full w-[max(100vw,177.78vh)] sm:w-full">
         <MoodSkyBackground scene="myland-empty" clouds />
         {/* 바다 물결·살랑이는 야자수와 꽃·걷는 갈매기·하늘 새 (캐릭터 뒤) */}
         <SceneMotion config={MYLAND_MOTION} className="z-10" />
@@ -648,7 +671,7 @@ function MylandPageContent() {
                 }}
               >
                 <CharacterAvatar appearance={character.appearance} className="pointer-events-none h-full w-full" />
-                <span className={`pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] transition-opacity duration-200 group-hover:opacity-100 ${character.glow ? "opacity-100" : "opacity-0"}`}>
+                <span className={`pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] transition-opacity duration-200 group-hover:opacity-100 max-sm:px-2.5 max-sm:py-1 max-sm:text-body-3 ${character.glow ? "opacity-100" : "opacity-0 max-sm:opacity-100"}`}>
                   {character.name}
                   {character.disconnected && (
                     <span className="ml-2 font-mulish text-xs text-[#9E2121]">{t.driveDisconnectedTag}</span>
@@ -658,6 +681,16 @@ function MylandPageContent() {
             ))}
         </div>
       </div>
+      </div>
+      {/* 폰: 옆으로 밀 수 있다는 안내 (처음 5초, 밀면 바로 사라져요) */}
+      {showSwipeHint && (
+        <p
+          aria-hidden
+          className="pointer-events-none fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+120px)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden"
+        >
+          ‹ {t.swipeHint} ›
+        </p>
+      )}
       {driveMenu && (
         <div
           role="menu"
@@ -695,20 +728,21 @@ function MylandPageContent() {
           </button>
         </div>
       )}
-      {driveNotice && (
-        <p
-          role="status"
-          className="fixed bottom-10 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-white/90 px-6 py-3 font-mulish text-sm text-[#4A423C] shadow"
-        >
-          {driveNotice}
-        </p>
-      )}
+      <Toast message={driveNotice} onClose={() => setDriveNotice(null)} />
       {charactersLoaded && characters.length === 0 && !myCharacter && !showAddModal && (
-        <div className="pointer-events-none fixed top-[38%] left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 rounded-xl bg-white/80 px-6 py-4 text-center font-mulish font-normal text-[#1a1a1a]">
+        <div className="pointer-events-none fixed top-[38%] left-1/2 z-10 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 rounded-xl bg-white/80 px-6 py-4 text-center font-mulish font-normal break-keep text-[#1a1a1a] max-sm:px-5">
           <p>
             {t.emptyTitle}
             <br />
-            {isLoggedOut ? t.emptyLoggedOut : t.emptyLoggedIn}
+            {isLoggedOut ? (
+              t.emptyLoggedOut
+            ) : (
+              <>
+                {/* 폰에서는 추가 버튼이 화면 아래에 있어요 */}
+                <span className="sm:hidden">{t.emptyLoggedInMobile}</span>
+                <span className="hidden sm:inline">{t.emptyLoggedIn}</span>
+              </>
+            )}
           </p>
           {/* 로그아웃 상태: 바로 누를 수 있는 다음 행동 (로그인 뒤 나의 섬으로 돌아와요) */}
           {isLoggedOut && (
@@ -725,7 +759,7 @@ function MylandPageContent() {
       {showHint && characters.length > 0 && (
         <p
           ref={hintRef}
-          className="fixed top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a] opacity-100 transition-opacity duration-1000"
+          className="pointer-events-none fixed top-1/2 left-1/2 z-10 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal break-keep text-[#1a1a1a] opacity-100 transition-opacity duration-1000 max-sm:px-5 max-sm:text-body-3"
         >
           <RichText text={t.hint} />
         </p>
@@ -742,37 +776,44 @@ function MylandPageContent() {
           setSettingsTab(null);
         }}
       />
-      <button
-        type="button"
-        onClick={() => {
-          if (isLoggedOut) {
-            router.push(loginUrl("/myland?from=moodcheck"));
-            return;
-          }
-          setShowAddModal(true);
-        }}
-        className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]${guideGlow(guideStep === "character" && !showAddModal)}`}
-      >
-        {t.addCharacterButton}
-      </button>
-      <button
-        type="button"
-        onClick={() => setShowEmotionModal(true)}
-        className="fixed top-[calc(128px+57px+12px)] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
-      >
-        {t.emotionReviewButton}
-      </button>
-      {/* 기일 안내 창 열기 (기일을 적은 분이 있을 때만). 기일이 가까우면 점으로 알려 줌 */}
-      {anniversaries && anniversaries.length > 0 && (
+      {/* 오른쪽 버튼들
+          노트북(640px 이상): 예전처럼 오른쪽 위에 세로로 (추가 · 마음 일기 · 기일)
+          폰: 화면 아래 — 위 줄에 작은 테두리 버튼(마음 일기 · 기일), 아래에 꽉 찬 ‘추가하기’ */}
+      <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex flex-col gap-2 sm:inset-x-auto sm:bottom-auto sm:right-12 sm:top-[128px] sm:items-end sm:gap-3">
         <button
           type="button"
-          onClick={openAnniversaryModal}
-          className="fixed top-[calc(128px+57px+12px+57px+12px)] right-12 z-40 flex cursor-pointer items-center gap-2 rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]"
+          onClick={() => {
+            if (isLoggedOut) {
+              router.push(loginUrl("/myland?from=moodcheck"));
+              return;
+            }
+            setShowAddModal(true);
+          }}
+          className={`order-last min-h-12 w-full cursor-pointer rounded-full border-0 bg-brown-500 px-6 py-3 font-mulish text-body-2 font-semibold text-white shadow-md transition-colors hover:bg-brown-600 sm:order-first sm:w-auto sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:shadow-none${guideGlow(guideStep === "character" && !showAddModal)}`}
         >
-          {t.anniversaryButton}
-          {anniversarySoon && <span className="h-2.5 w-2.5 rounded-full bg-[#FDD9BD]" aria-label={t.anniversarySoonLabel} />}
+          {t.addCharacterButton}
         </button>
-      )}
+        <div className="flex gap-2 sm:contents">
+          <button
+            type="button"
+            onClick={() => setShowEmotionModal(true)}
+            className="min-h-11 flex-1 cursor-pointer rounded-full border border-brown-500 bg-white/90 px-3 py-2 font-mulish text-body-3 font-semibold text-brown-500 transition-colors hover:bg-pink-300 sm:flex-none sm:border-0 sm:bg-brown-500 sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:text-white sm:hover:bg-brown-600"
+          >
+            {t.emotionReviewButton}
+          </button>
+          {/* 기일 안내 창 열기 (기일을 적은 분이 있을 때만). 기일이 가까우면 점으로 알려 줌 */}
+          {anniversaries && anniversaries.length > 0 && (
+            <button
+              type="button"
+              onClick={openAnniversaryModal}
+              className="flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-brown-500 bg-white/90 px-3 py-2 font-mulish text-body-3 font-semibold text-brown-500 transition-colors hover:bg-pink-300 sm:flex-none sm:border-0 sm:bg-brown-500 sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:text-white sm:hover:bg-brown-600"
+            >
+              {t.anniversaryButton}
+              {anniversarySoon && <span className="h-2.5 w-2.5 rounded-full bg-[#FDD9BD] max-sm:bg-pink-500" aria-label={t.anniversarySoonLabel} />}
+            </button>
+          )}
+        </div>
+      </div>
       {showAddModal && (
         <CharacterCreateModal
           initialDraft={resumeDraft}

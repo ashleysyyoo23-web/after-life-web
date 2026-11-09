@@ -198,7 +198,7 @@ export function CharacterManager() {
         if (event.target === event.currentTarget && !deleting) setConfirmDelete(null);
       }}
     >
-      <div role="alertdialog" aria-modal="true" aria-labelledby="delete-person-title" className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-7 shadow-lg">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="delete-person-title" className="flex w-[min(420px,calc(100vw-32px))] flex-col gap-4 rounded-2xl bg-white p-7 shadow-lg break-keep max-sm:p-5">
         <h3 id="delete-person-title" className="font-newsreader text-2xl text-black">
           {t.deleteTitle(confirmDelete.nickname)}
         </h3>
@@ -244,7 +244,7 @@ export function CharacterManager() {
   // ── 편집 화면 ──
   if (editing) {
     return (
-      <div className="flex flex-col gap-8 px-6">
+      <div className="flex flex-col gap-8 px-6 break-keep max-sm:px-0">
         {confirmDialog}
         <div className="flex items-center justify-between gap-4">
           <button
@@ -262,7 +262,7 @@ export function CharacterManager() {
           )}
         </div>
 
-        <h2 className="font-newsreader text-[32px] leading-tight text-black">{t.editTitle(editing.nickname)}</h2>
+        <h2 className="font-newsreader text-[32px] leading-tight text-black max-sm:text-label-md">{t.editTitle(editing.nickname)}</h2>
 
         <section className="flex flex-col gap-3">
           <span className="font-mulish text-sm text-[#898787]">{t.nicknameLabel}</span>
@@ -358,7 +358,7 @@ export function CharacterManager() {
 
   // ── 인물 목록 ──
   return (
-    <div className="flex flex-col gap-8 px-6">
+    <div className="flex flex-col gap-8 px-6 break-keep max-sm:px-0">
       {confirmDialog}
       {/* 설정 창은 transform 이 걸려 있어서, 만들기 창은 body 에 바로 띄움 (설정 창보다 위) */}
       {creating &&
@@ -376,7 +376,7 @@ export function CharacterManager() {
           </div>,
           document.body,
         )}
-      <h2 className="font-newsreader text-[32px] leading-tight text-black">{t.title}</h2>
+      <h2 className="font-newsreader text-[32px] leading-tight text-black max-sm:text-label-md">{t.title}</h2>
 
       {message && <p className="font-mulish text-sm text-[#4A423C]">{message}</p>}
       {listError && <p className="font-mulish text-sm text-[#9E2121]">{listError}</p>}

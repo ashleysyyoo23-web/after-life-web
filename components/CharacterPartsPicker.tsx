@@ -247,16 +247,16 @@ export function CharacterPartsPicker({
   };
 
   return (
-    <div className="flex items-start gap-10">
-      {/* 선택지를 스크롤해도 미리보기는 제자리에 */}
-      <div className="sticky top-0 z-[1] flex w-64 shrink-0 flex-col items-center gap-4 bg-white pb-2">
-        <div className="flex h-80 w-64 items-end justify-center rounded-2xl bg-[#FAF6F0] pb-3">
-          <CharacterAvatar appearance={appearance} className="h-72 w-auto" title={`${previewLabel} 미리보기`} />
+    <div className="flex items-start gap-10 max-sm:flex-col max-sm:items-stretch max-sm:gap-5">
+      {/* 선택지를 스크롤해도 미리보기는 제자리에 (폰: 위에 작게, 옆에 무작위 버튼) */}
+      <div className="sticky top-0 z-[1] flex w-64 shrink-0 flex-col items-center gap-4 bg-white pb-2 max-sm:w-full max-sm:flex-row max-sm:items-end max-sm:gap-3">
+        <div className="flex h-80 w-64 items-end justify-center rounded-2xl bg-[#FAF6F0] pb-3 max-sm:h-40 max-sm:w-32 max-sm:shrink-0 max-sm:pb-2">
+          <CharacterAvatar appearance={appearance} className="h-72 w-auto max-sm:h-36" title={`${previewLabel} 미리보기`} />
         </div>
         <button
           type="button"
           onClick={() => onChange(pet ? randomPetAppearance(appearance) : randomAppearance())}
-          className="w-full cursor-pointer rounded-full border border-[#D9A58E] bg-white px-4 py-2.5 font-mulish text-sm text-[#4A423C] hover:bg-[#FAF6F0]"
+          className="w-full cursor-pointer rounded-full border border-[#D9A58E] bg-white px-4 py-2.5 font-mulish text-sm text-[#4A423C] hover:bg-[#FAF6F0] max-sm:min-h-11 max-sm:flex-1"
         >
           무작위로 꾸미기
         </button>
@@ -320,7 +320,7 @@ export function CharacterPartsPicker({
       ) : (
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           {/* 탭 */}
-          <div role="tablist" className="flex gap-8 border-b border-[#EFE6DE]">
+          <div role="tablist" className="flex gap-8 overflow-x-auto border-b border-[#EFE6DE] [scrollbar-width:none] max-sm:gap-5">
             {TABS.map((item) => {
               const active = item.id === tab;
               return (

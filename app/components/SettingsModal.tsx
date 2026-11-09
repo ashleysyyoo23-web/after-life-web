@@ -94,7 +94,7 @@ const deceasedSettingsItems: {
 ];
 
 const sidebarMenuBaseClass =
-  "flex w-full cursor-pointer items-center gap-1 rounded-[6px] border-0 px-2 py-[6px] text-left font-mulish text-base leading-[22px] text-[#424242] transition-colors";
+  "flex w-full cursor-pointer items-center gap-1 rounded-[6px] border-0 px-2 py-[6px] text-left font-mulish text-base leading-[22px] text-[#424242] transition-colors max-sm:min-h-12 max-sm:gap-2 max-sm:rounded-xl";
 
 const sliderRangeClass =
   "h-[14px] w-full flex-1 cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-sm [&::-webkit-slider-runnable-track]:bg-[#E9E0D3] [&::-webkit-slider-thumb]:-mt-[4px] [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#C4D4A5]";
@@ -146,6 +146,17 @@ export function SettingsModal({
     setAppliedOpenKey(openKey);
     if (openKey) setSelectedSetting(openKey);
   }
+  // 폰(640px 미만): 메뉴 목록 → 세부 화면. 특정 메뉴로 열면 세부 화면부터, 아니면 목록부터
+  const [mobileShowList, setMobileShowList] = useState(() => !openToSetting);
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) setMobileShowList(!openToSetting);
+  }
+  const selectSetting = (id: SettingId) => {
+    setSelectedSetting(id);
+    setMobileShowList(false);
+  };
   const [sliderValue, setSliderValue] = useState(DEFAULT_SLIDE_SECONDS);
   const [selectedViewType, setSelectedViewType] = useState<RecapView>(DEFAULT_RECAP_VIEW);
   const [viewSettingsLoaded, setViewSettingsLoaded] = useState(false);
@@ -250,7 +261,7 @@ export function SettingsModal({
 
   const getSidebarMenuClass = (id: SettingId) =>
     selectedSetting === id
-      ? `${sidebarMenuBaseClass} bg-[#FDD9BD]`
+      ? `${sidebarMenuBaseClass} bg-[#FDD9BD] max-sm:bg-transparent`
       : `${sidebarMenuBaseClass} bg-transparent hover:bg-[#FBE2E1]`;
 
   const handleSaveViewMethod = async () => {
@@ -632,7 +643,7 @@ export function SettingsModal({
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="disconnect-title"
-            className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-7 shadow-lg"
+            className="flex w-[min(420px,calc(100vw-32px))] flex-col gap-4 rounded-2xl bg-white p-7 shadow-lg break-keep max-sm:p-5"
           >
             <h3 id="disconnect-title" className="font-newsreader text-2xl text-black">
               내가 남길 기록에서 Drive 연결을 해제할까요?
@@ -699,13 +710,40 @@ export function SettingsModal({
         onClick={onClose}
       />
       <div
-            className="fixed left-1/2 top-1/2 z-[70] flex h-[720px] w-[1092px] -translate-x-1/2 -translate-y-1/2 flex-row items-stretch overflow-hidden shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+            // 넓은 화면(1124px 이상)은 예전 크기 그대로 1092×720, 그보다 좁으면 화면 안에 들어오게 줄어요
+            // 폰(640px 미만)은 화면을 꽉 채워요
+            className="fixed inset-0 z-[70] flex flex-col overflow-hidden bg-[#FFFEFB] break-keep sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-[min(720px,calc(100dvh-32px))] sm:w-[min(1092px,calc(100vw-32px))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:flex-row sm:items-stretch sm:bg-transparent sm:shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
             role="dialog"
             aria-modal="true"
             aria-label="설정"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <aside className="flex h-full w-[237px] min-w-[237px] shrink-0 flex-col gap-[49px] overflow-hidden rounded-l-[16px] bg-[#FFFEFB] px-5 pb-[23px] pt-9">
+            {/* 폰: 맨 위 줄 (목록이면 ‘설정’, 세부 화면이면 ‘‹ 설정’으로 돌아가기) + 닫기 */}
+            <div className="flex shrink-0 items-center justify-between border-b border-[#E9E0D3] py-1 pl-2 pr-1 pt-[max(0.25rem,env(safe-area-inset-top))] sm:hidden">
+              {mobileShowList ? (
+                <h2 className="px-2 font-jeju-myeongjo text-body-1 text-text-brown">설정</h2>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMobileShowList(true)}
+                  className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent px-2 font-mulish text-body-2 font-semibold text-brown-500"
+                >
+                  <span aria-hidden>‹</span> 설정
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent transition-opacity hover:opacity-70"
+                aria-label="닫기"
+              >
+                <Image src="/icons/settings/close.svg" alt="" width={16} height={16} className="h-4 w-4" />
+              </button>
+            </div>
+
+            <aside
+              className={`${mobileShowList ? "flex" : "hidden"} min-h-0 w-full flex-1 flex-col gap-8 overflow-y-auto bg-[#FFFEFB] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 sm:flex sm:h-full sm:w-[237px] sm:min-w-[237px] sm:flex-none sm:shrink-0 sm:gap-[49px] sm:overflow-hidden sm:rounded-l-[16px] sm:px-5 sm:pb-[23px] sm:pt-9`}
+            >
               <div className="flex flex-col gap-2">
                 <p className="px-2 font-mulish text-[10px] text-[#898787]">
                   나의 설정
@@ -716,7 +754,7 @@ export function SettingsModal({
                       key={item.id}
                       type="button"
                       className={`${getSidebarMenuClass(item.id)}${guideGlow(glowMenu(item.id))}`}
-                      onClick={() => setSelectedSetting(item.id)}
+                      onClick={() => selectSetting(item.id)}
                       aria-pressed={selectedSetting === item.id}
                     >
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center p-1">
@@ -729,6 +767,7 @@ export function SettingsModal({
                         />
                       </span>
                       <span>{item.label}</span>
+                      <span className="ml-auto pr-1 text-neutral-500 sm:hidden" aria-hidden>›</span>
                     </button>
                   ))}
                 </div>
@@ -744,7 +783,7 @@ export function SettingsModal({
                       key={item.id}
                       type="button"
                       className={`${getSidebarMenuClass(item.id)} pl-1.5`}
-                      onClick={() => setSelectedSetting(item.id)}
+                      onClick={() => selectSetting(item.id)}
                       aria-pressed={selectedSetting === item.id}
                     >
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center p-1">
@@ -757,13 +796,14 @@ export function SettingsModal({
                         />
                       </span>
                       <span className="whitespace-nowrap">{item.label}</span>
+                      <span className="ml-auto pr-1 text-neutral-500 sm:hidden" aria-hidden>›</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="mt-auto flex flex-col gap-3">
-                <label className="flex cursor-pointer items-center justify-between gap-2 px-2 font-mulish text-xs text-[#898787]">
+                <label className="flex cursor-pointer items-center justify-between gap-2 px-2 font-mulish text-xs text-[#898787] max-sm:min-h-11 max-sm:text-body-3">
                   <span>다음 할 일 안내 빛</span>
                   <input
                     type="checkbox"
@@ -779,8 +819,10 @@ export function SettingsModal({
               </div>
             </aside>
 
-            <div className="flex h-full w-[855px] min-w-[855px] shrink-0 flex-col overflow-hidden rounded-r-[15px] bg-[#FFFEFB]">
-                <div className="flex shrink-0 justify-end px-8 pb-[5px] pt-8">
+            <div
+              className={`${mobileShowList ? "hidden" : "flex"} min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#FFFEFB] sm:flex sm:h-full sm:rounded-r-[15px]`}
+            >
+                <div className="hidden shrink-0 justify-end px-8 pb-[5px] pt-8 sm:flex">
                   <button
                     type="button"
                     onClick={onClose}
@@ -798,7 +840,7 @@ export function SettingsModal({
                 </div>
 
                 <div
-                  className={`min-h-0 flex-1 px-8 ${
+                  className={`min-h-0 flex-1 px-4 pt-5 sm:px-8 sm:pt-0 ${
                     selectedSetting === "profile" ||
                     selectedSetting === "legacy"
                       ? "flex flex-col overflow-hidden"
@@ -806,9 +848,9 @@ export function SettingsModal({
                   }`}
                 >
                   {selectedSetting === "view-method" && (
-                    <div className="flex flex-col items-center gap-[60px]">
-                      <div className="flex w-full flex-col gap-12 px-6">
-                        <h2 className="font-newsreader text-[32px] leading-tight text-black">
+                    <div className="flex flex-col items-center gap-[60px] max-sm:gap-8">
+                      <div className="flex w-full flex-col gap-12 px-6 max-sm:gap-8 max-sm:px-0">
+                        <h2 className="font-newsreader text-[32px] leading-tight text-black max-sm:text-label-md">
                           기록을 어떻게 마주하고 싶으신가요?
                         </h2>
 
@@ -862,7 +904,7 @@ export function SettingsModal({
                               </span>
                             </div>
 
-                            <div className="flex flex-wrap gap-x-[22px] gap-y-2.5">
+                            <div className="flex flex-wrap gap-x-[22px] gap-y-2.5 max-sm:gap-x-3">
                               {viewTypeOptions.map((option) => {
                                 const isSelected =
                                   selectedViewType === option.id;
@@ -874,7 +916,7 @@ export function SettingsModal({
                                     onClick={() =>
                                       setSelectedViewType(option.id)
                                     }
-                                    className={`flex h-[172px] w-[233px] flex-col items-center justify-center gap-2.5 rounded-[7px] bg-white p-[18px] text-center transition-colors ${
+                                    className={`flex h-[172px] w-[233px] flex-col items-center justify-center gap-2.5 rounded-[7px] bg-white p-[18px] text-center transition-colors max-sm:h-auto max-sm:w-[calc(50%-6px)] max-sm:px-3 max-sm:py-5 ${
                                       isSelected
                                         ? "border-2 border-[#9BB073] bg-[#E4EACE]"
                                         : "border border-[#C0BDBD]"
@@ -920,13 +962,13 @@ export function SettingsModal({
 
                   {selectedSetting === "profile" && (
                     <div className="flex h-full min-h-0 flex-col">
-                      <h2 className="sticky top-0 z-10 shrink-0 bg-white pb-4 pl-6 pr-2 font-newsreader text-[32px] leading-tight text-black">
+                      <h2 className="sticky top-0 z-10 shrink-0 bg-white pb-4 pl-6 pr-2 font-newsreader text-[32px] leading-tight text-black max-sm:bg-[#FFFEFB] max-sm:pl-0 max-sm:text-label-md">
                         사용자님의 프로필을 설정해보세요.
                       </h2>
 
-                      <div className="flex min-h-0 flex-1 flex-col items-center gap-[60px] overflow-y-auto pb-11">
-                        <div className="flex w-full flex-col pl-6 pr-2">
-                          <div className="flex flex-col gap-8 pl-6">
+                      <div className="flex min-h-0 flex-1 flex-col items-center gap-[60px] overflow-y-auto pb-11 max-sm:gap-8">
+                        <div className="flex w-full flex-col pl-6 pr-2 max-sm:px-0">
+                          <div className="flex flex-col gap-8 pl-6 max-sm:pl-0">
                           <div className="flex flex-col gap-[18px]">
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>1</span>
@@ -934,7 +976,7 @@ export function SettingsModal({
                             </div>
 
                             <div className="flex flex-wrap items-center gap-x-[49px] gap-y-4">
-                              <label className="flex items-center gap-3">
+                              <label className="flex items-center gap-3 max-sm:w-full max-sm:flex-col max-sm:items-start max-sm:gap-1.5">
                                 <span className="shrink-0 font-mulish text-sm text-[#4A423C]">
                                   이름
                                 </span>
@@ -946,11 +988,11 @@ export function SettingsModal({
                                   }
                                   maxLength={10}
                                   placeholder="뭐라고 불러드릴까요?(최대 10자)"
-                                  className="w-[246px] rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
+                                  className="w-[246px] max-sm:w-full max-sm:pr-4 max-sm:text-body-2 rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
                                 />
                               </label>
 
-                              <label className="flex items-center gap-3">
+                              <label className="flex items-center gap-3 max-sm:w-full max-sm:flex-col max-sm:items-start max-sm:gap-1.5">
                                 <span className="shrink-0 font-mulish text-sm text-[#4A423C]">
                                   아이디
                                 </span>
@@ -962,11 +1004,11 @@ export function SettingsModal({
                                   }
                                   maxLength={20}
                                   placeholder="영문으로 작성해주세요."
-                                  className="w-[200px] rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
+                                  className="w-[200px] max-sm:w-full max-sm:pr-4 max-sm:text-body-2 rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
                                 />
                               </label>
 
-                              <label className="flex w-full items-center gap-3">
+                              <label className="flex w-full items-center gap-3 max-sm:flex-col max-sm:items-start max-sm:gap-1.5">
                                 <span className="shrink-0 font-mulish text-sm text-[#4A423C]">
                                   소개
                                 </span>
@@ -978,7 +1020,7 @@ export function SettingsModal({
                                   }
                                   maxLength={100}
                                   placeholder="예시: 저는 영원한 이별은 없다고 믿어요. (최대 100자)"
-                                  className="w-full max-w-[705px] rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
+                                  className="w-full max-w-[705px] max-sm:pr-4 max-sm:text-body-2 rounded-[7px] border border-[#C0BDBD] bg-white py-3 pl-6 pr-12 font-mulish text-xs text-[#4A423C] placeholder:text-[#898787]"
                                 />
                               </label>
                             </div>
@@ -1022,13 +1064,13 @@ export function SettingsModal({
 
                   {selectedSetting === "legacy" && (
                     <div className="flex h-full min-h-0 flex-col">
-                      <h2 className="sticky top-0 z-10 shrink-0 bg-white pb-4 pl-6 pr-2 font-newsreader text-[32px] leading-tight text-black">
+                      <h2 className="sticky top-0 z-10 shrink-0 bg-white pb-4 pl-6 pr-2 font-newsreader text-[32px] leading-tight text-black max-sm:bg-[#FFFEFB] max-sm:pl-0 max-sm:text-label-md">
                         어떤 기록을 남기고 싶으신가요?
                       </h2>
 
-                      <div className="flex min-h-0 flex-1 flex-col items-center gap-[60px] overflow-y-auto pb-11">
-                        <div className="flex w-full flex-col gap-8 pl-6 pr-2">
-                          <div className="flex flex-col gap-[18px] pl-6">
+                      <div className="flex min-h-0 flex-1 flex-col items-center gap-[60px] overflow-y-auto pb-11 max-sm:gap-8">
+                        <div className="flex w-full flex-col gap-8 pl-6 pr-2 max-sm:px-0">
+                          <div className="flex flex-col gap-[18px] pl-6 max-sm:pl-0">
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>1</span>
                               <span>사용자님의 디지털 기록을 연동해주세요.</span>
@@ -1047,7 +1089,7 @@ export function SettingsModal({
                                 value={driveConnected ? driveUserEmail : ""}
                                 readOnly
                                 placeholder="연동된 계정이 없습니다"
-                                className={`w-full max-w-[575px] rounded-[7px] border border-[#C0BDBD] px-6 py-3 font-mulish text-sm text-[#4A423C] placeholder:text-[#898787] ${
+                                className={`w-full min-w-0 max-w-[575px] max-sm:px-3 rounded-[7px] border border-[#C0BDBD] px-6 py-3 font-mulish text-sm text-[#4A423C] placeholder:text-[#898787] ${
                                   driveConnected ? "bg-[#F2F5EA]" : "bg-white"
                                 }`}
                               />
@@ -1066,7 +1108,7 @@ export function SettingsModal({
 
                           <div className="border-t border-[#E9E0D3]" />
 
-                          <div className="flex flex-col gap-[18px] pl-6">
+                          <div className="flex flex-col gap-[18px] pl-6 max-sm:pl-0">
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>2</span>
                               <span>
@@ -1075,7 +1117,7 @@ export function SettingsModal({
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-4 gap-3">
+                            <div className="grid grid-cols-4 gap-3 max-sm:grid-cols-2">
                               {legacyViewers.map((contact) => (
                                 <div
                                   key={contact.id}
@@ -1165,7 +1207,7 @@ export function SettingsModal({
 
                           <div className="border-t border-[#E9E0D3]" />
 
-                          <div className="flex flex-col gap-[18px] pl-6">
+                          <div className="flex flex-col gap-[18px] pl-6 max-sm:pl-0">
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>3</span>
                               <span>
@@ -1174,7 +1216,7 @@ export function SettingsModal({
                               </span>
                             </div>
 
-                            <div className="flex flex-wrap gap-x-[18px] gap-y-2.5">
+                            <div className="flex flex-wrap gap-x-[18px] gap-y-2.5 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2">
                               {legacyRecordTypeOptions.map((option) => {
                                 const isSelected =
                                   selectedLegacyRecordTypes.includes(
@@ -1187,7 +1229,7 @@ export function SettingsModal({
                                     onClick={() =>
                                       toggleLegacyRecordType(option.id)
                                     }
-                                    className={legacyChipClass(isSelected)}
+                                    className={`${legacyChipClass(isSelected)} max-sm:px-2 max-sm:text-body-3`}
                                     aria-pressed={isSelected}
                                   >
                                     {option.label}
@@ -1214,7 +1256,7 @@ export function SettingsModal({
 
                           <div className="border-t border-[#E9E0D3]" />
 
-                          <div className="flex flex-col gap-[18px] pl-6">
+                          <div className="flex flex-col gap-[18px] pl-6 max-sm:pl-0">
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>4</span>
                               <span>
@@ -1246,7 +1288,7 @@ export function SettingsModal({
 
                           <div className="border-t border-[#E9E0D3]" />
 
-                          <div className="flex flex-col gap-[18px] pl-6">
+                          <div className="flex flex-col gap-[18px] pl-6 max-sm:pl-0">
                             <div className="flex max-w-[743px] items-center justify-between gap-4">
                               <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                                 <span>5</span>
@@ -1273,11 +1315,11 @@ export function SettingsModal({
                               }
                               maxLength={LEGACY_MESSAGE_MAX}
                               placeholder="(최대 100자)"
-                              className="h-[154px] w-full max-w-[743px] resize-none rounded-[7px] border border-[#C0BDBD] bg-white p-6 font-newsreader text-base text-[#898787] placeholder:text-[#898787]"
+                              className="h-[154px] w-full max-w-[743px] resize-none rounded-[7px] border border-[#C0BDBD] bg-white p-6 max-sm:p-4 font-newsreader text-base text-[#898787] placeholder:text-[#898787]"
                             />
                           </div>
 
-                          <div className="flex max-w-[743px] items-center justify-end gap-3 pl-6">
+                          <div className="flex max-w-[743px] items-center justify-end gap-3 pl-6 max-sm:flex-col max-sm:items-stretch max-sm:pl-0">
                             {legacySaveMessage && (
                               <p className="mr-auto font-mulish text-sm text-[#4A423C]">
                                 {legacySaveMessage}
@@ -1287,7 +1329,7 @@ export function SettingsModal({
                               type="button"
                               onClick={() => void handleSaveLegacySettings()}
                               disabled={legacySaving || !legacyLoaded || isLegacyDateRangeInvalid}
-                              className={`cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] px-8 py-2.5 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glowSave("legacy"))}`}
+                              className={`cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] px-8 py-2.5 max-sm:min-h-12 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glowSave("legacy"))}`}
                             >
                               {legacySaving ? "저장 중…" : "기록 설정 저장하기"}
                             </button>

@@ -8,6 +8,8 @@ import { timeAgoLabel, type AppNotification } from "@/lib/notifications";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Menu, Settings } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 
 // 배경음악은 화면을 옮겨도 하나만 (모듈에 하나 두고 모든 화면의 위쪽 메뉴가 같이 씀)
 let globalBgm: HTMLAudioElement | null = null;
@@ -72,6 +74,8 @@ export function TopNav({
   // 실제로 소리가 나는지 (자동 재생이 막혀 있으면 "재생"으로 보여요)
   const [isMusicPlaying, setIsMusicPlaying] = useState(() => Boolean(globalBgm && !globalBgm.paused));
   const [showNotifications, setShowNotifications] = useState(false);
+  // 1280px 미만 화면의 ☰ 메뉴 창
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   // 안내 빛: 프로필·남길 기록 단계면 설정 버튼이 반짝여요 (설정 창이 열려 있으면 그 안에서 안내)
   const guideStep = useGuideStep();
   const glowSettings = !settingsExpanded && (guideStep === "profile" || guideStep === "legacy");
@@ -157,159 +161,232 @@ export function TopNav({
     onSettingsClick();
   };
 
-  return (
-    <nav className="fixed top-0 left-0 z-50 flex w-full items-center justify-between bg-transparent px-12 py-5">
-      <div className="w-96 shrink-0" aria-hidden />
-
-      <Link
-        href="/mainland"
-        className="inline-flex shrink-0 transition-opacity hover:opacity-70"
+  // 알림 버튼 + 알림함 (노트북·폰 메뉴가 같이 써요. 화면엔 둘 중 하나만 보여요)
+  const bell = (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={toggleNotifications}
+        className={navIconFrameClass}
+        aria-label="알림"
+        aria-expanded={showNotifications}
       >
-        <Image
-          src="/icons/Logolong.svg"
-          alt="AFTER LIFE"
-          width={234}
-          height={34}
-          className="block h-[34px] w-[234px]"
-        />
-      </Link>
+        <span className="relative inline-flex items-center justify-center">
+          <Image
+            src="/icons/alert.svg"
+            alt=""
+            width={34}
+            height={24}
+            className="block h-[24px] w-[34px]"
+          />
+          {!showNotifications && unreadCount > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </span>
+      </button>
 
-      {/* 좁은 창에서는 간격을 줄여 글자가 세로로 깨지지 않게 */}
-      <div className="flex items-center justify-end gap-5 xl:gap-[52px]" data-tutorial="top-menu">
-        <Link href="/about" className={navTextClass}>
-          소개
+      {showNotifications && (
+        <div className="absolute right-0 top-full z-50 mt-3 w-[min(320px,calc(100vw-32px))]">
+          <div className="relative rounded-xl bg-[#AF9083] px-[10px] py-[12px]">
+            <div
+              className="absolute -top-2 right-4 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-[#AF9083]"
+              aria-hidden
+            />
+            {sessionStatus !== "authenticated" ? (
+              <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-text-brown">
+                로그인하면 알림을 볼 수 있어요.
+              </p>
+            ) : !notificationsLoaded ? (
+              <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">알림을 불러오는 중이에요.</p>
+            ) : notifications.length === 0 ? (
+              <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">새 알림이 없어요.</p>
+            ) : (
+              <ul className="scrollbar-thin flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
+                {notifications.map((notification) => {
+                  const isNew = !seenAt || notification.createdAt > seenAt;
+                  return (
+                    <li key={notification.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNotifications(false);
+                          router.push(notification.href);
+                        }}
+                        className="w-full cursor-pointer rounded-lg border-0 bg-white px-3 py-2 text-left transition-colors hover:bg-gray-50"
+                      >
+                        <p className="font-mulish text-sm text-text-brown">
+                          <span className="mr-1" aria-hidden>
+                            {notification.kind === "anniversary" ? "🏝️" : notification.kind === "like" ? "♥" : "💬"}
+                          </span>
+                          {notification.message}
+                        </p>
+                        <p className="mt-1 flex items-center justify-end gap-2 text-xs text-gray-400">
+                          {isNew && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">새 알림</span>}
+                          {timeAgoLabel(notification.createdAt)}
+                        </p>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ☰ 메뉴 창 안의 한 줄 (소개·로그인·음악)
+  const menuRowClass =
+    "flex min-h-12 w-full cursor-pointer items-center justify-between rounded-xl border-0 bg-brown-50 px-4 font-mulish text-body-2 font-semibold text-text-brown transition-colors hover:bg-brown-100";
+
+  return (
+    <nav className="fixed top-0 left-0 z-50 w-full bg-transparent">
+      {/* 넓은 화면 (1280px 이상): 예전 모양 그대로 */}
+      <div className="hidden w-full items-center justify-between px-12 py-5 xl:flex">
+        <div className="w-96 shrink-0" aria-hidden />
+
+        <Link
+          href="/mainland"
+          className="inline-flex shrink-0 transition-opacity hover:opacity-70"
+        >
+          <Image
+            src="/icons/Logolong.svg"
+            alt="AFTER LIFE"
+            width={234}
+            height={34}
+            className="block h-[34px] w-[234px]"
+          />
         </Link>
 
-        {sessionStatus === "unauthenticated" && (
-          <Link
-            href={loginUrl(`${pathname ?? "/mainland"}`)}
-            className="whitespace-nowrap rounded-full border border-[#AF9083] bg-white/80 px-4 py-1.5 font-mulish text-base font-semibold text-[#AF9083] transition-colors hover:bg-[#FDD9BD]"
-          >
-            로그인
+        {/* 좁은 창에서는 간격을 줄여 글자가 세로로 깨지지 않게 */}
+        <div className="flex items-center justify-end gap-5 xl:gap-[52px]" data-tutorial="top-menu">
+          <Link href="/about" className={navTextClass}>
+            소개
           </Link>
-        )}
 
-        <button
-          type="button"
-          onClick={toggleMusic}
-          data-music-toggle
-          className={navIconFrameClass}
-          aria-label={isMusicPlaying ? "음악 정지" : "음악 재생"}
-          aria-pressed={isMusicPlaying}
-        >
-          {isMusicPlaying ? (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 text-[#4B3F39]"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden
+          {sessionStatus === "unauthenticated" && (
+            <Link
+              href={loginUrl(`${pathname ?? "/mainland"}`)}
+              className="whitespace-nowrap rounded-full border border-[#AF9083] bg-white/80 px-4 py-1.5 font-mulish text-base font-semibold text-[#AF9083] transition-colors hover:bg-[#FDD9BD]"
             >
-              <path d="M19.952 1.651a.75.75 0 01.298.599V16.303a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V6.994l-9 2.572v9.737a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.402-4.909l2.31-.66a1.5 1.5 0 001.088-1.442V5.25a.75.75 0 01.544-.721l10.5-3a.75.75 0 01.658.122z" />
-            </svg>
-          ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 text-[#4B3F39]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              aria-hidden
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z"
-              />
-            </svg>
+              로그인
+            </Link>
           )}
-        </button>
 
-        <button
-          type="button"
-          onClick={handleSettingsClick}
-          className={`${navTextClass} rounded-full${guideGlow(glowSettings)}`}
-          aria-label="설정"
-          aria-expanded={settingsExpanded}
-        >
-          설정
-        </button>
-
-        <div className="relative shrink-0">
           <button
             type="button"
-            onClick={toggleNotifications}
+            onClick={toggleMusic}
+            data-music-toggle
             className={navIconFrameClass}
-            aria-label="알림"
-            aria-expanded={showNotifications}
+            aria-label={isMusicPlaying ? "음악 정지" : "음악 재생"}
+            aria-pressed={isMusicPlaying}
           >
-            <span className="relative inline-flex items-center justify-center">
-              <Image
-                src="/icons/alert.svg"
-                alt=""
-                width={34}
-                height={24}
-                className="block h-[24px] w-[34px]"
-              />
-              {!showNotifications && unreadCount > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </span>
+            {isMusicPlaying ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-[#4B3F39]"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden
+              >
+                <path d="M19.952 1.651a.75.75 0 01.298.599V16.303a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V6.994l-9 2.572v9.737a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.402-4.909l2.31-.66a1.5 1.5 0 001.088-1.442V5.25a.75.75 0 01.544-.721l10.5-3a.75.75 0 01.658.122z" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-[#4B3F39]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z"
+                />
+              </svg>
+            )}
           </button>
 
-          {showNotifications && (
-            <div className="absolute right-0 top-full z-50 mt-3 w-[320px]">
-              <div className="relative rounded-xl bg-[#AF9083] px-[10px] py-[12px]">
-                <div
-                  className="absolute -top-2 right-4 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-[#AF9083]"
-                  aria-hidden
-                />
-                {sessionStatus !== "authenticated" ? (
-                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-text-brown">
-                    로그인하면 알림을 볼 수 있어요.
-                  </p>
-                ) : !notificationsLoaded ? (
-                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">알림을 불러오는 중이에요.</p>
-                ) : notifications.length === 0 ? (
-                  <p className="rounded-lg bg-white px-3 py-3 font-mulish text-sm text-[#898787]">새 알림이 없어요.</p>
-                ) : (
-                  <ul className="scrollbar-thin flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
-                    {notifications.map((notification) => {
-                      const isNew = !seenAt || notification.createdAt > seenAt;
-                      return (
-                        <li key={notification.id}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowNotifications(false);
-                              router.push(notification.href);
-                            }}
-                            className="w-full cursor-pointer rounded-lg border-0 bg-white px-3 py-2 text-left transition-colors hover:bg-gray-50"
-                          >
-                            <p className="font-mulish text-sm text-text-brown">
-                              <span className="mr-1" aria-hidden>
-                                {notification.kind === "anniversary" ? "🏝️" : notification.kind === "like" ? "♥" : "💬"}
-                              </span>
-                              {notification.message}
-                            </p>
-                            <p className="mt-1 flex items-center justify-end gap-2 text-xs text-gray-400">
-                              {isNew && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">새 알림</span>}
-                              {timeAgoLabel(notification.createdAt)}
-                            </p>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleSettingsClick}
+            className={`${navTextClass} rounded-full${guideGlow(glowSettings)}`}
+            aria-label="설정"
+            aria-expanded={settingsExpanded}
+          >
+            설정
+          </button>
+
+          {bell}
         </div>
       </div>
+
+      {/* 폰·태블릿·작은 노트북 (1280px 미만): 왼쪽 작은 로고 + 오른쪽 알림 · 설정 · ☰ 메뉴 */}
+      <div className="flex w-full items-center justify-between py-2 pl-4 pr-2 xl:hidden">
+        <Link href="/mainland" className="inline-flex shrink-0 transition-opacity hover:opacity-70">
+          <Image
+            src="/icons/Logolong.svg"
+            alt="AFTER LIFE"
+            width={234}
+            height={34}
+            className="block h-[22px] w-[150px]"
+          />
+        </Link>
+
+        <div className="flex items-center" data-tutorial="top-menu">
+          {bell}
+          <button
+            type="button"
+            onClick={handleSettingsClick}
+            className={`inline-flex size-12 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[#4B3F39] transition-opacity hover:opacity-70${guideGlow(glowSettings)}`}
+            aria-label="설정"
+            aria-expanded={settingsExpanded}
+          >
+            <Settings size={24} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowNotifications(false);
+              setShowMobileMenu(true);
+            }}
+            className="inline-flex size-12 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[#4B3F39] transition-opacity hover:opacity-70"
+            aria-label="메뉴"
+            aria-expanded={showMobileMenu}
+          >
+            <Menu size={26} aria-hidden />
+          </button>
+        </div>
+      </div>
+
+      <Modal open={showMobileMenu} onClose={() => setShowMobileMenu(false)} size="sm" title="메뉴">
+        <div className="flex flex-col gap-2 pb-2">
+          <Link href="/about" onClick={() => setShowMobileMenu(false)} className={menuRowClass}>
+            소개
+            <span aria-hidden>›</span>
+          </Link>
+          {sessionStatus === "unauthenticated" && (
+            <Link
+              href={loginUrl(`${pathname ?? "/mainland"}`)}
+              onClick={() => setShowMobileMenu(false)}
+              className={menuRowClass}
+            >
+              로그인
+              <span aria-hidden>›</span>
+            </Link>
+          )}
+          <button type="button" onClick={toggleMusic} data-music-toggle aria-pressed={isMusicPlaying} className={menuRowClass}>
+            {isMusicPlaying ? "음악 끄기" : "음악 켜기"}
+            <span className="text-body-3 font-normal text-neutral-500">{isMusicPlaying ? "켜져 있어요" : "꺼져 있어요"}</span>
+          </button>
+        </div>
+      </Modal>
     </nav>
   );
 }

@@ -70,6 +70,8 @@ export const ko = {
     emptyTitle: "아직 섬이 비어 있어요.",
     emptyLoggedOut: "로그인하고 그리운 분을 추가하면 이곳에서 다시 만날 수 있어요.",
     emptyLoggedIn: "오른쪽 위 ‘+ 그리운 분 추가하기’를 누르면 이곳에서 다시 만날 수 있어요.",
+    emptyLoggedInMobile: "아래 ‘+ 그리운 분 추가하기’를 누르면 이곳에서 다시 만날 수 있어요.", // 폰: 버튼이 화면 아래
+    swipeHint: "옆으로 밀어서 섬을 둘러봐요", // 폰: 섬 그림을 옆으로 밀 수 있다는 안내
     emptyLoginButton: "로그인하고 시작하기", // 빈 섬 안내 아래 (로그아웃 상태일 때만)
     hint: "그리운 분의 캐릭터를 누르면 기록 책장이 열려요.\n캐릭터를 끌면 섬 위 자리를 옮길 수 있어요.",
     addCharacterButton: "+ 그리운 분 추가하기",

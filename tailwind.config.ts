@@ -45,6 +45,16 @@ const config: Config = {
         // Brand
         "brand-primary": "#C4D4A5",
         "brand-secondary": "#FDD9BD",
+        // 코드에 hex로만 쓰이던 색에 이름 붙이기 (색은 그대로)
+        "brown-600": "#9A7D71", // 갈색 버튼 hover
+        "pink-600": "#C4836E", // 강조 버튼 hover
+        "border-soft": "#E8DDD5", // 연한 테두리
+        "border-accent": "#B75A34", // 강조 버튼 테두리
+        "error-bg": "#FDF0EA", // 오류 상자 배경
+        "error-border": "#E8B4A0", // 오류 상자 테두리
+        "text-strong": "#1A1A1A", // 진한 본문 글씨
+        "bubble-bg": "#FFFAF6", // 말풍선 배경
+        "bubble-border": "#5A3A30", // 말풍선 테두리
       },
       fontFamily: {
         newsreader: ["var(--font-newsreader)", "serif"],
