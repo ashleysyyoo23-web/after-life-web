@@ -67,6 +67,7 @@ export const ko = {
     myCharacterLabel: (name: string) => `나의 캐릭터 (${name}) 꾸미기`,
     dragLabel: (label: string) => `${label} (끌어서 자리 옮기기)`,
     driveDisconnectedTag: "Drive 연결 끊김 · 우클릭",
+    driveDisconnectedTagMobile: "Drive 연결 끊김 · 길게 누르기", // 폰: 우클릭이 없어요
     emptyTitle: "아직 섬이 비어 있어요.",
     emptyLoggedOut: "로그인하고 그리운 분을 추가하면 이곳에서 다시 만날 수 있어요.",
     emptyLoggedIn: "오른쪽 위 ‘+ 그리운 분 추가하기’를 누르면 이곳에서 다시 만날 수 있어요.",
@@ -251,7 +252,7 @@ export const ko = {
       editButton: "편집",
       openingButton: "여는 중…",
       deleteButton: "삭제",
-      footerNote: "자리는 나의 섬에서 캐릭터를 끌어서 옮길 수 있고, Drive 연결은 캐릭터를 우클릭해서 다시 이을 수 있어요.",
+      footerNote: "자리는 나의 섬에서 캐릭터를 끌어서 옮길 수 있고, Drive 연결은 캐릭터를 우클릭(폰에서는 길게 누르기)해서 다시 이을 수 있어요.",
       added: (nickname: string) => `${josa(nickname, "을/를")} 추가했어요. 나의 섬에서 만날 수 있어요.`,
       // 편집 화면
       backToList: "‹ 그리운 분 목록",
@@ -595,6 +596,7 @@ export const ko = {
     laterTitle: "닫아 둔 추모의 섬",
     openLater: (nickname: string) => `${nickname}의 섬 열기`,
     tourButton: "🚣 섬지기와 둘러보기",
+    islandChipsLabel: "섬 바로가기", // 폰: 아래 섬 칩 묶음 (화면 읽기 프로그램용)
     // 기일이 다가오면 뜨는 "섬 열기" 창
     ask: {
       title: (nickname: string) => `${nickname}의 추모의 섬을 열까요?`,

@@ -291,12 +291,12 @@ export function CharacterCreateModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 max-sm:px-0">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={t.dialogLabel}
-        className={`relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-2xl bg-white p-10 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] ${
+        className={`relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-2xl bg-white p-10 break-keep shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:h-dvh max-sm:max-h-none max-sm:rounded-none max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 ${
           step === 1 ? "max-w-5xl" : "max-w-3xl"
         }`}
       >
@@ -313,17 +313,17 @@ export function CharacterCreateModal({
           <button
             type="button"
             onClick={createdCharacter ? () => onCreated(createdCharacter) : onClose}
-            className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]"
+            className="-m-2.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent font-mulish text-xl text-[#898787]"
             aria-label={t.closeLabel}
           >
             X
           </button>
         </div>
 
-        <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1 max-sm:mt-3 max-sm:pr-0">
           {step === 1 && (
             <div className="flex flex-col gap-8">
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{t.title}</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a] max-sm:text-label-md">{t.title}</h2>
               <div className="flex flex-col gap-[18px]">
                 <p className={sectionLabel}><span>1</span><span>{t.nicknameLabel}</span></p>
                 <input
@@ -337,7 +337,7 @@ export function CharacterCreateModal({
               </div>
               <div className="mt-2 flex flex-col gap-[18px]">
                 <p className={sectionLabel}><span>2</span><span>{t.relationLabel}</span></p>
-                <div className="grid grid-cols-4 gap-x-[22px] gap-y-[10px]">
+                <div className="grid grid-cols-4 gap-x-[22px] gap-y-[10px] max-sm:grid-cols-2 max-sm:gap-x-2.5">
                   {RELATIONS.map((item) => (
                     <button
                       key={item}
@@ -372,7 +372,7 @@ export function CharacterCreateModal({
 
           {step === RECORDS_STEP && (
             <div className="flex flex-col gap-8">
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{t.recordsTitle(isPet)}</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a] max-sm:text-label-md">{t.recordsTitle(isPet)}</h2>
               <div className="flex flex-col gap-[18px]">
                 <p className={sectionLabel}><span>1</span><span>{t.descriptionLabel}</span></p>
                 <textarea
@@ -575,7 +575,7 @@ export function CharacterCreateModal({
 
           {step === LAST_STEP && (
             <div>
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{t.preferencesTitle}</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a] max-sm:text-label-md">{t.preferencesTitle}</h2>
               <div className="mt-6">
                 <ViewingPreferencesFields
                   value={{ emotionLevel, excludedTypes, specialDates, allowRecommendation }}
@@ -595,7 +595,7 @@ export function CharacterCreateModal({
 
         {error && <p className="mt-3 font-mulish text-sm text-red-600">{error}</p>}
 
-        <div className="mt-6 flex shrink-0 items-center gap-3">
+        <div className="mt-6 flex shrink-0 items-center gap-3 max-sm:mt-3 max-sm:gap-2">
           {createdCharacter && failedFiles.length > 0 && !saving ? (
             <>
               <button

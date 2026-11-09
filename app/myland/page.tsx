@@ -59,7 +59,11 @@ type DriveMenu = {
   status: "checking" | "ok" | "needs_reconnect" | "not_connected" | "error";
   googleEmail: string | null;
   folderName: string | null;
+  sheet: boolean; // 폰(640px 미만): 화면 아래에 꽉 찬 창으로
 };
+
+// 폰에서 캐릭터를 꾹 누르면 Drive 메뉴 (아이폰은 꾹 눌러도 우클릭으로 바꿔 주지 않아서 직접 재요)
+const LONG_PRESS_MS = 500;
 
 
 const RECORD_TYPE_CARDS = [
@@ -112,7 +116,7 @@ function anniversaryTexts(item: UpcomingAnniversary) {
 function AnniversaryBadge({ item }: { item: UpcomingAnniversary }) {
   const { who, when } = anniversaryTexts(item);
   return (
-    <div className="flex items-center gap-[13px] rounded-[7px] px-[19px] py-3">
+    <div className="flex items-center gap-[13px] rounded-[7px] px-[19px] py-3 max-sm:flex-wrap max-sm:justify-center max-sm:gap-x-2 max-sm:gap-y-1 max-sm:px-0">
       <div className="flex items-center gap-[11px] px-0.5 py-px">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E8DDD5]">
           <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#AF9083]" xmlns="http://www.w3.org/2000/svg">
@@ -224,6 +228,9 @@ function MylandPageContent() {
   const stageRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
+  const longPressRef = useRef<{ timer: number; fired: boolean } | null>(null);
+  // 꾹 눌렀다 뗀 직후의 “톡”(책장 열기)과 “바깥 누르기”(메뉴 닫기)는 잠깐 무시
+  const ignoreTapUntilRef = useRef(0);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   // 폰(640px 미만): 섬 그림을 옆으로 밀어서 둘러봐요. 처음엔 가운데를 보여 주고, 잠깐 안내를 띄워요
   const sceneScrollRef = useRef<HTMLDivElement>(null);
@@ -345,18 +352,21 @@ function MylandPageContent() {
   // 우클릭 메뉴 바깥을 누르면 닫기
   useEffect(() => {
     if (!driveMenu) return;
-    const close = () => setDriveMenu(null);
+    const close = (event: MouseEvent) => {
+      if (event.timeStamp < ignoreTapUntilRef.current) return;
+      setDriveMenu(null);
+    };
     window.addEventListener("mousedown", close);
     return () => window.removeEventListener("mousedown", close);
   }, [driveMenu]);
 
-  const openDriveMenu = async (event: React.MouseEvent, character: CreatedCharacter) => {
-    event.preventDefault();
+  const openDriveMenu = async (clientX: number, clientY: number, character: CreatedCharacter) => {
     const menu: DriveMenu = {
       characterId: character.id,
       nickname: character.nickname,
-      x: event.clientX,
-      y: event.clientY,
+      x: clientX,
+      y: clientY,
+      sheet: !window.matchMedia("(min-width: 640px)").matches,
       status: "checking",
       googleEmail: character.drive?.googleEmail ?? null,
       folderName: character.folderName,
@@ -441,6 +451,35 @@ function MylandPageContent() {
     };
   };
 
+  // 손가락·펜으로 움직이지 않고 꾹 누르면 Drive 메뉴 (마우스는 우클릭 그대로)
+  const startLongPress = (event: React.PointerEvent, open?: (x: number, y: number) => void) => {
+    clearLongPress();
+    longPressRef.current = null;
+    if (!open || event.pointerType === "mouse") return;
+    const { clientX, clientY } = event;
+    const press = {
+      fired: false,
+      timer: window.setTimeout(() => {
+        if (dragRef.current?.moved) return;
+        press.fired = true;
+        dragRef.current = null;
+        open(clientX, clientY);
+      }, LONG_PRESS_MS),
+    };
+    longPressRef.current = press;
+  };
+
+  const clearLongPress = () => {
+    if (longPressRef.current) window.clearTimeout(longPressRef.current.timer);
+  };
+
+  // 손을 뗄 때: 꾹 누르기였으면 이어지는 톡·바깥 누르기를 잠깐 무시
+  const endLongPress = (timeStamp: number) => {
+    clearLongPress();
+    if (longPressRef.current?.fired) ignoreTapUntilRef.current = timeStamp + 700;
+    longPressRef.current = null;
+  };
+
   const handleFigurePointerMove = (event: React.PointerEvent) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
@@ -449,6 +488,7 @@ function MylandPageContent() {
       const distance = Math.hypot(event.clientX - drag.startClientX, event.clientY - drag.startClientY);
       if (distance < DRAG_THRESHOLD_PX) return;
       drag.moved = true;
+      clearLongPress();
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
       setDraggingKey(drag.key);
     }
@@ -613,10 +653,10 @@ function MylandPageContent() {
               // 연결이 지워졌거나(설정에서 연결 해제) 만료된 인물 (휴대폰에서 사진을 올린 인물은 Drive 를 안 써요)
               disconnected: character.photoSource !== "upload" && (!character.drive || character.drive.needsReconnect),
               onOpen: () => router.push(`/archiveshelf?character=${encodeURIComponent(character.id)}`),
-              onContextMenu:
+              onDriveMenu:
                 character.photoSource === "upload"
                   ? undefined
-                  : (event: React.MouseEvent) => void openDriveMenu(event, character),
+                  : (x: number, y: number) => void openDriveMenu(x, y, character),
             })),
             ...(myCharacter
               ? [{
@@ -628,7 +668,7 @@ function MylandPageContent() {
                   label: t.myCharacterLabel(myCharacter.name),
                   disconnected: false,
                   glow: false,
-                  onContextMenu: undefined,
+                  onDriveMenu: undefined,
                   onOpen: () => {
                     setSettingsTab("profile");
                     setShowSettings(true);
@@ -642,23 +682,46 @@ function MylandPageContent() {
               <button
                 key={character.key}
                 type="button"
-                onClick={() => {
+                onClick={(event) => {
+                  if (event.timeStamp < ignoreTapUntilRef.current) return;
                   if (suppressClickRef.current) {
                     suppressClickRef.current = false;
                     return;
                   }
                   character.onOpen();
                 }}
-                onPointerDown={(event) =>
-                  handleFigurePointerDown(event, character.key, character.positionX ?? 50, character.positionY ?? 76)
-                }
+                onPointerDown={(event) => {
+                  handleFigurePointerDown(event, character.key, character.positionX ?? 50, character.positionY ?? 76);
+                  startLongPress(event, character.onDriveMenu);
+                }}
                 onPointerMove={handleFigurePointerMove}
-                onPointerUp={(event) => void handleFigurePointerUp(event)}
-                onPointerCancel={handleFigurePointerCancel}
-                onContextMenu={character.onContextMenu}
+                onPointerUp={(event) => {
+                  endLongPress(event.timeStamp);
+                  void handleFigurePointerUp(event);
+                }}
+                onPointerCancel={(event) => {
+                  endLongPress(event.timeStamp);
+                  handleFigurePointerCancel();
+                }}
+                onContextMenu={
+                  character.onDriveMenu
+                    ? (event) => {
+                        event.preventDefault();
+                        // 안드로이드는 꾹 누르면 우클릭도 보내요: 이미 열었으면 한 번만
+                        const press = longPressRef.current;
+                        if (press) {
+                          if (press.fired) return;
+                          window.clearTimeout(press.timer);
+                          press.fired = true;
+                          dragRef.current = null;
+                        }
+                        character.onDriveMenu?.(event.clientX, event.clientY);
+                      }
+                    : undefined
+                }
                 onDoubleClick={(event) => event.stopPropagation()}
                 aria-label={t.dragLabel(character.label)}
-                className={`group pointer-events-auto absolute -translate-x-1/2 -translate-y-full touch-none border-0 bg-transparent p-0 select-none ${
+                className={`group pointer-events-auto absolute -translate-x-1/2 -translate-y-full touch-none border-0 bg-transparent p-0 select-none [-webkit-touch-callout:none] ${
                   draggingKey === character.key
                     ? "z-10 cursor-grabbing"
                     : "cursor-pointer transition-transform duration-300 hover:-translate-y-[102%]"
@@ -674,7 +737,10 @@ function MylandPageContent() {
                 <span className={`pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white/80 px-4 py-2 font-jeju-myeongjo text-base text-[#4A423C] transition-opacity duration-200 group-hover:opacity-100 max-sm:px-2.5 max-sm:py-1 max-sm:text-body-3 ${character.glow ? "opacity-100" : "opacity-0 max-sm:opacity-100"}`}>
                   {character.name}
                   {character.disconnected && (
-                    <span className="ml-2 font-mulish text-xs text-[#9E2121]">{t.driveDisconnectedTag}</span>
+                    <span className="ml-2 font-mulish text-xs text-[#9E2121]">
+                      <span className="sm:hidden">{t.driveDisconnectedTagMobile}</span>
+                      <span className="hidden sm:inline">{t.driveDisconnectedTag}</span>
+                    </span>
                   )}
                 </span>
               </button>
@@ -691,16 +757,26 @@ function MylandPageContent() {
           ‹ {t.swipeHint} ›
         </p>
       )}
+      {/* 폰: 메뉴 뒤를 살짝 어둡게 (누르면 바깥 누르기로 닫혀요) */}
+      {driveMenu?.sheet && <div aria-hidden className="fixed inset-0 z-50 bg-black/30" />}
       {driveMenu && (
         <div
           role="menu"
           aria-label={t.driveMenu.label(driveMenu.nickname)}
           onMouseDown={(event) => event.stopPropagation()}
-          className="fixed z-50 flex w-72 flex-col gap-3 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
-          style={{
-            left: `min(${driveMenu.x}px, calc(100vw - 19rem))`,
-            top: `min(${driveMenu.y}px, calc(100vh - 12rem))`,
-          }}
+          className={
+            driveMenu.sheet
+              ? "fixed inset-x-0 bottom-0 z-50 flex flex-col gap-3 rounded-t-2xl border border-b-0 border-[#E8DDD5] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-lg break-keep"
+              : "fixed z-50 flex w-72 flex-col gap-3 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
+          }
+          style={
+            driveMenu.sheet
+              ? undefined
+              : {
+                  left: `min(${driveMenu.x}px, calc(100vw - 19rem))`,
+                  top: `min(${driveMenu.y}px, calc(100vh - 12rem))`,
+                }
+          }
         >
           <p className="font-jeju-myeongjo text-base text-[#4A423C]">{driveMenu.nickname}</p>
           <div className="flex flex-col gap-1 font-mulish text-xs text-[#898787]">
@@ -722,7 +798,7 @@ function MylandPageContent() {
             type="button"
             role="menuitem"
             onClick={() => handleReconnectDrive(driveMenu.characterId, driveMenu.googleEmail)}
-            className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-2 font-mulish text-sm text-white transition-colors hover:bg-[#9a7d71]"
+            className={`cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-2 font-mulish text-sm text-white transition-colors hover:bg-[#9a7d71]${driveMenu.sheet ? " min-h-12 text-body-2 font-semibold" : ""}`}
           >
             {t.driveMenu.reconnectButton}
           </button>
@@ -834,13 +910,14 @@ function MylandPageContent() {
         />
       )}
       {showAnniversaryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="flex w-full max-w-[720px] flex-col gap-2 rounded-[15px] bg-[#FFFEFB] px-8 pb-11 pt-8 shadow-[0px_8px_5px_0px_rgba(0,0,0,0.25)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 max-sm:items-end">
+          {/* 폰: 아래에 붙어 올라오는 창 (내용이 길면 창 안에서 스크롤) */}
+          <div className="flex w-full max-w-[720px] flex-col gap-2 rounded-[15px] bg-[#FFFEFB] px-8 pb-11 pt-8 break-keep shadow-[0px_8px_5px_0px_rgba(0,0,0,0.25)] max-sm:max-h-[92dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:px-5 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] max-sm:pt-5">
             <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setShowAnniversaryModal(false)}
-                className="flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-sm text-[#C0BDBD]"
+                className="-m-2.5 flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-sm text-[#C0BDBD]"
                 aria-label={t.closeLabel}
               >
                 ✕
@@ -850,8 +927,8 @@ function MylandPageContent() {
             {anniversaries === null ? (
               <p className="py-24 text-center font-mulish text-base text-[#898787]">{t.anniversary.loading}</p>
             ) : !anniversary ? (
-              <div className="flex flex-col items-center gap-10 px-[74px] py-10 text-center">
-                <p className="font-newsreader text-3xl font-normal text-black">{t.anniversary.emptyTitle}</p>
+              <div className="flex flex-col items-center gap-10 px-[74px] py-10 text-center max-sm:gap-6 max-sm:px-0 max-sm:py-4">
+                <p className="font-newsreader text-3xl font-normal text-black max-sm:text-label-md">{t.anniversary.emptyTitle}</p>
                 <p className="font-mulish text-base leading-normal text-black">
                   <RichText text={t.anniversary.emptyBody} />
                 </p>
@@ -864,13 +941,13 @@ function MylandPageContent() {
                 </button>
               </div>
             ) : (
-            <div className="flex flex-col items-center gap-[119px]">
+            <div className="flex flex-col items-center gap-[119px] max-sm:gap-8">
               <div className="flex flex-col items-center justify-center gap-[18px]">
                 <AnniversaryBadge item={anniversary} />
               </div>
 
-              <div className="flex w-full flex-col items-center gap-7 px-[74px]">
-                <p className="whitespace-nowrap font-newsreader text-4xl font-normal text-black">
+              <div className="flex w-full flex-col items-center gap-7 px-[74px] max-sm:gap-4 max-sm:px-0">
+                <p className="whitespace-nowrap font-newsreader text-4xl font-normal text-black max-sm:whitespace-normal max-sm:text-center max-sm:text-label-md">
                   {anniversaryTexts(anniversary).headline}
                 </p>
                 <p className="text-center font-mulish text-base font-normal leading-normal text-black">
@@ -912,13 +989,14 @@ function MylandPageContent() {
         </div>
       )}
       {showRecordTypeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-[1105px] flex-col gap-2 overflow-hidden rounded-2xl bg-[#FFFEFB] px-8 pb-11 pt-8 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 max-sm:p-0">
+          {/* 폰: 화면을 꽉 채우고, 아래 버튼 줄은 카드를 내려도 늘 보여요 */}
+          <div className="flex max-h-[90vh] w-full max-w-[1105px] flex-col gap-2 overflow-hidden rounded-2xl bg-[#FFFEFB] px-8 pb-11 pt-8 break-keep shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:h-dvh max-sm:max-h-none max-sm:rounded-none max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-4">
             <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setShowRecordTypeModal(false)}
-                className="flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-sm text-[#C0BDBD]"
+                className="-m-2.5 flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-sm text-[#C0BDBD]"
                 aria-label={t.closeLabel}
               >
                 ✕
@@ -926,23 +1004,23 @@ function MylandPageContent() {
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col items-center gap-[60px] overflow-y-auto">
-              <div className="flex flex-col items-center gap-12">
+              <div className="flex w-full flex-col items-center gap-12 max-sm:gap-5 max-sm:pb-2">
                 {anniversary && (
                   <div className="flex flex-col items-center justify-center gap-[18px]">
                     <AnniversaryBadge item={anniversary} />
                   </div>
                 )}
 
-                <div className="flex flex-col items-center gap-4 text-center">
-                  <h2 className="font-newsreader text-[36px] font-normal text-black">
+                <div className="flex flex-col items-center gap-4 text-center max-sm:gap-1.5">
+                  <h2 className="font-newsreader text-[36px] font-normal text-black max-sm:text-label-md">
                     {t.recordTypes.title}
                   </h2>
-                  <p className="font-mulish text-xl font-semibold text-[#8F8F8F]">
+                  <p className="font-mulish text-xl font-semibold text-[#8F8F8F] max-sm:text-body-3">
                     {t.recordTypes.subtitle}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid w-full max-w-[1041px] grid-cols-2 gap-6 max-sm:gap-3 lg:grid-cols-3">
                   {RECORD_TYPE_CARDS.map((card) => {
                     const isSelected = selectedRecordTypes.includes(card.id);
 
@@ -951,15 +1029,15 @@ function MylandPageContent() {
                         key={card.id}
                         type="button"
                         onClick={() => toggleRecordType(card.id)}
-                        className="flex h-[191px] w-[331px] cursor-pointer flex-col overflow-hidden rounded border-0 bg-white text-left shadow-[0px_0px_2px_0px_rgba(0,0,0,0.12),0px_2px_4px_0px_rgba(0,0,0,0.14)]"
+                        className="flex h-[191px] w-full cursor-pointer flex-col overflow-hidden rounded border-0 bg-white text-left max-sm:h-auto shadow-[0px_0px_2px_0px_rgba(0,0,0,0.12),0px_2px_4px_0px_rgba(0,0,0,0.14)]"
                       >
                         <div
-                          className={`flex flex-col gap-2.5 p-3 ${
+                          className={`flex flex-col gap-2.5 p-3 max-sm:gap-1 max-sm:p-2.5 ${
                             isSelected ? "bg-[#776257]" : "bg-[#E9E0D3]"
                           }`}
                         >
                           <span
-                            className={`font-newsreader text-xl font-normal leading-6 ${
+                            className={`font-newsreader text-xl font-normal leading-6 max-sm:text-body-2 max-sm:leading-5 ${
                               isSelected ? "text-white" : "text-[#2F2F2F]"
                             }`}
                           >
@@ -973,14 +1051,14 @@ function MylandPageContent() {
                             {t.recordTypes.cards[card.id].subtitle}
                           </span>
                         </div>
-                        <div className="relative flex h-[184px] flex-1 items-center justify-center overflow-hidden bg-white">
+                        <div className="relative flex h-[184px] flex-1 items-center justify-center overflow-hidden bg-white max-sm:h-24 max-sm:flex-none">
                           {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
                           <img
                             src={card.image}
                             alt=""
                             className={`h-full w-full ${
                               card.id === "words"
-                                ? "object-contain p-6"
+                                ? "object-contain p-6 max-sm:p-3"
                                 : "object-cover"
                             }`}
                           />
@@ -990,12 +1068,13 @@ function MylandPageContent() {
                   })}
                 </div>
               </div>
+            </div>
 
-              <div className="flex w-full shrink-0 items-center gap-2">
+              <div className="flex w-full shrink-0 items-center gap-2 sm:mt-[52px] max-sm:pt-2">
                 <button
                   type="button"
                   onClick={() => setShowRecordTypeModal(false)}
-                  className="flex h-14 w-[204px] cursor-pointer items-center justify-center gap-1 rounded-xl border border-[#C0BDBD] bg-[#FFFEFB] font-mulish text-base font-normal text-[#898787] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+                  className="flex h-14 w-[204px] shrink-0 cursor-pointer items-center justify-center gap-1 rounded-xl max-sm:w-auto max-sm:px-4 border border-[#C0BDBD] bg-[#FFFEFB] font-mulish text-base font-normal text-[#898787] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
                 >
                   <span aria-hidden="true">‹</span>
                   {t.recordTypes.backButton}
@@ -1017,7 +1096,6 @@ function MylandPageContent() {
                   <span aria-hidden="true">›</span>
                 </button>
               </div>
-            </div>
           </div>
         </div>
       )}

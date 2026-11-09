@@ -434,21 +434,22 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex w-full max-w-[1203px] flex-col items-center gap-2 rounded-[15px] bg-[#FEF3EC] p-6 shadow-[0px_8px_5px_0px_rgba(0,0,0,0.25)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 max-sm:p-3">
+      {/* 폰(640px 미만): 카드 안 내용을 위에서 아래로 쌓고, 창이 길면 창 안에서 스크롤 */}
+      <div className="flex w-full max-w-[1203px] flex-col items-center gap-2 rounded-[15px] bg-[#FEF3EC] p-6 break-keep shadow-[0px_8px_5px_0px_rgba(0,0,0,0.25)] max-sm:max-h-[94dvh] max-sm:overflow-y-auto max-sm:p-4">
         <div className="flex w-full justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
+            className="-m-2.5 flex h-11 w-11 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
             aria-label="닫기"
           >
             <Image src="/icons/myland/emotion-modal-close.svg" alt="" width={14} height={14} />
           </button>
         </div>
 
-        <div ref={dateRangeRef} className="mb-6 flex w-full max-w-[896px] items-center gap-3">
-          <div className="relative flex items-center gap-2">
+        <div ref={dateRangeRef} className="mb-6 flex w-full max-w-[896px] items-center gap-3 max-sm:mb-3 max-sm:gap-1.5">
+          <div className="relative flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:gap-0.5">
             <input
               type="text"
               placeholder="YYYY.MM.DD"
@@ -458,7 +459,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
                 const parsed = parseDateInput(e.target.value);
                 if (parsed) changeStart(parsed);
               }}
-              className="w-36 rounded-lg border border-[#E8DDD5] px-3 py-2 font-mulish text-sm text-[#1a1a1a] outline-none"
+              className="w-36 rounded-lg border border-[#E8DDD5] px-3 py-2 font-mulish text-sm text-[#1a1a1a] outline-none max-sm:w-full max-sm:min-w-0 max-sm:px-2 max-sm:text-body-2"
             />
             <button
               type="button"
@@ -466,7 +467,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
                 setShowStartPicker((prev) => !prev);
                 setShowEndPicker(false);
               }}
-              className="flex cursor-pointer items-center justify-center border-0 bg-transparent p-1 text-[#AF9083]"
+              className="flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-1 text-[#AF9083] max-sm:size-9"
               aria-label="시작일 선택"
               aria-expanded={showStartPicker}
             >
@@ -488,7 +489,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
 
           <span className="font-mulish text-sm text-[#1a1a1a]">~</span>
 
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex items-center gap-2 max-sm:min-w-0 max-sm:flex-1 max-sm:gap-0.5">
             <input
               type="text"
               placeholder="YYYY.MM.DD"
@@ -498,7 +499,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
                 const parsed = parseDateInput(e.target.value);
                 if (parsed) changeEnd(parsed);
               }}
-              className="w-36 rounded-lg border border-[#E8DDD5] px-3 py-2 font-mulish text-sm text-[#1a1a1a] outline-none"
+              className="w-36 rounded-lg border border-[#E8DDD5] px-3 py-2 font-mulish text-sm text-[#1a1a1a] outline-none max-sm:w-full max-sm:min-w-0 max-sm:px-2 max-sm:text-body-2"
             />
             <button
               type="button"
@@ -506,7 +507,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
                 setShowEndPicker((prev) => !prev);
                 setShowStartPicker(false);
               }}
-              className="flex cursor-pointer items-center justify-center border-0 bg-transparent p-1 text-[#AF9083]"
+              className="flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-1 text-[#AF9083] max-sm:size-9"
               aria-label="종료일 선택"
               aria-expanded={showEndPicker}
             >
@@ -527,7 +528,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="relative h-[455px] w-full max-w-[896px] overflow-hidden rounded-2xl bg-white">
+        <div className="relative h-[455px] w-full max-w-[896px] overflow-hidden rounded-2xl bg-white max-sm:h-auto max-sm:shrink-0 max-sm:pb-[170px]">
           {/* 물결: 시간에 따라 가장 많이 남긴 기분의 색 */}
           <svg
             viewBox="0 0 896 166"
@@ -545,15 +546,15 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
             <path d={WAVE_PATH} fill={`url(#${gradientId})`} fillOpacity={0.5} />
           </svg>
 
-          <div className="absolute left-[149.5px] top-[26.5px] h-[237px] w-[597px] max-w-[calc(100%-149.5px)]">
-            <div className="relative h-full w-full">
+          <div className="absolute left-[149.5px] top-[26.5px] h-[237px] w-[597px] max-w-[calc(100%-149.5px)] max-sm:relative max-sm:inset-auto max-sm:m-3 max-sm:h-auto max-sm:w-auto max-sm:max-w-none">
+            <div className="relative h-full w-full max-sm:flex max-sm:flex-col max-sm:gap-3 max-sm:px-5 max-sm:py-4">
               <Image src="/icons/myland/emotion-chart-bg.svg" alt="" fill className="rounded-[22px] object-cover" unoptimized />
 
-              <p className="absolute left-[33px] top-4 font-mulish text-sm text-black">
+              <p className="absolute left-[33px] top-4 font-mulish text-sm text-black max-sm:relative max-sm:inset-auto">
                 {formatDateEn(markerDate)}일까지 기록된 감정들
               </p>
 
-              <p className="absolute left-[33px] top-[76px] max-w-[300px] font-newsreader text-xl leading-6 text-black">
+              <p className="absolute left-[33px] top-[76px] max-w-[300px] font-newsreader text-xl leading-6 text-black max-sm:relative max-sm:inset-auto max-sm:text-body-1">
                 {logs === null ? (
                   "기록을 불러오는 중이에요."
                 ) : loadError ? (
@@ -572,12 +573,12 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
                 alt="해 평온, 구름 무덤덤, 달 그리움, 비 무기력"
                 width={131}
                 height={26}
-                className="absolute left-[33px] top-[195px]"
+                className="absolute left-[33px] top-[195px] max-sm:relative max-sm:inset-auto"
                 unoptimized
               />
 
               {/* 막대: 범례 순서대로, 그 날까지 남긴 기분의 비율 */}
-              <div className="absolute bottom-4 right-8 flex h-[205px] items-end gap-1.5">
+              <div className="absolute bottom-4 right-8 flex h-[205px] items-end gap-1.5 max-sm:relative max-sm:inset-auto max-sm:h-[190px] max-sm:self-center">
                 {MOODS.map((item, index) => {
                   const percent = percents[index];
                   const height = percent === 0 ? 6 : Math.max(Math.round((percent / 100) * BAR_MAX_HEIGHT), 34);
@@ -609,7 +610,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
           {/* 물결 위를 누르거나 끌어서 날짜 옮기기 */}
           <div
             ref={timelineRef}
-            className="absolute inset-x-0 bottom-0 top-[280px] cursor-ew-resize touch-none"
+            className="absolute inset-x-0 bottom-0 top-[280px] cursor-ew-resize touch-none max-sm:top-auto max-sm:h-[170px]"
             onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
               draggingRef.current = true;
               event.currentTarget.setPointerCapture(event.pointerId);
@@ -653,18 +654,18 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div className="pointer-events-none absolute bottom-[12.5px] left-[17.5px] right-[17.5px] flex items-center justify-between font-mulish text-base text-black">
+          <div className="pointer-events-none absolute bottom-[12.5px] left-[17.5px] right-[17.5px] flex items-center justify-between font-mulish text-base text-black max-sm:text-body-3">
             <span>{formatDateEn(new Date(rangeStart))}</span>
             <span>{formatDateEn(new Date(rangeEnd))}</span>
           </div>
         </div>
 
-        <div className="h-6 w-full shrink-0" />
+        <div className="h-6 w-full shrink-0 max-sm:h-2" />
 
         <button
           type="button"
           onClick={onClose}
-          className="flex h-[60px] w-full max-w-[657px] cursor-pointer items-center justify-center rounded-[10px] border border-[#EFCAAE] bg-[#FDD9BD] px-6 font-newsreader text-base text-[#4A423C]"
+          className="flex h-[60px] w-full max-w-[657px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] max-sm:h-12 border border-[#EFCAAE] bg-[#FDD9BD] px-6 font-newsreader text-base text-[#4A423C]"
           style={{ WebkitTextStroke: "0.2px #4A423C" }}
         >
           마이홈으로 돌아가기

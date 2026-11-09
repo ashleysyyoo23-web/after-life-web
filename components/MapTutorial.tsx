@@ -93,10 +93,13 @@ export function MapTutorial({
   step,
   onStep,
   onClose,
+  shiftX = 0,
 }: {
   step: number;
   onStep: (step: number) => void;
   onClose: () => void;
+  // 폰에서 지도를 옆으로 민 만큼(px, 가운데 기준): 비추는 곳도 같이 옮겨요
+  shiftX?: number;
 }) {
   const maskId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const current = MAP_TUTORIAL_STEPS[step];
@@ -147,7 +150,7 @@ export function MapTutorial({
       ) : (
         <svg
           className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-          style={{ width: "max(100vw, 177.78vh)", height: "max(56.25vw, 100vh)" }}
+          style={{ width: "max(100vw, 177.78vh)", height: "max(56.25vw, 100vh)", marginLeft: -shiftX }}
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
         >

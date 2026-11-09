@@ -17,7 +17,8 @@ import { SwayingPlants } from "@/components/SwayingPlants";
 import { WavingFlag } from "@/components/WavingFlag";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { Chip, ChipRow } from "@/components/ui/Chip";
 import { RichText } from "@/components/RichText";
 import { ko } from "@/lib/copy/ko";
 import { josa } from "@/lib/josa";
@@ -105,10 +106,25 @@ function MainlandPageContent() {
   const [maxOpen, setMaxOpen] = useState(2);
   const [answering, setAnswering] = useState(false);
   const [hoveredIsland, setHoveredIsland] = useState<string | null>(null);
+  // 폰(640px 미만): 가로로 긴 지도를 옆으로 밀어서 둘러봐요. 화면 가운데 온 섬에 말풍선이 떠요
+  const sceneScrollRef = useRef<HTMLDivElement>(null);
+  const [focusedIsland, setFocusedIsland] = useState<string>("/myland");
+  // 둘러보기가 비추는 곳을 지도가 밀린 만큼 같이 옮겨요 (px, 가운데 기준)
+  const [mapShift, setMapShift] = useState(0);
 
   // 지도 둘러보기(섬지기 튜토리얼): 처음 들어오면 저절로 한 번, 오른쪽 아래 버튼으로 다시 보기
   const { data: session, status: sessionStatus } = useSession();
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+  const showTutorialStep = (step: number | null) => {
+    setTutorialStep(step);
+    const el = sceneScrollRef.current;
+    if (step === null || !el) return;
+    const spot = MAP_TUTORIAL_STEPS[step]?.spots?.[0];
+    if (spot && !window.matchMedia("(min-width: 640px)").matches) {
+      el.scrollLeft = (spot.cx / 100) * el.scrollWidth - el.clientWidth / 2;
+    }
+    setMapShift(el.scrollLeft - (el.scrollWidth - el.clientWidth) / 2);
+  };
   useEffect(() => {
     if (sessionStatus === "loading") return;
     const key = `${MAP_TUTORIAL_KEY_PREFIX}${session?.user?.email ?? "guest"}`;
@@ -120,7 +136,7 @@ function MainlandPageContent() {
       } catch {
         return;
       }
-      setTutorialStep(0);
+      showTutorialStep(0);
     }, 700);
     return () => clearTimeout(timer);
   }, [sessionStatus, session?.user?.email]);
@@ -140,6 +156,37 @@ function MainlandPageContent() {
   }, []);
 
   const asking = islands.find((island) => island.status === "ask") ?? null;
+
+  // 폰: 처음엔 지도 가운데(나의 섬)로, 노트북은 0. 화면 폭이 바뀌어도 다시 맞춰요
+  useEffect(() => {
+    const el = sceneScrollRef.current;
+    if (!el) return;
+    const wide = window.matchMedia("(min-width: 640px)");
+    const align = () => {
+      el.scrollLeft = wide.matches ? 0 : (el.scrollWidth - el.clientWidth) / 2;
+    };
+    align();
+    wide.addEventListener("change", align);
+    return () => wide.removeEventListener("change", align);
+  }, []);
+
+  // 화면 가운데에 가장 가까운 섬
+  const updateFocusedIsland = (el: HTMLDivElement) => {
+    if (el.scrollWidth <= el.clientWidth) return;
+    const center = ((el.scrollLeft + el.clientWidth / 2) / el.scrollWidth) * 100;
+    const nearest = mainlandIslands.reduce((best, island) =>
+      Math.abs(parseFloat(island.left) - center) < Math.abs(parseFloat(best.left) - center) ? island : best,
+    );
+    setFocusedIsland(nearest.href);
+  };
+
+  // 아래 섬 칩을 누르면 지도가 그 섬으로 스르르
+  const scrollToIsland = (island: (typeof mainlandIslands)[number]) => {
+    const el = sceneScrollRef.current;
+    if (!el) return;
+    setFocusedIsland(island.href);
+    el.scrollTo({ left: (parseFloat(island.left) / 100) * el.scrollWidth - el.clientWidth / 2, behavior: "smooth" });
+  };
 
   // 안내 빛: 다음에 갈 섬의 팻말이 반짝여요 (기록 정리·리캡은 마이 랜드, 반응은 커뮤니티 추모 랜드)
   const guideStep = useGuideStep();
@@ -175,6 +222,13 @@ function MainlandPageContent() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
+      {/* 폰: 지도를 옆으로 밀어서 둘러봐요 / 노트북(640px 이상): 예전처럼 화면에 맞춰 고정 */}
+      <div
+        ref={sceneScrollRef}
+        className="absolute inset-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] sm:overflow-hidden"
+        onScroll={(event) => updateFocusedIsland(event.currentTarget)}
+      >
+      <div className="relative h-full w-[max(100vw,177.78vh)] sm:w-full">
       {/* 고정 섬 3개(커뮤니티 추모 랜드·마이 랜드·저장소)만 있는 바탕. 개인 추모 랜드는 그 위에 따로 올려요 */}
       <MoodSkyBackground scene="mainland-base" clouds />
 
@@ -298,16 +352,19 @@ function MainlandPageContent() {
         })}
       </div>
 
-            {/* 섬 위 안내 말풍선 (마우스를 올린 섬만) */}
+            {/* 섬 위 안내 말풍선 (노트북: 마우스를 올린 섬 / 폰: 화면 가운데 온 섬, 누르면 그 섬으로) */}
       <div className="pointer-events-none absolute inset-0 z-[15]">
         {mainlandIslands.map((island) => {
           const visible = hoveredIsland === island.href;
+          const focused = focusedIsland === island.href;
           return (
-            <div
+            <Link
               key={island.href}
+              href={island.href}
               aria-hidden="true"
-              className={`absolute -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-xl border border-[#5A3A30] bg-[#FFFAF6] px-4 py-2.5 shadow-[0px_4px_12px_rgba(80,50,30,0.15)] transition-all duration-300 ${
-                visible ? "-mt-2 opacity-100" : "mt-0 opacity-0"
+              tabIndex={-1}
+              className={`absolute block -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-xl border border-[#5A3A30] bg-[#FFFAF6] px-4 py-2.5 shadow-[0px_4px_12px_rgba(80,50,30,0.15)] transition-all duration-300 ${
+                visible ? "-mt-2 opacity-100" : `mt-0 opacity-0${focused ? " max-sm:pointer-events-auto max-sm:-mt-2 max-sm:opacity-100" : ""}`
               }`}
               style={{
                 left: `clamp(180px, ${island.left}, calc(100% - 180px))`,
@@ -321,14 +378,31 @@ function MainlandPageContent() {
               <p className="mt-0.5 font-mulish text-xs text-[#8a7a6c]">{island.desc}</p>
               {/* 말풍선 꼬리 */}
               <span className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[#5A3A30] bg-[#FFFAF6]" />
-            </div>
+            </Link>
           );
         })}
       </div>
+      </div>
+      </div>
+
+      {/* 폰: 섬 바로가기 칩 (누르면 지도가 그 섬으로 움직여요) */}
+      {tutorialStep === null && !asking && (
+        <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-20 flex justify-center sm:hidden">
+          <div className="rounded-full bg-white/85 px-2 shadow-sm">
+            <ChipRow label={t.islandChipsLabel}>
+              {mainlandIslands.map((island) => (
+                <Chip key={island.href} selected={focusedIsland === island.href} onClick={() => scrollToIsland(island)}>
+                  {island.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          </div>
+        </div>
+      )}
 
       {/* 닫아 둔 개인 추모 랜드: 이번 기일 기간엔 다시 묻지 않지만 여기서 언제든 열 수 있어요 */}
       {laterIslands.length > 0 && !asking && (
-        <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-white/85 px-4 py-2 font-mulish text-sm text-[#4A423C] shadow">
+        <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-white/85 px-4 py-2 font-mulish text-sm text-[#4A423C] shadow max-sm:bottom-[calc(max(1rem,env(safe-area-inset-bottom))+64px)] max-sm:w-[calc(100vw-32px)] max-sm:rounded-2xl">
           <span className="text-[#898787]">{t.laterTitle}</span>
           {laterIslands.map((island) => (
             <button
@@ -351,7 +425,7 @@ function MainlandPageContent() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="anniversary-title"
-            className="flex w-full max-w-[460px] flex-col items-center gap-5 rounded-3xl bg-white px-8 py-9 text-center shadow-lg"
+            className="flex w-full max-w-[460px] flex-col items-center gap-5 rounded-3xl bg-white px-8 py-9 text-center break-keep shadow-lg max-sm:px-6 max-sm:py-7"
           >
             {(() => {
               const look = islandLook(asking.deceasedId);
@@ -399,8 +473,8 @@ function MainlandPageContent() {
       {tutorialStep === null && (
         <button
           type="button"
-          onClick={() => setTutorialStep(0)}
-          className="fixed bottom-6 right-6 z-20 cursor-pointer rounded-full border border-[#E8B4A0] bg-white/85 px-4 py-2 font-jeju-myeongjo text-sm text-[#5A3A30] shadow-sm transition-colors hover:bg-[#FFFBF6]"
+          onClick={() => showTutorialStep(0)}
+          className="fixed bottom-6 right-6 z-20 cursor-pointer rounded-full border border-[#E8B4A0] bg-white/85 px-4 py-2 font-jeju-myeongjo text-sm text-[#5A3A30] shadow-sm transition-colors hover:bg-[#FFFBF6] max-sm:bottom-auto max-sm:right-4 max-sm:top-16"
         >
           {t.tourButton}
         </button>
@@ -408,7 +482,7 @@ function MainlandPageContent() {
 
       {/* 섬지기 튜토리얼 (기일 팝업이 떠 있으면 그 뒤에) */}
       {tutorialStep !== null && !asking && (
-        <MapTutorial step={tutorialStep} onStep={setTutorialStep} onClose={() => setTutorialStep(null)} />
+        <MapTutorial step={tutorialStep} onStep={showTutorialStep} onClose={() => showTutorialStep(null)} shiftX={mapShift} />
       )}
 
       <TopNav

@@ -151,7 +151,7 @@ export function TodayNote({
         {/* 테이프 (쪽지가 도착한 뒤 붙어요) */}
         <span className="today-note-tape" aria-hidden />
 
-        <div className="relative max-h-[86vh] overflow-y-auto rounded-[14px] px-9 pb-7 pt-10 sm:px-11">
+        <div className="relative max-h-[86vh] overflow-y-auto rounded-[14px] px-9 pb-7 pt-10 break-keep max-sm:px-6 max-sm:pt-8 sm:px-11">
           <div className="flex items-start justify-between gap-4">
             <span className="inline-block -rotate-3 rounded-md border-[1.5px] border-dashed border-[#D9645A] bg-[#FCEDEA]/80 px-3 py-1 font-jeju-myeongjo text-[15px] text-[#D35548]">
               오늘의 쪽지
@@ -159,7 +159,7 @@ export function TodayNote({
             {note && <span className="pt-1 font-jeju-myeongjo text-[15px] text-[#6B5F58]">{noteDateLabel(note.today)}</span>}
           </div>
 
-          <h2 id="today-note-title" className="mt-6 font-jeju-myeongjo text-[30px] font-bold leading-tight tracking-[-0.01em] text-[#3B302B]">
+          <h2 id="today-note-title" className="mt-6 font-jeju-myeongjo text-[30px] font-bold leading-tight tracking-[-0.01em] text-[#3B302B] max-sm:mt-4 max-sm:text-label-md">
             오늘은 이런 걸 해 볼까요?
           </h2>
           <p className="mt-2 font-jeju-myeongjo text-[15px] text-[#7A6E66]">
@@ -174,7 +174,7 @@ export function TodayNote({
             {items.map((item, index) => (
               <li
                 key={item.key}
-                className="today-note-item flex items-center gap-4 rounded-xl border border-[#E3D8CE] bg-[#FFFDF9]/70 px-4 py-3.5"
+                className="today-note-item flex items-center gap-4 rounded-xl border border-[#E3D8CE] bg-[#FFFDF9]/70 px-4 py-3.5 max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2"
                 style={{ animationDelay: `${1.15 + index * 0.12}s` }}
               >
                 <button
@@ -195,7 +195,7 @@ export function TodayNote({
                     </svg>
                   )}
                 </button>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 max-sm:basis-[calc(100%-44px)]">
                   <p
                     className={`font-jeju-myeongjo text-[18px] font-bold leading-snug transition-colors ${
                       checked.has(item.key) ? "text-[#8F837B] line-through decoration-[#8F837B]/80" : "text-[#3B302B]"
@@ -208,7 +208,7 @@ export function TodayNote({
                 {item.href ? (
                   <Link
                     href={item.href}
-                    className="shrink-0 whitespace-nowrap rounded-full border border-[#D9C3B4] bg-[#F5E6DA] px-3.5 py-1.5 font-jeju-myeongjo text-[13px] text-[#5A4A40] transition-colors hover:bg-[#EFD8C8]"
+                    className="shrink-0 whitespace-nowrap rounded-full border border-[#D9C3B4] bg-[#F5E6DA] px-3.5 py-1.5 max-sm:ml-11 font-jeju-myeongjo text-[13px] text-[#5A4A40] transition-colors hover:bg-[#EFD8C8]"
                   >
                     {item.button} →
                   </Link>
@@ -219,7 +219,7 @@ export function TodayNote({
                       onClose();
                       item.onClick?.();
                     }}
-                    className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-[#D9C3B4] bg-[#F5E6DA] px-3.5 py-1.5 font-jeju-myeongjo text-[13px] text-[#5A4A40] transition-colors hover:bg-[#EFD8C8]"
+                    className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-[#D9C3B4] bg-[#F5E6DA] px-3.5 py-1.5 max-sm:ml-11 font-jeju-myeongjo text-[13px] text-[#5A4A40] transition-colors hover:bg-[#EFD8C8]"
                   >
                     {item.button} →
                   </button>
