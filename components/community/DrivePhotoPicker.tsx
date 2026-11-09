@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 type Folder = { id: string; name: string };
 type Photo = { id: string; name: string; thumbnailUrl: string | null };
@@ -18,11 +21,11 @@ async function fetchFolder(parent: Folder | null): Promise<FolderResult> {
       folders?: Folder[];
       images?: Photo[];
     } | null;
-    if (res.status === 401 && data?.error === "Unauthorized") return { error: "로그인한 뒤 사진을 고를 수 있어요." };
-    if (!res.ok || !data?.root) return { error: data?.error ?? "Drive 폴더를 불러오지 못했어요." };
+    if (res.status === 401 && data?.error === "Unauthorized") return { error: t.picker.loginRequired };
+    if (!res.ok || !data?.root) return { error: data?.error ?? t.picker.loadFailed };
     return { root: data.root, folders: data.folders ?? [], images: data.images ?? [] };
   } catch {
-    return { error: "Drive 폴더를 불러오지 못했어요." };
+    return { error: t.picker.loadFailed };
   }
 }
 
@@ -72,7 +75,7 @@ export function DrivePhotoPicker({
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-[#E8DDD5] bg-white p-4">
       <div className="flex items-center justify-between gap-3">
-        <nav aria-label="폴더 위치" className="flex min-w-0 flex-wrap items-center gap-1 font-mulish text-xs text-[#898787]">
+        <nav aria-label={t.picker.pathLabel} className="flex min-w-0 flex-wrap items-center gap-1 font-mulish text-xs text-[#898787]">
           {trail.map((folder, index) => (
             <span key={folder.id} className="flex items-center gap-1">
               {index > 0 && <span aria-hidden="true">/</span>}
@@ -95,12 +98,12 @@ export function DrivePhotoPicker({
           onClick={onClose}
           className="shrink-0 cursor-pointer rounded-lg border border-[#C0BDBD] bg-white px-3 py-1 font-mulish text-xs text-[#4A423C]"
         >
-          닫기
+          {t.closeButton}
         </button>
       </div>
 
       {error && <p className="font-mulish text-xs text-[#9E2121]">{error}</p>}
-      {loading && <p className="font-mulish text-xs text-[#898787]">불러오는 중...</p>}
+      {loading && <p className="font-mulish text-xs text-[#898787]">{t.picker.loading}</p>}
 
       {!loading && !error && (
         <div className="flex flex-col gap-3">
@@ -126,7 +129,7 @@ export function DrivePhotoPicker({
                   key={photo.id}
                   type="button"
                   onClick={() => onPick({ id: photo.id, name: photo.name })}
-                  aria-label={`${photo.name} 고르기`}
+                  aria-label={t.picker.pickLabel(photo.name)}
                   className="aspect-square cursor-pointer overflow-hidden rounded-lg border-0 bg-[#F6F6F6] p-0 ring-[#9BB073] hover:ring-2"
                 >
                   {photo.thumbnailUrl ? (
@@ -148,7 +151,7 @@ export function DrivePhotoPicker({
             </div>
           ) : (
             <p className="font-mulish text-xs text-[#898787]">
-              {folders.length > 0 ? "폴더를 눌러 들어가 사진을 골라 주세요." : `'${current?.name ?? ""}' 폴더에 사진이 없어요.`}
+              {folders.length > 0 ? t.picker.openFolderHint : t.picker.noPhotos(current?.name ?? "")}
             </p>
           )}
         </div>

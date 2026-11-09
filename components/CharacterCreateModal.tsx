@@ -5,13 +5,20 @@ import { DEFAULT_APPEARANCE, appearanceForRelation, type CharacterAppearance } f
 import { CHARACTER_RELATIONS, emptySpecialDate, isPetRelation, type SpecialDate } from "@/lib/character-fields";
 import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { guideGlow, useGuideStep } from "@/lib/guide";
-import { useCallback, useEffect, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+import { uploadPhotos } from "@/lib/shrink-photo";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const RELATIONS = CHARACTER_RELATIONS;
+const t = ko.character.create;
 // 3단계 (Task 7 과제와 맞춤). 예전 1·2단계(정보 입력·캐릭터 꾸미기)를 한 화면으로 합쳤어요.
-const STEPS = ["정보 입력·캐릭터 꾸미기", "기록 불러오기", "열람방식 설정하기"];
+const STEPS = t.steps;
 const RECORDS_STEP = 2;
 const LAST_STEP = STEPS.length;
+
+// 휴대폰에서 사진 올리기: 한 번에 고를 수 있는 수, 미리 보여 줄 수 (많이 그리면 휴대폰이 느려져요)
+const PICK_MAX = 200;
+const PREVIEW_COUNT = 24;
 
 // Google 계정을 새로 연결하러 다녀오는 동안 적던 내용을 잠깐 보관 (돌아오면 이어서)
 const DRAFT_KEY = "afterlife:character-draft";
@@ -37,6 +44,8 @@ export type CreatedCharacter = {
   positionX: number | null;
   positionY: number | null;
   folderName: string | null;
+  // 사진 출처: drive = Drive 폴더, upload = 휴대폰에서 올린 사진
+  photoSource?: "drive" | "upload";
   // 연결된 Google 계정 (없으면 null)
   drive?: { googleEmail: string; needsReconnect: boolean } | null;
 };
@@ -49,16 +58,16 @@ type Folder = { id: string; name: string };
 export function driveErrorMessage(code: string): string {
   switch (code) {
     case "access_denied":
-      return "Google 연결을 취소했어요. 다시 연결하려면 '연결하기'를 눌러 주세요.";
+      return t.driveErrors.access_denied;
     case "missing_scope":
-      return "권한 화면에서 'Google Drive 파일 보기'에 체크하지 않아서 사진을 불러올 수 없어요. 다시 연결하면서 꼭 체크해 주세요.";
+      return t.driveErrors.missing_scope;
     case "session_mismatch":
-      return "로그인 정보가 바뀌었어요. 새로고침한 뒤 다시 연결해 주세요.";
+      return t.driveErrors.session_mismatch;
     case "save_failed":
     case "supabase_not_configured":
-      return "Drive는 연결됐지만 연결 정보를 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요. 계속되면 진행자에게 알려 주세요.";
+      return t.driveErrors.save_failed;
     default:
-      return "Google Drive 연결을 마치지 못했어요. 권한 화면에서 'Google Drive 파일 보기'에 체크했는지 확인하고 다시 연결해 주세요.";
+      return t.driveErrors.other;
   }
 }
 
@@ -119,8 +128,35 @@ export function CharacterCreateModal({
   const [foldersError, setFoldersError] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
 
+  // 사진 출처, 휴대폰에서 고른 사진
+  const [photoSource, setPhotoSource] = useState<"drive" | "upload">("drive");
+  const [pickedFiles, setPickedFiles] = useState<File[]>([]);
+  const [pickNotice, setPickNotice] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // 저장 뒤 사진 올리기: 진행 상황, 만든 인물, 못 올린 사진
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [createdCharacter, setCreatedCharacter] = useState<CreatedCharacter | null>(null);
+  const [failedFiles, setFailedFiles] = useState<File[]>([]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 고른 사진 미리 보기 (앞의 몇 장만). 바뀌거나 창을 닫으면 브라우저 메모리에서 지워요.
+  const previews = useMemo(
+    () => pickedFiles.slice(0, PREVIEW_COUNT).map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [pickedFiles],
+  );
+  useEffect(() => () => previews.forEach((preview) => URL.revokeObjectURL(preview.url)), [previews]);
+
+  const addPickedFiles = (list: FileList | null) => {
+    const images = [...(list ?? [])].filter((file) => file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name));
+    // 같은 사진을 두 번 고르면 한 번만
+    const key = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
+    const seen = new Set(pickedFiles.map(key));
+    const merged = [...pickedFiles, ...images.filter((file) => !seen.has(key(file)))];
+    setPickNotice(merged.length > PICK_MAX ? t.tooManyPicked(PICK_MAX) : null);
+    setPickedFiles(merged.slice(0, PICK_MAX));
+  };
 
   // 연결된 계정 목록 (기록 불러오기 단계에서)
   useEffect(() => {
@@ -151,7 +187,7 @@ export function CharacterCreateModal({
       if (cancelled) return;
       if (!res.ok) {
         const json = (await res.json().catch(() => null)) as { error?: string } | null;
-        setFoldersError(json?.error ?? "폴더 목록을 불러오지 못했어요.");
+        setFoldersError(json?.error ?? t.foldersLoadFailed);
         setFoldersState("error");
         return;
       }
@@ -187,7 +223,8 @@ export function CharacterCreateModal({
 
   const canNext =
     (step === 1 && nickname.trim().length > 0) ||
-    (step === RECORDS_STEP && Boolean(connectionId && selectedFolder));
+    (step === RECORDS_STEP &&
+      (photoSource === "upload" ? pickedFiles.length > 0 : Boolean(connectionId && selectedFolder)));
 
   // 안내 빛 (고인 불러오기 단계): 지금 누를 수 있는 다음 버튼 하나만
   const guiding = useGuideStep() === "character";
@@ -196,8 +233,23 @@ export function CharacterCreateModal({
     guiding && step === RECORDS_STEP && !connectionId && usableConnections.length > 0 ? usableConnections[0].id : null;
   const glowConnectNew = guiding && step === RECORDS_STEP && connections !== null && usableConnections.length === 0;
 
+  // 고른 사진을 만든 인물에게 올리기. 못 올린 사진이 있으면 다시 올리기 / 이대로 마치기를 보여 줘요.
+  const runUploads = async (character: CreatedCharacter, files: File[]) => {
+    setFailedFiles([]);
+    setError(null);
+    const { failed } = await uploadPhotos(character.id, files, (done, total) => setUploadProgress({ done, total }));
+    setUploadProgress(null);
+    if (failed.length === 0) {
+      onCreated(character);
+      return;
+    }
+    setFailedFiles(failed);
+    setError(t.uploadSomeFailed(failed.length));
+  };
+
   const handleSave = async () => {
-    if (!connectionId || !selectedFolder) return;
+    const upload = photoSource === "upload";
+    if (upload ? pickedFiles.length === 0 : !connectionId || !selectedFolder) return;
     setSaving(true);
     setError(null);
     try {
@@ -206,16 +258,33 @@ export function CharacterCreateModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nickname, relation, description, appearance,
-          driveConnectionId: connectionId, folderId: selectedFolder.id,
+          ...(upload
+            ? { photoSource: "upload" }
+            : { driveConnectionId: connectionId, folderId: selectedFolder?.id }),
           emotionLevel, excludedTypes, allowRecommendation,
           specialDates: specialDates.filter((d) => d.date.trim()),
         }),
       });
       const json = (await res.json().catch(() => null)) as { character?: CreatedCharacter; error?: string } | null;
-      if (!res.ok || !json?.character) throw new Error(json?.error ?? "캐릭터를 저장하지 못했어요.");
-      onCreated(json.character);
+      if (!res.ok || !json?.character) throw new Error(json?.error ?? t.saveFailed);
+      if (upload) {
+        setCreatedCharacter(json.character);
+        await runUploads(json.character, pickedFiles);
+      } else {
+        onCreated(json.character);
+      }
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "캐릭터를 저장하지 못했어요.");
+      setError(saveError instanceof Error ? saveError.message : t.saveFailed);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const retryUploads = async () => {
+    if (!createdCharacter) return;
+    setSaving(true);
+    try {
+      await runUploads(createdCharacter, failedFiles);
     } finally {
       setSaving(false);
     }
@@ -226,7 +295,7 @@ export function CharacterCreateModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="고인 불러오기"
+        aria-label={t.dialogLabel}
         className={`relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-2xl bg-white p-10 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] ${
           step === 1 ? "max-w-5xl" : "max-w-3xl"
         }`}
@@ -240,7 +309,13 @@ export function CharacterCreateModal({
               </span>
             ))}
           </p>
-          <button type="button" onClick={onClose} className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]" aria-label="닫기">
+          {/* 인물을 이미 만들었으면(사진 일부를 못 올렸어도) 닫을 때 마이 랜드에 보이게 */}
+          <button
+            type="button"
+            onClick={createdCharacter ? () => onCreated(createdCharacter) : onClose}
+            className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]"
+            aria-label={t.closeLabel}
+          >
             X
           </button>
         </div>
@@ -248,20 +323,20 @@ export function CharacterCreateModal({
         <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
           {step === 1 && (
             <div className="flex flex-col gap-8">
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">누구를 오랫동안 기억하고 싶으세요?</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{t.title}</h2>
               <div className="flex flex-col gap-[18px]">
-                <p className={sectionLabel}><span>1</span><span>기억하고 싶은 분을 부르던 호칭을 입력해주세요.</span></p>
+                <p className={sectionLabel}><span>1</span><span>{t.nicknameLabel}</span></p>
                 <input
                   type="text"
                   value={nickname}
                   maxLength={20}
                   onChange={(e) => setNickname(e.target.value)}
-                  placeholder="예: 할머니, 뭉치, 아버지"
+                  placeholder={t.nicknamePlaceholder}
                   className="w-full rounded-xl border border-gray-200 px-4 py-4 font-mulish text-base text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
                 />
               </div>
               <div className="mt-2 flex flex-col gap-[18px]">
-                <p className={sectionLabel}><span>2</span><span>기억하고 싶은 분과의 관계를 선택해주세요</span></p>
+                <p className={sectionLabel}><span>2</span><span>{t.relationLabel}</span></p>
                 <div className="grid grid-cols-4 gap-x-[22px] gap-y-[10px]">
                   {RELATIONS.map((item) => (
                     <button
@@ -283,12 +358,12 @@ export function CharacterCreateModal({
               <div className="mt-2 flex flex-col gap-[18px]">
                 <p className={sectionLabel}>
                   <span>3</span>
-                  <span>{nickname.trim() || (isPet ? "이 아이" : "이 분")}의 모습을 꾸며주세요</span>
+                  <span>{t.appearanceLabel(nickname.trim() || t.appearanceWhoFallback(isPet))}</span>
                 </p>
                 <CharacterPartsPicker
                   appearance={appearance}
                   onChange={setAppearance}
-                  previewLabel={nickname || "캐릭터"}
+                  previewLabel={nickname || t.previewFallback}
                   pet={isPet}
                 />
               </div>
@@ -297,27 +372,124 @@ export function CharacterCreateModal({
 
           {step === RECORDS_STEP && (
             <div className="flex flex-col gap-8">
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{isPet ? "어떤 아이였나요?" : "어떤 분이셨나요?"}</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{t.recordsTitle(isPet)}</h2>
               <div className="flex flex-col gap-[18px]">
-                <p className={sectionLabel}><span>1</span><span>기억하고 싶은 모습을 자유롭게 적어주세요</span></p>
+                <p className={sectionLabel}><span>1</span><span>{t.descriptionLabel}</span></p>
                 <textarea
                   value={description}
                   maxLength={300}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder={isPet ? "(예시) 산책 가자고 하면 꼬리부터 흔들던 아이예요." : "(예시) 항상 밥 먹었냐고 물어보시던 분이에요."}
+                  placeholder={t.descriptionPlaceholder(isPet)}
                   className="h-28 w-full resize-none rounded-xl border border-gray-200 px-4 py-4 font-mulish text-base text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
                 />
               </div>
 
               <div className="flex flex-col gap-[18px]">
-                <p className={sectionLabel}><span>2</span><span>기록을 불러올 Google 계정을 골라주세요.</span></p>
+                <p className={sectionLabel}><span>2</span><span>{t.sourceLabel}</span></p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {([
+                    ["drive", t.sourceDrive, t.sourceDriveHelp],
+                    ["upload", t.sourceUpload, t.sourceUploadHelp],
+                  ] as const).map(([source, label, help]) => (
+                    <button
+                      key={source}
+                      type="button"
+                      aria-pressed={photoSource === source}
+                      onClick={() => setPhotoSource(source)}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-left font-mulish transition-colors ${
+                        photoSource === source ? "border-[#AF9083] bg-[#FDD9BD]/30" : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      {source === "drive" ? <GoogleDriveIcon /> : <span aria-hidden="true" className="text-2xl leading-none">📱</span>}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-base text-[#1a1a1a]">{label}</span>
+                        <span className="mt-1 block text-xs text-[#898787]">{help}</span>
+                      </span>
+                      {photoSource === source && <span className="shrink-0 text-sm font-semibold text-[#9BB073]">{t.selected}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {photoSource === "upload" && (
+                <div className="flex flex-col gap-[18px]">
+                  <p className={sectionLabel}><span>3</span><span>{t.uploadLabel(PICK_MAX)}</span></p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      addPickedFiles(event.target.files);
+                      // 같은 사진을 지웠다가 다시 고를 수 있게
+                      event.target.value = "";
+                    }}
+                  />
+                  <div className="flex flex-col gap-3 rounded-xl border border-[#E8DDD5] p-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`cursor-pointer rounded-full bg-[#AF9083] px-5 py-2 font-mulish text-sm font-medium text-white${guideGlow(guiding && pickedFiles.length === 0)}`}
+                      >
+                        {pickedFiles.length > 0 ? t.pickMorePhotos : t.pickPhotos}
+                      </button>
+                      {pickedFiles.length > 0 && (
+                        <>
+                          <span className="font-mulish text-sm text-[#1a1a1a]">{t.pickedCount(pickedFiles.length)}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPickedFiles([]);
+                              setPickNotice(null);
+                            }}
+                            className="cursor-pointer border-0 bg-transparent p-0 font-mulish text-xs text-[#898787] underline underline-offset-2"
+                          >
+                            {t.clearPicked}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {pickNotice && <p className="font-mulish text-xs text-[#9E2121]">{pickNotice}</p>}
+                    {previews.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                        {previews.map(({ file, url }) => (
+                          <div key={url} className="relative aspect-square overflow-hidden rounded-lg bg-[#FAF6F0]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt="" className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              aria-label={t.removePickedPhoto(file.name)}
+                              onClick={() => setPickedFiles((current) => current.filter((item) => item !== file))}
+                              className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-black/55 font-mulish text-xs text-white"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {pickedFiles.length > PREVIEW_COUNT && (
+                          <div className="flex aspect-square items-center justify-center rounded-lg bg-[#FAF6F0] font-mulish text-sm text-[#AF9083]">
+                            {t.morePreviews(pickedFiles.length - PREVIEW_COUNT)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p className="font-mulish text-xs text-[#898787]">{t.uploadNote}</p>
+                  </div>
+                </div>
+              )}
+
+              {photoSource === "drive" && (
+              <div className="flex flex-col gap-[18px]">
+                <p className={sectionLabel}><span>3</span><span>{t.accountLabel}</span></p>
                 {driveError && (
                   <p role="alert" className="rounded-xl border border-[#E8B4A0] bg-[#FDF0EA] px-4 py-3 font-mulish text-sm leading-relaxed text-[#9E2121]">
                     {driveError}
                   </p>
                 )}
                 <div className="flex flex-col gap-2 rounded-xl bg-[#FAF6F0] p-3">
-                  {connections === null && <p className="px-2 py-2 font-mulish text-sm text-[#898787]">연결된 계정을 불러오는 중이에요...</p>}
+                  {connections === null && <p className="px-2 py-2 font-mulish text-sm text-[#898787]">{t.accountsLoading}</p>}
                   {connections?.map((connection) => (
                     <button
                       key={connection.id}
@@ -331,9 +503,9 @@ export function CharacterCreateModal({
                       <GoogleDriveIcon />
                       <span className="min-w-0 flex-1 truncate text-sm text-[#1a1a1a]">{connection.googleEmail}</span>
                       {connection.needsReconnect ? (
-                        <span className="text-xs text-[#D99B82]">다시 연결이 필요해요</span>
+                        <span className="text-xs text-[#D99B82]">{t.needsReconnect}</span>
                       ) : connectionId === connection.id ? (
-                        <span className="text-sm font-semibold text-[#9BB073]">선택됨</span>
+                        <span className="text-sm font-semibold text-[#9BB073]">{t.selected}</span>
                       ) : null}
                     </button>
                   ))}
@@ -344,20 +516,21 @@ export function CharacterCreateModal({
                   >
                     <GoogleDriveIcon />
                     <span className="flex-1 text-sm text-[#1a1a1a]">
-                      {connections && connections.length > 0 ? "다른 Google 계정 연결하기" : "Google Drive 계정 연결하기"}
-                      <span className="mt-1 block text-xs text-[#AF9083]">고인의 계정이나 내 계정으로 로그인합니다. 적던 내용은 그대로 남아요.</span>
+                      {connections && connections.length > 0 ? t.connectAnother : t.connectFirst}
+                      <span className="mt-1 block text-xs text-[#AF9083]">{t.connectHelp}</span>
                     </span>
-                    <span className="shrink-0 rounded-full bg-[#AF9083] px-5 py-2 text-sm font-medium text-white">연결하기</span>
+                    <span className="shrink-0 rounded-full bg-[#AF9083] px-5 py-2 text-sm font-medium text-white">{t.connectButton}</span>
                   </button>
                 </div>
               </div>
+              )}
 
-              {connectionId && (
+              {photoSource === "drive" && connectionId && (
                 <div className="flex flex-col gap-[18px]">
-                  <p className={sectionLabel}><span>3</span><span>이 분의 사진이 담긴 폴더를 골라주세요. 폴더 안의 사진으로 기록을 만들어요.</span></p>
+                  <p className={sectionLabel}><span>4</span><span>{t.folderLabel}</span></p>
                   <div className="flex flex-col gap-3 rounded-xl border border-[#E8DDD5] p-4">
                     <div className="flex flex-wrap items-center gap-1 font-mulish text-sm text-[#898787]">
-                      <span>공유 문서함 /</span>
+                      <span>{t.sharedDrive}</span>
                       <button type="button" onClick={() => setPath([])} className="cursor-pointer border-0 bg-transparent p-0 text-[#AF9083] hover:underline">
                         {rootFolder?.name ?? "afterlife_my data"}
                       </button>
@@ -371,9 +544,9 @@ export function CharacterCreateModal({
                       ))}
                     </div>
                     <div className="max-h-56 overflow-y-auto rounded-lg bg-[#FAF6F0] p-2">
-                      {foldersState === "loading" && <p className="p-2 font-mulish text-sm text-[#898787]">폴더를 불러오는 중이에요...</p>}
+                      {foldersState === "loading" && <p className="p-2 font-mulish text-sm text-[#898787]">{t.foldersLoading}</p>}
                       {foldersState === "error" && <p className="p-2 font-mulish text-sm text-red-600">{foldersError}</p>}
-                      {foldersState === "ready" && folders.length === 0 && <p className="p-2 font-mulish text-sm text-[#898787]">이 안에는 폴더가 없어요.</p>}
+                      {foldersState === "ready" && folders.length === 0 && <p className="p-2 font-mulish text-sm text-[#898787]">{t.foldersEmpty}</p>}
                       {foldersState === "ready" && folders.map((folder) => {
                         const isSelected = selectedFolder?.id === folder.id;
                         return (
@@ -381,18 +554,18 @@ export function CharacterCreateModal({
                             <button type="button" onClick={() => setSelectedFolder(folder)} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-mulish text-sm text-[#1a1a1a]" aria-pressed={isSelected}>
                               <span aria-hidden="true">📁</span>
                               <span className="truncate">{folder.name}</span>
-                              {isSelected && <span className="ml-1 shrink-0 text-xs font-semibold text-[#9BB073]">선택됨</span>}
+                              {isSelected && <span className="ml-1 shrink-0 text-xs font-semibold text-[#9BB073]">{t.selected}</span>}
                             </button>
                             <button type="button" onClick={() => setPath([...path, folder])} className="shrink-0 cursor-pointer rounded-full border border-[#E8DDD5] bg-white px-3 py-1 font-mulish text-xs text-[#666] hover:border-[#AF9083]">
-                              열기 &gt;
+                              {t.openFolder}
                             </button>
                           </div>
                         );
                       })}
                     </div>
                     <p className="font-mulish text-xs text-[#898787]">
-                      {selectedFolder ? `선택한 폴더: ${selectedFolder.name}` : "폴더 이름을 누르면 선택되고, '열기'를 누르면 안으로 들어가요."}
-                      {" "}다른 가족이 같은 폴더를 고르면 기일 섬에서 함께 만나요.
+                      {selectedFolder ? t.selectedFolder(selectedFolder.name) : t.folderHelp}
+                      {" "}{t.sameFolderNote}
                     </p>
                   </div>
                 </div>
@@ -402,7 +575,7 @@ export function CharacterCreateModal({
 
           {step === LAST_STEP && (
             <div>
-              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">기록을 어떻게 마주하고 싶으신가요?</h2>
+              <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{t.preferencesTitle}</h2>
               <div className="mt-6">
                 <ViewingPreferencesFields
                   value={{ emotionLevel, excludedTypes, specialDates, allowRecommendation }}
@@ -412,6 +585,7 @@ export function CharacterCreateModal({
                     setSpecialDates(next.specialDates);
                     setAllowRecommendation(next.allowRecommendation);
                   }}
+                  name={nickname}
                   isPet={isPet}
                 />
               </div>
@@ -422,9 +596,28 @@ export function CharacterCreateModal({
         {error && <p className="mt-3 font-mulish text-sm text-red-600">{error}</p>}
 
         <div className="mt-6 flex shrink-0 items-center gap-3">
-          {step > 1 && (
+          {createdCharacter && failedFiles.length > 0 && !saving ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onCreated(createdCharacter)}
+                className="cursor-pointer rounded-xl border border-[#AF9083] bg-white px-6 py-3 font-mulish text-base text-[#AF9083]"
+              >
+                {t.finishAnyway}
+              </button>
+              <button
+                type="button"
+                onClick={() => void retryUploads()}
+                className="flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a]"
+              >
+                {t.retryUpload}
+              </button>
+            </>
+          ) : (
+          <>
+          {step > 1 && !createdCharacter && (
             <button type="button" onClick={() => setStep(step - 1)} className="cursor-pointer rounded-xl border border-[#AF9083] bg-white px-6 py-3 font-mulish text-base text-[#AF9083]">
-              &lt; 뒤로가기
+              {t.backButton}
             </button>
           )}
           {step < LAST_STEP ? (
@@ -434,7 +627,7 @@ export function CharacterCreateModal({
               onClick={() => setStep(step + 1)}
               className={`flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(guiding && canNext)}`}
             >
-              다음으로 &gt;
+              {t.nextButton}
             </button>
           ) : (
             <button
@@ -443,8 +636,14 @@ export function CharacterCreateModal({
               onClick={() => void handleSave()}
               className={`flex-1 cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-3 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(guiding && !saving)}`}
             >
-              {saving ? "저장하는 중..." : "저장하기 >"}
+              {uploadProgress
+                ? t.uploadingButton(uploadProgress.done, uploadProgress.total)
+                : saving
+                  ? t.savingButton
+                  : t.saveButton}
             </button>
+          )}
+          </>
           )}
         </div>
       </div>

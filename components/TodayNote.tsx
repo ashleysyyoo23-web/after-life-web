@@ -87,17 +87,17 @@ export function TodayNote({
       const { nickname, bookId, bookTitle, characterId } = note.recap;
       items.push({
         key: "recap",
-        title: `${nickname}의 리캡 보기`,
+        title: `${nickname}의 추억 모음 보기`,
         sub: bookTitle ? `'${bookTitle}' 책이 새로 정리됐어요` : `${nickname}의 기록을 천천히 꺼내 봐요`,
-        button: "마이 랜드",
+        button: "나의 섬",
         href: bookId ? `/archivebook?book=${encodeURIComponent(bookId)}` : `/archiveshelf?character=${encodeURIComponent(characterId)}`,
       });
     } else {
       items.push({
         key: "character",
-        title: "기억하고 싶은 분 불러오기",
-        sub: "마이 랜드에 소중한 분을 모셔 와요",
-        button: "마이 랜드",
+        title: "그리운 분 추가하기",
+        sub: "나의 섬에 그리운 분을 모셔 와요",
+        button: "나의 섬",
         onClick: onAddCharacter,
       });
     }
@@ -105,7 +105,7 @@ export function TodayNote({
       key: "community",
       title: "추모 커뮤니티에 꽃 남기기",
       sub: `${note.community.title}에 꽃 한 송이로 마음을 보태요`,
-      button: "커뮤니티 추모 랜드",
+      button: "함께 기억하는 섬",
       href: `/community?stone=${note.community.wall}`,
     });
     if (note.island) {
@@ -114,7 +114,7 @@ export function TodayNote({
         key: "island",
         title: `${nickname} ${label}에 메시지 남기기`,
         sub: `${month}월 ${day}일, 기억하고 싶은 날이 다가와요`,
-        button: "개인 추모 랜드",
+        button: "추모의 섬",
         href: open ? `/island/${encodeURIComponent(deceasedId)}` : "/mainland",
       });
     }
@@ -122,7 +122,7 @@ export function TodayNote({
       key: "mood",
       title: "오늘의 마음 날씨 기록하기",
       sub: "지금 마음은 어떤 날씨인가요?",
-      button: "감정 기록",
+      button: "마음 일기",
       ...(note.mood.done ? { onClick: onOpenEmotion } : { href: "/moodcheck" }),
     });
   }

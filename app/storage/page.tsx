@@ -7,9 +7,13 @@ import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import type { FrameSummary } from "@/lib/storage-frames";
+import { ko } from "@/lib/copy/ko";
+import { josa } from "@/lib/josa";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const t = ko.storage;
 
 export default function StoragePage() {
   const router = useRouter();
@@ -36,10 +40,11 @@ export default function StoragePage() {
     };
   }, [status]);
 
-  const subtitle =
-    counts && counts.photos + counts.messages > 0
-      ? `저장한 사진 ${counts.photos}장 · 메시지 ${counts.messages}개가 있어요`
-      : "담아 둔 기억을 다시 꺼내 볼 수 있어요";
+  const subtitle = !counts
+    ? t.entranceLoggedOut
+    : counts.photos + counts.messages > 0
+      ? t.entranceSummary(counts.photos, counts.messages)
+      : t.entranceEmpty;
 
   return (
     <>
@@ -69,7 +74,8 @@ export default function StoragePage() {
           {/* 말풍선 */}
           <div className="absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-2xl border border-[#e9d8c4] bg-[#fffaf3] px-6 py-3 shadow-[0_6px_18px_rgba(80,50,30,0.15)]">
             <p className="font-mulish text-lg text-[#4a3a2e]">
-              <strong className="font-bold">저장소</strong> 안으로 들어가기 →
+              <strong className="font-bold">{t.title}</strong>
+              {josa(t.title, "으로/로").slice(t.title.length)} {t.entranceBubble}
             </p>
             <p className="mt-1 font-mulish text-sm text-[#8a7a6c]">{subtitle}</p>
             {/* 말풍선 꼬리 */}
@@ -79,7 +85,7 @@ export default function StoragePage() {
       </div>
 
       <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
-        저장소
+        {t.title}
       </WoodPlank>
 
       <TopNav

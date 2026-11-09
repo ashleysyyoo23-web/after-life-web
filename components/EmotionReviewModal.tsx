@@ -49,7 +49,7 @@ function topMood(logs: EmotionLog[]): Mood | null {
 
 // 표시한 날짜 전 30일과 그 이전을 비교해서 한두 줄 문장
 function summaryLines(logs: EmotionLog[], markerEnd: number): [string, string] {
-  if (logs.length === 0) return ["아직 이 기간에 기록된 감정이 없어요.", "마이랜드에 들어올 때 오늘의 기분을 남겨 보아요."];
+  if (logs.length === 0) return ["아직 이 기간에 남긴 마음 일기가 없어요.", "나의 섬에 들어올 때 오늘의 마음을 남겨 보세요."];
   const top = topMood(logs);
   const recent = logs.filter((log) => log.time > markerEnd - 30 * DAY_MS);
   const earlier = logs.filter((log) => log.time <= markerEnd - 30 * DAY_MS);
@@ -359,7 +359,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
     let cancelled = false;
     fetch("/api/emotion-logs", { cache: "no-store" })
       .then(async (res) => {
-        if (!res.ok) throw new Error(res.status === 401 ? "로그인하면 감정 기록을 볼 수 있어요." : "감정 기록을 불러오지 못했어요.");
+        if (!res.ok) throw new Error(res.status === 401 ? "로그인하면 마음 일기를 볼 수 있어요." : "마음 일기를 불러오지 못했어요.");
         return (await res.json()) as { logs: Array<{ mood: Mood; createdAt: string }> };
       })
       .then((data) => {
@@ -375,7 +375,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
       .catch((error: unknown) => {
         if (cancelled) return;
         setLogs([]);
-        setLoadError(error instanceof Error ? error.message : "감정 기록을 불러오지 못했어요.");
+        setLoadError(error instanceof Error ? error.message : "마음 일기를 불러오지 못했어요.");
       });
     return () => {
       cancelled = true;
@@ -555,7 +555,7 @@ export function EmotionReviewModal({ onClose }: { onClose: () => void }) {
 
               <p className="absolute left-[33px] top-[76px] max-w-[300px] font-newsreader text-xl leading-6 text-black">
                 {logs === null ? (
-                  "기록을 불러오는 중이에요..."
+                  "기록을 불러오는 중이에요."
                 ) : loadError ? (
                   loadError
                 ) : (

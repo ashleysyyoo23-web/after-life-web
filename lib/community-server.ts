@@ -42,7 +42,7 @@ export async function findDriveImageForUser(
     .order("updated_at", { ascending: false });
 
   if (!connections || connections.length === 0) {
-    return { ok: false, status: 409, error: "Google Drive를 먼저 연결해 주세요. (설정 → 내가 남길 기록)" };
+    return { ok: false, status: 409, error: "Google Drive를 먼저 연결해 주세요. (설정 › 내가 남길 기록)" };
   }
 
   for (const connection of connections as DriveConnectionRow[]) {
@@ -87,7 +87,7 @@ export async function findMyDataRootForUser(
     .order("updated_at", { ascending: false });
 
   if (!connections || connections.length === 0) {
-    return { ok: false, status: 409, error: "Google Drive를 먼저 연결해 주세요. (설정 → 내가 남길 기록)" };
+    return { ok: false, status: 409, error: "Google Drive를 먼저 연결해 주세요. (설정 › 내가 남길 기록)" };
   }
 
   let anyToken = false;

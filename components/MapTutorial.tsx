@@ -1,6 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
+import { RichText } from "@/components/RichText";
+import { ko } from "@/lib/copy/ko";
+import { Fragment, useEffect, useId, useState } from "react";
 
 // 전체 지도 튜토리얼: 배를 탄 "섬지기"가 말풍선으로 섬들을 소개하고, 소개하는 곳을 점선 타원으로 비춰요.
 // 섬 자리는 지도 무대(16:9) 기준 %, 위쪽 메뉴는 화면에서 실제 위치를 재서 비춰요.
@@ -8,42 +10,24 @@ import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
 type Spot = { cx: number; cy: number; rx: number; ry: number }; // 무대 기준 % (가로 0~100, 세로 0~100)
 
 type Step = {
-  text: ReactNode;
+  text: string; // 문구는 lib/copy/ko.ts 의 guide.steps
   spots?: Spot[]; // 지도 위 비출 곳 (여러 개 가능)
   menu?: boolean; // 위쪽 메뉴 비추기
   ghostIslands?: boolean; // 개인 추모 랜드 자리 미리 보여 주기
 };
 
-const B = ({ children }: { children: ReactNode }) => <b className="font-bold text-[#9E4B3B]">{children}</b>;
+const t = ko.guide;
 
 export const MAP_TUTORIAL_STEPS: Step[] = [
   {
-    text: (
-      <>
-        안녕하세요, 저는 이 바다의 <B>섬지기</B>예요. AFTER LIFE는 그리운 사람을 천천히 기억하는 섬들이에요. 섬들을 짧게 소개해
-        드릴게요.
-      </>
-    ),
+    text: t.steps[0],
   },
   {
-    text: (
-      <>
-        가운데 섬은 <B>마이 랜드</B>예요.
-        <br />
-        내가 불러온 사람들이 모여 있어요.
-        <br />
-        캐릭터를 누르면 그 사람의 방과 기록 책장으로 들어갈 수 있어요.
-      </>
-    ),
+    text: t.steps[1],
     spots: [{ cx: 49.4, cy: 51.8, rx: 23.8, ry: 20.2 }],
   },
   {
-    text: (
-      <>
-        아래쪽 두 섬은 <B>개인 추모 랜드</B>예요.
-        <br />한 사람을 기억하는 가족과 지인들이 꽃과 메시지를 남기는 곳이에요. 기일이 다가오면 이 자리에 떠올라요.
-      </>
-    ),
+    text: t.steps[2],
     spots: [
       { cx: 20.7, cy: 82.5, rx: 21.5, ry: 19 },
       { cx: 82.8, cy: 84, rx: 18.8, ry: 19.5 },
@@ -51,33 +35,15 @@ export const MAP_TUTORIAL_STEPS: Step[] = [
     ghostIslands: true,
   },
   {
-    text: (
-      <>
-        왼쪽 위 섬은 <B>커뮤니티 추모 랜드</B>예요.
-        <br />
-        세월호, 이태원처럼 많은 사람이 함께 기억하고 위로를 나누는 공간이에요.
-      </>
-    ),
+    text: t.steps[3],
     spots: [{ cx: 17, cy: 43.3, rx: 17.6, ry: 16.4 }],
   },
   {
-    text: (
-      <>
-        오른쪽 위 섬은 <B>저장소</B>예요.
-        <br />
-        마음에 담아 둔 리캡과 메시지를 언제든 다시 꺼내 볼 수 있어요.
-      </>
-    ),
+    text: t.steps[4],
     spots: [{ cx: 84.2, cy: 42.4, rx: 16.6, ry: 16.4 }],
   },
   {
-    text: (
-      <>
-        길을 잃으면 <B>위쪽 메뉴</B>를 찾아 주세요.
-        <br />
-        설정에서 기록을 마주하는 속도와 방식을 내 마음에 맞게 바꿀 수 있어요.
-      </>
-    ),
+    text: t.steps[5],
     menu: true,
   },
 ];
@@ -162,7 +128,7 @@ export function MapTutorial({
   const spots = current.spots ?? [];
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-hidden" role="dialog" aria-modal="true" aria-label="지도 둘러보기">
+    <div className="fixed inset-0 z-[60] overflow-hidden" role="dialog" aria-modal="true" aria-label={t.dialogLabel}>
       {/* 어둡게 + 비추는 곳(점선 타원) */}
       {current.menu && menuRect ? (
         <div
@@ -235,28 +201,28 @@ export function MapTutorial({
           />
           {/* 이름표 + 작은 꽃 */}
           <span className="absolute -top-4 left-4 rounded-full border-2 border-[#E8B4A0] bg-[#F6C7C2] px-3 py-0.5 font-jeju-myeongjo text-sm text-[#5A3A30]">
-            섬지기
+            {t.keeperName}
           </span>
           {/* 닫기 (언제든 둘러보기를 끝낼 수 있어요) */}
           <button
             type="button"
             onClick={onClose}
-            aria-label="둘러보기 닫기"
+            aria-label={t.closeLabel}
             className="absolute -right-2.5 -top-2.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-[#E8B4A0] bg-[#F6C7C2] p-0 font-mulish text-sm leading-none text-[#5A3A30] shadow-sm transition-colors hover:bg-[#F4A9A8]"
           >
             ✕
           </button>
           <p className="font-jeju-myeongjo text-[15px] leading-[1.75] text-[#4A3A33]" aria-live="polite">
-            {current.text}
+            <RichText text={current.text} boldClassName="font-bold text-[#9E4B3B]" />
           </p>
           <div className="mt-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5" aria-label={`${MAP_TUTORIAL_STEPS.length}단계 중 ${step + 1}단계`}>
+            <div className="flex items-center gap-1.5" aria-label={t.progressLabel(MAP_TUTORIAL_STEPS.length, step + 1)}>
               {MAP_TUTORIAL_STEPS.map((_, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => goTo(index)}
-                  aria-label={`${index + 1}단계로`}
+                  aria-label={t.goToStepLabel(index + 1)}
                   className={`h-2 w-2 cursor-pointer rounded-full border border-[#4A3A33] p-0 ${
                     index === step ? "bg-[#4A3A33]" : "bg-transparent"
                   }`}
@@ -270,7 +236,7 @@ export function MapTutorial({
                 onClick={() => (last ? onClose() : goTo(step + 1))}
                 className="cursor-pointer whitespace-nowrap rounded-xl border-0 bg-[#D99B82] px-4 py-2 font-jeju-myeongjo text-sm text-white shadow-sm hover:bg-[#C4836E]"
               >
-                {last ? "시작하기" : step === 0 ? "둘러보기 시작 →" : "다음 →"}
+                {last ? t.finishButton : step === 0 ? t.startTourButton : t.nextButton}
               </button>
             </div>
           </div>

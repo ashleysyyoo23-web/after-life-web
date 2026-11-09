@@ -2,6 +2,7 @@
 
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { ko } from "@/lib/copy/ko";
 import { markMoodChecked, saveMoodSky } from "@/lib/mood-sky";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -16,12 +17,14 @@ const MOOD_OPTIONS = [
 
 type Mood = (typeof MOOD_OPTIONS)[number]["mood"];
 
+const t = ko.moodcheck;
+
 function LoadingSpinner() {
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-[#FAF6F0]">
       <div
         className="h-8 w-8 animate-spin rounded-full border-2 border-[#AF9083] border-t-transparent"
-        aria-label="로딩 중"
+        aria-label={t.loadingLabel}
       />
     </div>
   );
@@ -46,6 +49,8 @@ export default function MoodcheckPage() {
     markMoodChecked();
 
     try {
+      // 로그인하지 않았으면 서버에 저장하지 않아요 (하늘 색은 위에서 이미 적용)
+      if (status !== "authenticated") return;
       const res = await fetch("/api/emotion-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,13 +110,13 @@ export default function MoodcheckPage() {
             type="button"
             onClick={handleClose}
             className="absolute right-6 top-6 inline-flex h-8 w-8 items-center justify-center font-mulish text-2xl text-[#4A423C] transition-opacity hover:opacity-70"
-            aria-label="닫기"
+            aria-label={t.closeLabel}
           >
             ×
           </button>
 
           <h1 className="mb-10 text-center font-newsreader text-[32px] leading-tight text-black">
-            오늘의 마음은 어떤 날씨 같나요?
+            {t.question}
           </h1>
 
           <div className="mb-10 flex items-start justify-center gap-4">
@@ -147,7 +152,16 @@ export default function MoodcheckPage() {
             disabled={!selectedMood || isSaving}
             className="w-full rounded-xl border-0 bg-[#FDD9BD] px-4 py-4 font-mulish text-base font-semibold text-[#4A423C] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            저장하기
+            {t.saveButton}
+          </button>
+
+          {/* 건너뛰기: × 와 같은 동작을 글로도 보여 줘요 */}
+          <button
+            type="button"
+            onClick={handleClose}
+            className="mx-auto mt-4 block cursor-pointer border-0 bg-transparent px-2 py-1 font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
+          >
+            {t.skipButton}
           </button>
         </div>
       </div>

@@ -39,8 +39,8 @@ export async function GET() {
         kind: "anniversary",
         message:
           island.daysUntil === 0
-            ? `오늘은 ${island.nickname}의 ${isPetRelation(island.relation) ? "무지개다리 건넌 날" : "기일"}이에요. 개인 추모 랜드를 열까요?`
-            : `${island.nickname}의 ${daysUntilLabel(island.daysUntil, isPetRelation(island.relation))}. 개인 추모 랜드를 열까요?`,
+            ? `오늘은 ${island.nickname}의 ${isPetRelation(island.relation) ? "무지개다리 건넌 날" : "기일"}이에요. 추모의 섬을 열까요?`
+            : `${island.nickname}의 ${daysUntilLabel(island.daysUntil, isPetRelation(island.relation))}. 추모의 섬을 열까요?`,
         href: "/mainland",
         createdAt: start.toISOString(),
       });

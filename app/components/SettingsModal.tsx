@@ -1,5 +1,6 @@
 "use client";
 
+import { ko } from "@/lib/copy/ko";
 import {
   LegacyDatePicker,
   toLegacyDateTimestamp,
@@ -88,7 +89,7 @@ const deceasedSettingsItems: {
   {
     id: "edit-person",
     icon: "/icons/settings/edit-person-673177.png",
-    label: "마이랜드의 인물 편집",
+    label: "그리운 분 편집",
   },
 ];
 
@@ -269,7 +270,7 @@ export function SettingsModal({
       }
 
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) throw new Error(json?.error ?? "저장하지 못했어요.");
+      if (!res.ok) throw new Error(json?.error ?? ko.errors.saveFailed);
 
       // 열려 있는 리캡에 바로 반영 (넘김 속도 + 보는 방식)
       window.dispatchEvent(
@@ -279,7 +280,7 @@ export function SettingsModal({
       );
       setViewMessage("저장했어요. 보고 있는 기록에도 바로 적용돼요.");
     } catch (saveError) {
-      setViewMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
+      setViewMessage(saveError instanceof Error ? saveError.message : ko.errors.saveFailed);
     } finally {
       setViewSaving(false);
     }
@@ -309,7 +310,7 @@ export function SettingsModal({
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) throw new Error(json?.error ?? "프로필을 저장하지 못했어요.");
 
-      setProfileMessage("저장했어요. 마이 랜드에 나의 캐릭터가 나타나요.");
+      setProfileMessage("저장했어요. 나의 섬에 나의 캐릭터가 나타나요.");
       // 마이 랜드가 열려 있으면 내 캐릭터를 바로 다시 그리게 알림
       window.dispatchEvent(new Event("afterlife:profile-updated"));
       refreshGuide();
@@ -379,7 +380,7 @@ export function SettingsModal({
       setDriveUserEmail("");
       setDriveMessage(
         data?.keptForCharacters
-          ? "내가 남길 기록에서 해제했어요. 인물과의 연결은 그대로예요."
+          ? "내가 남길 기록에서 해제했어요. 그리운 분과의 연결은 그대로예요."
           : "연결을 해제했어요.",
       );
     } catch (disconnectError) {
@@ -492,12 +493,12 @@ export function SettingsModal({
       }
 
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) throw new Error(json?.error ?? "저장하지 못했어요.");
+      if (!res.ok) throw new Error(json?.error ?? ko.errors.saveFailed);
 
       setLegacySaveMessage("저장했어요.");
       refreshGuide();
     } catch (saveError) {
-      setLegacySaveMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
+      setLegacySaveMessage(saveError instanceof Error ? saveError.message : ko.errors.saveFailed);
     } finally {
       setLegacySaving(false);
     }
@@ -648,7 +649,7 @@ export function SettingsModal({
                 </p>
               </div>
             ) : (
-              <p className="font-mulish text-sm text-[#898787]">이 계정을 쓰는 인물은 없어요.</p>
+              <p className="font-mulish text-sm text-[#898787]">이 계정을 쓰는 그리운 분은 없어요.</p>
             )}
             <div className="flex justify-end gap-2">
               <button
@@ -666,7 +667,7 @@ export function SettingsModal({
                 disabled={disconnecting}
                 className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-5 py-2 font-mulish text-sm text-white hover:bg-[#9a7d71] disabled:opacity-60"
               >
-                {disconnecting ? "해제하는 중..." : "연결 해제하기"}
+                {disconnecting ? "해제하는 중…" : "연결 해제하기"}
               </button>
             </div>
           </div>
@@ -912,7 +913,7 @@ export function SettingsModal({
                         disabled={viewSaving}
                         className="flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {viewSaving ? "저장 중..." : "저장하기"}
+                        {viewSaving ? "저장 중…" : "저장하기"}
                       </button>
                     </div>
                   )}
@@ -1011,7 +1012,7 @@ export function SettingsModal({
                           disabled={profileSaving}
                           className={`flex h-14 w-full max-w-[706px] items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] px-4 py-4 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:opacity-60${guideGlow(glowSave("profile"))}`}
                         >
-                          {profileSaving ? "저장하는 중..." : "저장하기"}
+                          {profileSaving ? "저장하는 중…" : "저장하기"}
                         </button>
                       </div>
                     </div>
@@ -1288,7 +1289,7 @@ export function SettingsModal({
                               disabled={legacySaving || !legacyLoaded || isLegacyDateRangeInvalid}
                               className={`cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] px-8 py-2.5 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glowSave("legacy"))}`}
                             >
-                              {legacySaving ? "저장 중..." : "기록 설정 저장하기"}
+                              {legacySaving ? "저장 중…" : "기록 설정 저장하기"}
                             </button>
                           </div>
 

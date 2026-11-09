@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ko } from "@/lib/copy/ko";
 import { getSessionContext } from "@/lib/api-session";
 import { COMMUNITY_WALLS, deceasedIdFromWall } from "@/lib/community";
 import { COMMUNITY_FRAME, type StorageSearchItem } from "@/lib/storage-frames";
@@ -16,7 +17,7 @@ export async function GET() {
     loadBookmarkedMessageIds(supabase, userEmail),
   ]);
   const titleOf = (frame: string) =>
-    frame === COMMUNITY_FRAME ? "커뮤니티 추모 랜드" : (characters.find((character) => character.id === frame)?.nickname ?? "");
+    frame === COMMUNITY_FRAME ? ko.community.landTitle : (characters.find((character) => character.id === frame)?.nickname ?? "");
 
   const items: StorageSearchItem[] = [];
   for (const photo of photos) {

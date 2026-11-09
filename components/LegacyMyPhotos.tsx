@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.legacyPhotos;
 
 type DrivePhoto = { id: string; name: string; thumbnailUrl: string | null };
 
@@ -63,7 +66,7 @@ export function LegacyMyPhotos() {
         } | null;
 
         if (!res.ok || !data) {
-          setLoadState({ status: "error", message: data?.error ?? "사진을 불러오지 못했어요." });
+          setLoadState({ status: "error", message: data?.error ?? t.loadFailed });
           return;
         }
 
@@ -75,7 +78,7 @@ export function LegacyMyPhotos() {
         setStorageReady(data.storageReady !== false);
         setLoadState({ status: "ready" });
       } catch {
-        setLoadState({ status: "error", message: "사진을 불러오지 못했어요." });
+        setLoadState({ status: "error", message: t.loadFailed });
       }
     })();
   }, []);
@@ -171,12 +174,12 @@ export function LegacyMyPhotos() {
         error?: string;
         selectedCount?: number;
       } | null;
-      if (!res.ok) throw new Error(data?.error ?? "저장하지 못했어요.");
+      if (!res.ok) throw new Error(data?.error ?? t.saveFailed);
 
       setDirty(false);
-      setMessage(`저장했어요. 남길 기록 사진 ${data?.selectedCount ?? 0}장`);
+      setMessage(t.saved(data?.selectedCount ?? 0));
     } catch (saveError) {
-      setMessage(saveError instanceof Error ? saveError.message : "저장하지 못했어요.");
+      setMessage(saveError instanceof Error ? saveError.message : t.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -188,18 +191,18 @@ export function LegacyMyPhotos() {
         <div className="flex gap-2 font-mulish text-sm text-[#898787]">
           <span>6</span>
           <span>
-            남길 기록으로 보여줄 나의 사진을 골라주세요. 사진을 눌러 포함/제외할 수 있어요.
+            {t.step}
           </span>
         </div>
         {folderName && (
           <p className="pl-4 font-mulish text-xs text-[#AF9083]">
-            &lsquo;{folderName}&rsquo; 폴더(하위 폴더 포함)의 사진이에요.
+            {t.folderNote(folderName)}
           </p>
         )}
       </div>
 
       {loadState.status === "loading" && (
-        <p className="font-mulish text-sm text-[#898787]">Drive 사진을 불러오는 중...</p>
+        <p className="font-mulish text-sm text-[#898787]">{t.loading}</p>
       )}
       {loadState.status === "error" && (
         <p className="font-mulish text-sm text-[#9E2121]">{loadState.message}</p>
@@ -218,7 +221,7 @@ export function LegacyMyPhotos() {
                 aria-pressed={!showHidden}
                 className={`cursor-pointer rounded-full border-0 px-3 py-1 ${!showHidden ? "bg-white text-[#4A423C] shadow-sm" : "bg-transparent text-[#898787]"}`}
               >
-                사진 {photos.length - hiddenCount}장
+                {t.photosTab(photos.length - hiddenCount)}
               </button>
               <button
                 type="button"
@@ -231,15 +234,15 @@ export function LegacyMyPhotos() {
                 disabled={hiddenCount === 0 && !showHidden}
                 className={`cursor-pointer rounded-full border-0 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50 ${showHidden ? "bg-white text-[#4A423C] shadow-sm" : "bg-transparent text-[#898787]"}`}
               >
-                삭제한 사진 {hiddenCount}장
+                {t.hiddenTab(hiddenCount)}
               </button>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="font-mulish text-xs text-[#898787]">
                 {isEditing || showHidden
-                  ? `${markedIds.size}장 표시됨`
-                  : `남길 기록 ${selectedVisibleCount}장 선택됨`}
+                  ? t.markedCount(markedIds.size)
+                  : t.selectedCount(selectedVisibleCount)}
               </span>
               <button
                 type="button"
@@ -247,7 +250,7 @@ export function LegacyMyPhotos() {
                 disabled={visiblePhotos.length === 0}
                 className={lightButtonClass}
               >
-                {allVisibleActive ? "전체 해제" : "전체 선택"}
+                {allVisibleActive ? t.deselectAll : t.selectAll}
               </button>
               {showHidden ? (
                 <button
@@ -256,7 +259,7 @@ export function LegacyMyPhotos() {
                   disabled={markedIds.size === 0}
                   className={smallButtonClass}
                 >
-                  목록으로 되돌리기
+                  {t.restore}
                 </button>
               ) : isEditing ? (
                 <>
@@ -266,10 +269,10 @@ export function LegacyMyPhotos() {
                     disabled={markedIds.size === 0}
                     className="cursor-pointer rounded-lg border-0 bg-[#9E2121] px-[14px] py-1 font-mulish text-xs text-white transition-colors hover:bg-[#861C1C] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    목록에서 삭제
+                    {t.hide}
                   </button>
                   <button type="button" onClick={finishEditing} className={lightButtonClass}>
-                    취소
+                    {t.cancel}
                   </button>
                 </>
               ) : (
@@ -279,7 +282,7 @@ export function LegacyMyPhotos() {
                   disabled={visiblePhotos.length === 0}
                   className={smallButtonClass}
                 >
-                  편집
+                  {t.edit}
                 </button>
               )}
             </div>
@@ -288,8 +291,8 @@ export function LegacyMyPhotos() {
           {(isEditing || showHidden) && (
             <p className="-mt-2 font-mulish text-xs text-[#898787]">
               {showHidden
-                ? "되돌릴 사진을 눌러 표시한 뒤 '목록으로 되돌리기'를 눌러 주세요."
-                : "삭제할 사진을 눌러 표시해 주세요. 목록에서만 빠지고 Drive 원본은 그대로예요."}
+                ? t.restoreHelp
+                : t.hideHelp}
             </p>
           )}
 
@@ -342,23 +345,23 @@ export function LegacyMyPhotos() {
             </div>
           ) : (
             <p className="font-mulish text-sm text-[#898787]">
-              {showHidden ? "삭제한 사진이 없어요." : "이 폴더에 사진이 없어요."}
+              {showHidden ? t.noHidden : t.noPhotos}
             </p>
           )}
 
           {truncated && (
-            <p className="font-mulish text-xs text-[#898787]">사진이 많아서 앞의 1,000장까지만 보여요.</p>
+            <p className="font-mulish text-xs text-[#898787]">{t.truncated}</p>
           )}
           {!storageReady && (
             <p className="font-mulish text-xs text-[#9E2121]">
-              저장하려면 supabase/step_legacy_my_photos.sql 실행이 필요해요.
+              {t.needsSql}
             </p>
           )}
 
           <div className="flex max-w-[743px] items-center justify-end gap-3">
             {message && <p className="mr-auto font-mulish text-sm text-[#4A423C]">{message}</p>}
             {dirty && !message && (
-              <p className="mr-auto font-mulish text-xs text-[#AF9083]">저장하지 않은 변경이 있어요.</p>
+              <p className="mr-auto font-mulish text-xs text-[#AF9083]">{t.unsaved}</p>
             )}
             <button
               type="button"
@@ -366,7 +369,7 @@ export function LegacyMyPhotos() {
               disabled={saving || !dirty}
               className="cursor-pointer rounded-xl border border-[#B75A34] bg-[#D99B82] px-8 py-2.5 font-newsreader text-base text-black transition-colors hover:bg-[#C4836E] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "저장 중..." : "사진 선택 저장하기"}
+              {saving ? t.savingButton : t.saveButton}
             </button>
           </div>
         </>

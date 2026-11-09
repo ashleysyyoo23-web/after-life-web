@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
   if (!memo || memo.length > RECAP_MEMO_MAX_LENGTH) {
     return NextResponse.json(
-      { error: `감정 기록은 1~${RECAP_MEMO_MAX_LENGTH}자로 적어 주세요.` },
+      { error: `마음 일기는 1~${RECAP_MEMO_MAX_LENGTH}자로 적어 주세요.` },
       { status: 400 },
     );
   }

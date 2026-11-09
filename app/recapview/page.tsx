@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { RevealOverlay } from "@/components/safety/RevealOverlay";
 import { SavePhotoButton } from "@/components/SavePhotoButton";
+import { ko } from "@/lib/copy/ko";
 import { DEFAULT_EXPOSURE, exposureBlurPx, exposureBlurStyle } from "@/lib/exposure";
 import { markGuideVisited } from "@/lib/guide";
 import type { DrawingStroke } from "@/lib/album-sections";
@@ -392,13 +393,13 @@ function RecapviewPageContent() {
         }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) throw new Error(data?.error ?? "감정 기록을 남기지 못했어요.");
+      if (!res.ok) throw new Error(data?.error ?? "마음 일기를 남기지 못했어요.");
 
       setMemoText("");
       closeMemoModal();
       setShowConfirm(true);
     } catch (saveError) {
-      setMemoError(saveError instanceof Error ? saveError.message : "감정 기록을 남기지 못했어요.");
+      setMemoError(saveError instanceof Error ? saveError.message : "마음 일기를 남기지 못했어요.");
     } finally {
       setMemoSaving(false);
     }
@@ -456,7 +457,7 @@ function RecapviewPageContent() {
         return next;
       });
     apply(saved);
-    setSaveNotice(saved ? "저장소에 저장했어요" : "저장을 취소했어요");
+    setSaveNotice(saved ? ko.storage.savedNotice : ko.storage.unsavedNotice);
     void fetch(
       `/api/album-sections/${encodeURIComponent(sectionId)}/photos/${encodeURIComponent(driveFileId)}/save`,
       { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ saved }) },
@@ -464,12 +465,12 @@ function RecapviewPageContent() {
       .then(async (res) => {
         if (!res.ok) {
           const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          throw new Error(data?.error ?? "저장하지 못했어요");
+          throw new Error(data?.error ?? ko.errors.saveFailed);
         }
       })
       .catch((saveError: unknown) => {
         apply(!saved);
-        setSaveNotice(saveError instanceof Error ? saveError.message : "저장하지 못했어요");
+        setSaveNotice(saveError instanceof Error ? saveError.message : ko.errors.saveFailed);
       });
   };
 
@@ -791,8 +792,8 @@ function RecapviewPageContent() {
                 {isSectionMode && !albumLoading && slideCount === 0 && (
                   <p className="absolute inset-0 flex items-center justify-center rounded-lg bg-white/60 px-6 text-center font-mulish text-base text-[#4A423C]">
                     {sectionError
-                      ? "섹션을 불러오지 못했어요. 앨범으로 돌아가 다시 골라 주세요."
-                      : "이 섹션에는 아직 사진이 없어요."}
+                      ? "묶음을 불러오지 못했어요. 앨범으로 돌아가 다시 골라 주세요."
+                      : "이 묶음에는 아직 사진이 없어요."}
                   </p>
                 )}
                 </div>
@@ -916,7 +917,7 @@ function RecapviewPageContent() {
               disabled={!memoText.trim() || memoSaving}
               className="mt-4 w-full cursor-pointer rounded-xl border-0 bg-[#FDD9BD] py-4 text-center font-mulish text-base text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {memoSaving ? "남기는 중..." : "감정 기록 남기기"}
+              {memoSaving ? "남기는 중…" : "마음 일기 남기기"}
             </button>
           </div>
         </div>

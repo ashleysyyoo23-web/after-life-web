@@ -2,8 +2,11 @@
 
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
+import { ko } from "@/lib/copy/ko";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const t = ko.archive;
 
 export default function ArchiveroomPage() {
   const router = useRouter();
@@ -22,7 +25,7 @@ export default function ArchiveroomPage() {
           type="button"
           onClick={() => router.push("/archiveshelf")}
           className="absolute inset-0 z-0 cursor-pointer border-0 bg-transparent p-0"
-          aria-label="기록 선반으로 이동"
+          aria-label={t.roomLabel}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- 디자인 그림(배경·아이콘)을 크기 조정 없이 그대로 보여 줘서 일반 img 사용 */}
           <img
@@ -35,7 +38,7 @@ export default function ArchiveroomPage() {
       <p
         className={`pointer-events-none fixed top-1/2 left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a] transition-opacity duration-1000 ${showHint ? "opacity-100" : "opacity-0"}`}
       >
-        공간을 클릭해 기록을 살펴보세요.
+        {t.roomHint}
       </p>
       <TopNav
         onSettingsClick={() => setShowSettings(true)}

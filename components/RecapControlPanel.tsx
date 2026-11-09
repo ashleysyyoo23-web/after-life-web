@@ -48,7 +48,7 @@ export function RecapControlPanel({
     <aside
       role="toolbar"
       aria-orientation="vertical"
-      aria-label="리캡 조작"
+      aria-label="추억 모음 조작"
       className="pointer-events-auto fixed left-5 top-1/2 z-30 flex w-[188px] -translate-y-1/2 flex-col divide-y divide-[#E8DCD5] rounded-[28px] border border-white/80 bg-[#FBF7F4]/90 px-3 font-mulish text-[#4A423C] shadow-[0px_6px_18px_rgba(74,66,60,0.12)] backdrop-blur-sm"
     >
       {showPlayback && (

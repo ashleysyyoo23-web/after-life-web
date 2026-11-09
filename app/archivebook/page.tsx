@@ -6,9 +6,12 @@ import { SectionPhotosModal, type CreatedSection } from "@/components/AlbumModal
 import { BookTitleForm } from "@/components/BookTitleForm";
 import { QuickExitButton } from "@/components/safety/QuickExitButton";
 import { exposureBlurPx } from "@/lib/exposure";
+import { ko } from "@/lib/copy/ko";
 import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+
+const t = ko.archive;
 
 // 배경 그림(archivebook-empty.jpg, 3840×2160) 속 사진 칸 위치. 점선 길을 따라가는 순서.
 // 무대(16:9) 기준 %: left·top 은 사진 칸 왼쪽 위, labelTop 은 이름 가운데.
@@ -144,7 +147,7 @@ function ArchivebookPageContent() {
                     onClick={() =>
                       router.push(`/recapview?section=${encodeURIComponent(section.id)}`)
                     }
-                    aria-label={`${section.title} 리캡 보기`}
+                    aria-label={t.sectionRecapLabel(section.title)}
                     className="block h-full w-full cursor-pointer overflow-hidden border-0 bg-white shadow-[0_1px_3px_rgba(42,37,34,0.18)] transition-shadow group-hover:shadow-[0_6px_14px_rgba(42,37,34,0.22)]"
                     style={{ padding: "0.3cqw" }}
                   >
@@ -175,7 +178,7 @@ function ArchivebookPageContent() {
                       section.id === glowEditId ? "opacity-100 guide-glow" : "opacity-0"
                     }`}
                   >
-                    사진 편집
+                    {t.editPhotosButton}
                   </button>
                 </div>
                 <p
@@ -205,7 +208,7 @@ function ArchivebookPageContent() {
             }
             className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
           >
-            ← 책장으로
+            {t.backToShelf}
           </button>
           {book && !editingTitle && (
             <div className="group mt-4 flex items-center gap-3">
@@ -213,8 +216,8 @@ function ArchivebookPageContent() {
               <button
                 type="button"
                 onClick={() => setEditingTitle(true)}
-                aria-label="앨범 이름 바꾸기"
-                title="이름 바꾸기"
+                aria-label={t.renameAlbum}
+                title={t.renameTitle}
                 className="cursor-pointer rounded-full border-0 bg-white/70 px-3 py-1 font-mulish text-base text-[#AF9083] opacity-60 transition-opacity hover:opacity-100 group-hover:opacity-100"
               >
                 ✎
@@ -238,13 +241,13 @@ function ArchivebookPageContent() {
 
       {loadState === "ready" && sections.length === 0 && (
         <p className="pointer-events-none fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
-          + 섹션 추가를 눌러 첫 섹션을 만들어 보세요.
+          {t.bookEmpty}
         </p>
       )}
 
       {loadState === "not-found" && (
         <p className="fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
-          앨범을 찾을 수 없어요. 책장으로 돌아가 다시 골라 주세요.
+          {t.bookNotFound}
         </p>
       )}
 
@@ -253,10 +256,10 @@ function ArchivebookPageContent() {
           type="button"
           onClick={() => setShowCreateModal(true)}
           disabled={isFull}
-          title={isFull ? "한 앨범에는 섹션을 8개까지 만들 수 있어요." : undefined}
+          title={isFull ? t.sectionsFull : undefined}
           className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glowAddSection)}`}
         >
-          + 섹션 추가
+          {t.addSectionButton}
         </button>
       )}
 

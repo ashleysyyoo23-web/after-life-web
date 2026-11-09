@@ -8,6 +8,9 @@ import { GridMessageCard, useWallMessages } from "@/components/community/Communi
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 export default function CommunityTwoGridPage() {
   const router = useRouter();
@@ -18,7 +21,7 @@ export default function CommunityTwoGridPage() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#FFECDD]">
-      <h1 className="sr-only">세월호 참사 추모공간</h1>
+      <h1 className="sr-only">{t.sewolTitle}</h1>
 
       <div className="pointer-events-none fixed inset-x-0 top-[160px] z-20 flex items-center justify-between px-8">
         <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
@@ -26,7 +29,7 @@ export default function CommunityTwoGridPage() {
             type="button"
             onClick={() => router.push("/communitytwo")}
             className="relative h-12 w-[79px] cursor-pointer border-0 bg-transparent p-0"
-            aria-label="그리기 보기"
+            aria-label={t.drawingViewLabel}
           >
             <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center">
               <Image
@@ -41,7 +44,7 @@ export default function CommunityTwoGridPage() {
           <button
             type="button"
             className="relative h-12 w-[79px] cursor-default border-0 bg-[#FDD9BD] p-0"
-            aria-label="그리드 보기"
+            aria-label={t.gridViewLabel}
             aria-pressed
           >
             <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center">
@@ -57,7 +60,7 @@ export default function CommunityTwoGridPage() {
         </div>
 
         <WoodPlank as="h1" className="pointer-events-none absolute left-1/2 -translate-x-1/2">
-          세월호 참사 추모공간
+          {t.sewolTitle}
         </WoodPlank>
 
         <button
@@ -71,7 +74,7 @@ export default function CommunityTwoGridPage() {
             width={24}
             height={24}
           />
-          메시지 남기기
+          {t.leaveMessageButton}
         </button>
       </div>
 
@@ -83,7 +86,7 @@ export default function CommunityTwoGridPage() {
         </div>
         {loaded && (error || messages.length === 0) && (
           <p className="mt-16 text-center font-mulish text-sm text-[#4A423C]">
-            {error ?? "아직 남겨진 메시지가 없어요. '메시지 남기기'로 첫 메시지를 남겨 주세요."}
+            {error ?? t.emptyMessages}
           </p>
         )}
       </div>

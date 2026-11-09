@@ -9,6 +9,9 @@ import { HoverMessageCard, useWallMessages } from "@/components/community/Commun
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 const HOVER_SPOTS = [
   {
@@ -80,7 +83,7 @@ export default function CommunityTwoPage() {
     <>
       <BackgroundPageLayout
         backgroundSrc="/communitytwo.jpg"
-        title="세월호 참사 추모공간"
+        title={t.sewolTitle}
       />
 
       <div className="pointer-events-none fixed inset-0 z-30">
@@ -118,7 +121,7 @@ export default function CommunityTwoPage() {
             type="button"
             onClick={() => router.push("/community")}
             className="relative h-12 w-[79px] cursor-pointer border-0 bg-[#FDD9BD] p-0"
-            aria-label="커뮤니티 보기"
+            aria-label={t.communityViewLabel}
             aria-pressed
           >
             <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center">
@@ -135,7 +138,7 @@ export default function CommunityTwoPage() {
             type="button"
             onClick={() => router.push("/communitytwogrid")}
             className="relative h-12 w-[79px] cursor-pointer border-0 bg-transparent p-0"
-            aria-label="그리드 보기"
+            aria-label={t.gridViewLabel}
             aria-pressed={false}
           >
             <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center">
@@ -151,7 +154,7 @@ export default function CommunityTwoPage() {
         </div>
 
         <WoodPlank as="h1" className="pointer-events-none absolute left-1/2 -translate-x-1/2">
-          세월호 참사 추모공간
+          {t.sewolTitle}
         </WoodPlank>
 
         <button
@@ -165,7 +168,7 @@ export default function CommunityTwoPage() {
             width={24}
             height={24}
           />
-          메시지 남기기
+          {t.leaveMessageButton}
         </button>
       </div>
 
@@ -181,8 +184,8 @@ export default function CommunityTwoPage() {
         <p className="pointer-events-none fixed bottom-10 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-3 font-mulish text-sm text-[#4A423C]">
           {error ??
             (messages.length === 0
-              ? "아직 남겨진 메시지가 없어요. '메시지 남기기'로 첫 메시지를 남겨 주세요."
-              : `최근 메시지 ${placed.length}개가 섬에 있어요. 모든 메시지(${messages.length}개)는 그리드 보기에서 볼 수 있어요.`)}
+              ? t.emptyMessages
+              : t.recentOnIsland(placed.length, messages.length))}
         </p>
       )}
       <KYHMessageModal

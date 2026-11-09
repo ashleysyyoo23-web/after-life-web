@@ -1,5 +1,6 @@
 "use client";
 
+import { ko } from "@/lib/copy/ko";
 import { useState } from "react";
 
 const TITLE_MAX_LENGTH = 20;
@@ -40,10 +41,10 @@ export function BookTitleForm({
         body: JSON.stringify({ title: trimmed }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) throw new Error(data?.error ?? "이름을 바꾸지 못했어요.");
+      if (!res.ok) throw new Error(data?.error ?? ko.errors.renameAlbumFailed);
       onSaved(trimmed);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "이름을 바꾸지 못했어요.");
+      setError(saveError instanceof Error ? saveError.message : ko.errors.renameAlbumFailed);
     } finally {
       setSaving(false);
     }
@@ -87,7 +88,7 @@ export function BookTitleForm({
           disabled={!trimmed || saving}
           className="cursor-pointer rounded-full border-0 bg-[#AF9083] px-4 py-1.5 font-mulish text-sm text-white hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving ? "저장 중..." : "저장"}
+          {saving ? "저장 중…" : "저장"}
         </button>
       </div>
     </form>

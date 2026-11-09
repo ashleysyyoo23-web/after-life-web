@@ -12,6 +12,9 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { refreshGuide } from "@/lib/guide";
 import { defaultNickname, useMyProfile } from "@/lib/use-my-profile";
 import { useEffect, useState } from "react";
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.community;
 
 // 댓글 닉네임은 그 컴퓨터에 기억해 두고 다음에 채워 줌
 const COMMENT_NICKNAME_KEY = "afterlife:comment-nickname";
@@ -33,7 +36,7 @@ function CommentSection({ message }: { message: CommunityMessage }) {
     const res = await fetch(`/api/community/messages/${message.id}/comments`, { cache: "no-store" });
     const data = (await res.json().catch(() => null)) as { comments?: CommunityComment[]; error?: string } | null;
     if (!res.ok) {
-      setError(data?.error ?? "댓글을 불러오지 못했어요.");
+      setError(data?.error ?? t.cards.commentsLoadFailed);
       setComments([]);
       return;
     }
@@ -67,7 +70,7 @@ function CommentSection({ message }: { message: CommunityMessage }) {
         body: JSON.stringify({ nickname: nickname.trim(), body: body.trim() }),
       });
       const data = (await res.json().catch(() => null)) as { comment?: CommunityComment; error?: string } | null;
-      if (!res.ok || !data?.comment) throw new Error(data?.error ?? "댓글을 남기지 못했어요.");
+      if (!res.ok || !data?.comment) throw new Error(data?.error ?? t.cards.commentFailed);
       setComments((prev) => [...(prev ?? []), data.comment as CommunityComment]);
       setCount((prev) => prev + 1);
       setBody("");
@@ -78,20 +81,20 @@ function CommentSection({ message }: { message: CommunityMessage }) {
         // 기억 못 해도 괜찮음
       }
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "댓글을 남기지 못했어요.");
+      setError(submitError instanceof Error ? submitError.message : t.cards.commentFailed);
     } finally {
       setBusy(false);
     }
   };
 
   const remove = async (id: string) => {
-    if (!window.confirm("이 댓글을 지울까요?")) return;
+    if (!window.confirm(t.cards.commentDeleteConfirm)) return;
     const res = await fetch(`/api/community/comments/${id}`, { method: "DELETE" });
     if (res.ok) {
       setComments((prev) => (prev ?? []).filter((comment) => comment.id !== id));
       setCount((prev) => Math.max(0, prev - 1));
     } else {
-      window.alert("댓글을 지우지 못했어요.");
+      window.alert(t.cards.commentDeleteFailed);
     }
   };
 
@@ -103,14 +106,14 @@ function CommentSection({ message }: { message: CommunityMessage }) {
         aria-expanded={open}
         className="self-start cursor-pointer border-0 bg-transparent p-0 font-mulish text-xs font-semibold text-[#AF9083] hover:underline"
       >
-        💬 댓글 {count > 0 ? count : ""} {open ? "접기" : count > 0 ? "보기" : "달기"}
+        {t.cards.commentToggle(count, open)}
       </button>
 
       {open && (
         <div className="flex flex-col gap-2 rounded-lg bg-[#FAF6F0] p-2">
-          {comments === null && <p className="font-mulish text-xs text-[#898787]">불러오는 중...</p>}
+          {comments === null && <p className="font-mulish text-xs text-[#898787]">{t.cards.loading}</p>}
           {comments && comments.length === 0 && !error && (
-            <p className="font-mulish text-xs text-[#898787]">아직 댓글이 없어요. 첫 마음을 남겨 주세요.</p>
+            <p className="font-mulish text-xs text-[#898787]">{t.cards.noComments}</p>
           )}
           {comments && comments.length > 0 && (
             <ul className="scrollbar-thin flex max-h-40 flex-col gap-1.5 overflow-y-auto">
@@ -132,7 +135,7 @@ function CommentSection({ message }: { message: CommunityMessage }) {
                           onClick={() => void remove(comment.id)}
                           className="cursor-pointer border-0 bg-transparent p-0 text-[#9E2121] hover:underline"
                         >
-                          삭제
+                          {t.cards.deleteButton}
                         </button>
                       )}
                     </span>
@@ -145,16 +148,16 @@ function CommentSection({ message }: { message: CommunityMessage }) {
           {error && <p className="font-mulish text-xs text-[#9E2121]">{error}</p>}
           <div className="flex flex-col gap-1.5">
             {myProfile && (myProfile.handle || myProfile.appearance) && (
-              <p className="flex items-center gap-1.5 font-mulish text-[11px] text-[#776257]">
+              <div className="flex items-center gap-1.5 font-mulish text-[11px] text-[#776257]">
                 <ProfileAvatar appearance={myProfile.appearance} size={18} />
-                {myProfile.handle ? `@${myProfile.handle} 프로필로 남겨요` : "내 캐릭터 프로필로 남겨요"}
-              </p>
+                {myProfile.handle ? t.modal.profileHandle(myProfile.handle) : t.modal.profileCharacter}
+              </div>
             )}
             <input
               value={nickname}
               onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_NICKNAME_MAX))}
-              placeholder="닉네임"
-              aria-label="댓글 닉네임"
+              placeholder={t.cards.nicknamePlaceholder}
+              aria-label={t.cards.nicknameLabel}
               className="h-8 rounded-md border border-[#E8DDD5] bg-white px-2 font-mulish text-xs text-[#1a1a1a] outline-none focus:border-[#AF9083]"
             />
             <div className="flex gap-1.5">
@@ -164,8 +167,8 @@ function CommentSection({ message }: { message: CommunityMessage }) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.nativeEvent.isComposing) void submit();
                 }}
-                placeholder="따뜻한 한마디를 남겨 주세요"
-                aria-label="댓글 내용"
+                placeholder={t.cards.commentPlaceholder}
+                aria-label={t.cards.commentLabel}
                 className="h-8 min-w-0 flex-1 rounded-md border border-[#E8DDD5] bg-white px-2 font-mulish text-xs text-[#1a1a1a] outline-none focus:border-[#AF9083]"
               />
               <button
@@ -174,7 +177,7 @@ function CommentSection({ message }: { message: CommunityMessage }) {
                 disabled={busy || !nickname.trim() || !body.trim()}
                 className="h-8 shrink-0 cursor-pointer rounded-md border-0 bg-[#AF9083] px-3 font-mulish text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy ? "..." : "등록"}
+                {busy ? "..." : t.cards.submitButton}
               </button>
             </div>
           </div>
@@ -205,7 +208,7 @@ function ReactionButtons({
         type="button"
         onClick={() => onToggle(message.id, "bookmark")}
         className="cursor-pointer border-0 bg-transparent p-1 text-[#AF9083]"
-        aria-label="북마크"
+        aria-label={t.cards.bookmarkLabel}
         aria-pressed={message.bookmarked}
       >
         <svg
@@ -229,7 +232,7 @@ function ReactionButtons({
         className={`flex cursor-pointer items-center gap-1 rounded-full border-0 bg-transparent p-1 ${
           message.liked ? "text-red-400" : "text-[#AF9083]"
         }${glow ? " guide-glow" : ""}`}
-        aria-label={`좋아요 ${message.likeCount}개`}
+        aria-label={t.cards.likeLabel(message.likeCount)}
         aria-pressed={message.liked}
       >
         <svg
@@ -248,7 +251,7 @@ function ReactionButtons({
         </svg>
         {message.likeCount > 0 && <span className="font-mulish text-xs">{message.likeCount}</span>}
       </button>
-      <button type="button" className="cursor-pointer border-0 bg-transparent p-1 text-[#AF9083]" aria-label="공유">
+      <button type="button" className="cursor-pointer border-0 bg-transparent p-1 text-[#AF9083]" aria-label={t.cards.shareLabel}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-5 w-5"
@@ -292,7 +295,7 @@ function CardHeader({ message, onDelete }: { message: CommunityMessage; onDelete
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             className="cursor-pointer border-0 bg-transparent p-0 font-mulish text-lg leading-none text-[#4B3F39]"
-            aria-label="메뉴"
+            aria-label={t.cards.menuLabel}
             aria-expanded={menuOpen}
           >
             ···
@@ -303,11 +306,11 @@ function CardHeader({ message, onDelete }: { message: CommunityMessage; onDelete
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
-                  if (window.confirm("이 메시지를 지울까요? 되돌릴 수 없어요.")) onDelete(message.id);
+                  if (window.confirm(t.cards.messageDeleteConfirm)) onDelete(message.id);
                 }}
                 className="w-full cursor-pointer rounded-md border-0 bg-transparent px-3 py-2 text-left font-mulish text-sm text-[#9E2121] hover:bg-[#F6F6F6]"
               >
-                삭제하기
+                {t.cards.messageDeleteButton}
               </button>
             </div>
           )}
@@ -327,7 +330,7 @@ function CardPicture({ message, className, photoOnly = false }: { message: Commu
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
-      alt={message.imageUrl ? `${message.nickname}님이 공유한 사진` : `${message.nickname}님의 그림`}
+      alt={message.imageUrl ? t.cards.sharedPhotoAlt(message.nickname) : t.cards.drawingAlt(message.nickname)}
       loading="lazy"
       className={`${className} ${message.imageUrl ? "object-cover" : "bg-white object-contain"}`}
     />
@@ -385,10 +388,10 @@ export function useWallMessages(wall: CommunityMessage["wall"]) {
       try {
         const res = await fetch(`/api/community/${wall}/messages`, { cache: "no-store" });
         const data = (await res.json().catch(() => null)) as { messages?: CommunityMessage[]; error?: string } | null;
-        if (!res.ok) throw new Error(res.status === 401 ? "로그인하면 메시지를 볼 수 있어요." : (data?.error ?? ""));
+        if (!res.ok) throw new Error(res.status === 401 ? t.cards.loginRequired : (data?.error ?? ""));
         setMessages(data?.messages ?? []);
       } catch (loadError) {
-        setError(loadError instanceof Error && loadError.message ? loadError.message : "메시지를 불러오지 못했어요.");
+        setError(loadError instanceof Error && loadError.message ? loadError.message : t.cards.messagesLoadFailed);
       } finally {
         setLoaded(true);
       }
@@ -437,7 +440,7 @@ export function useWallMessages(wall: CommunityMessage["wall"]) {
     if (res.ok) {
       setMessages((prev) => prev.filter((message) => message.id !== id));
     } else {
-      window.alert("메시지를 지우지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+      window.alert(t.cards.messageDeleteFailed);
     }
   };
 

@@ -1,5 +1,9 @@
 "use client";
 
+import { ko } from "@/lib/copy/ko";
+
+const t = ko.storage;
+
 // 리캡 사진 모서리의 저장(🔖) 버튼. 누르면 저장소 섬의 그 고인 액자에 모여요.
 export function SavePhotoButton({
   saved,
@@ -26,9 +30,9 @@ export function SavePhotoButton({
         onToggle();
       }}
       disabled={disabled}
-      aria-label={saved ? "저장소에서 빼기" : "저장소에 저장하기"}
+      aria-label={saved ? t.unsavePhoto : t.savePhoto}
       aria-pressed={saved}
-      title={saved ? "저장소에 저장됨 (누르면 취소)" : "저장소에 저장하기"}
+      title={saved ? t.savedPhotoTitle : t.savePhoto}
       className={`flex ${box} cursor-pointer items-center justify-center rounded-full border border-white/70 shadow-[0_2px_6px_rgba(42,37,34,0.25)] transition-colors disabled:cursor-default disabled:opacity-0 ${
         saved ? "bg-[#AF9083] text-white" : "bg-white/85 text-[#AF9083] hover:bg-[#FDD9BD]"
       } ${className}`}

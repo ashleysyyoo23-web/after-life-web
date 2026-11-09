@@ -11,6 +11,7 @@ import type { CommunityMessage, CommunityReaction } from "@/lib/community";
 import type { SavedPhoto } from "@/lib/storage-frames";
 import { loginUrl } from "@/lib/login";
 import { useSession } from "next-auth/react";
+import { ko } from "@/lib/copy/ko";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -154,13 +155,13 @@ function StorageFrameContent() {
         <div className="mx-auto flex max-w-5xl flex-col gap-10">
           <header className="flex flex-col items-center gap-4">
             <Link href="/storageinside" className="self-start font-mulish text-base text-[#AF9083] hover:opacity-70">
-              ← 저장소로
+              {ko.storage.backToStorage}
             </Link>
             <WoodPlank>{detail ? (isCommunity ? detail.title : `${detail.title}의 액자`) : "액자"}</WoodPlank>
             <p className="font-mulish text-lg text-[#7F7B7B]">
               {isCommunity
                 ? "추모 공간에서 북마크한 메시지가 모여 있어요"
-                : "리캡에서 저장한 사진과 북마크한 메시지가 모여 있어요"}
+                : "추억 모음에서 보관한 사진과 북마크한 메시지가 모여 있어요"}
             </p>
           </header>
 
@@ -178,7 +179,7 @@ function StorageFrameContent() {
           ) : error ? (
             <p className="py-16 text-center font-mulish text-lg text-[#4A423C]">{error}</p>
           ) : !detail ? (
-            <p className="py-16 text-center font-mulish text-lg text-[#7F7B7B]">액자를 여는 중이에요...</p>
+            <p className="py-16 text-center font-mulish text-lg text-[#7F7B7B]">액자를 여는 중이에요.</p>
           ) : (
             <>
               {!isCommunity && (

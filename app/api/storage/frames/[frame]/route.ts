@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ko } from "@/lib/copy/ko";
 import { getSessionContext } from "@/lib/api-session";
 import { COMMUNITY_MESSAGE_COLUMNS, toClientMessages } from "@/lib/community-server";
 import { COMMUNITY_FRAME } from "@/lib/storage-frames";
@@ -50,7 +51,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   return NextResponse.json({
     frame,
-    title: character ? character.nickname : "커뮤니티 추모 랜드",
+    title: character ? character.nickname : ko.community.landTitle,
     photos,
     messages,
   });

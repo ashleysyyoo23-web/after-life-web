@@ -14,10 +14,13 @@ import {
   type FrameSummary,
 } from "@/lib/storage-frames";
 import { loginUrl } from "@/lib/login";
+import { ko } from "@/lib/copy/ko";
 import { StorageSearch } from "@/components/StorageSearch";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const t = ko.storage;
 
 // 저장소 안: 벽의 액자 = 고인마다 하나 + 커뮤니티 추모 랜드 하나. 누르면 그 액자에 저장한 사진·메시지
 export default function StorageInsidePage() {
@@ -61,7 +64,7 @@ export default function StorageInsidePage() {
       <div className="relative h-screen w-screen overflow-hidden">
         <MoodSkyBackground scene="storageinside" clouds />
         <SceneMotion config={STORAGE_INSIDE_MOTION} />
-        <h1 className="sr-only">저장소</h1>
+        <h1 className="sr-only">{t.title}</h1>
 
         {/* 액자: 배경(16:9)과 같은 무대 위에 액자 모양대로 */}
         <div
@@ -79,7 +82,7 @@ export default function StorageInsidePage() {
                 onMouseLeave={() => setHovered(null)}
                 onFocus={() => setHovered(summary.frame)}
                 onBlur={() => setHovered(null)}
-                aria-label={`${summary.title} 액자 열기 (사진 ${summary.photoCount}장, 메시지 ${summary.messageCount}개)`}
+                aria-label={t.frameLabel(summary.title, summary.photoCount, summary.messageCount)}
                 className="pointer-events-auto absolute cursor-pointer border-0 bg-transparent p-0"
                 style={{ left: `${spot.left}%`, top: `${spot.top}%`, width: `${spot.width}%`, height: `${spot.height}%` }}
               >
@@ -95,7 +98,7 @@ export default function StorageInsidePage() {
                   <span className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-white/70 px-2.5 py-1 text-center shadow-sm backdrop-blur-sm">
                     <span className="block font-jeju-myeongjo text-[13px] leading-tight text-[#3F2F24]">{summary.title}</span>
                     <span className="block font-mulish text-[10px] leading-tight text-[#6B5240]">
-                      사진 {summary.photoCount}장 · 메시지 {summary.messageCount}개
+                      {t.frameCount(summary.photoCount, summary.messageCount)}
                     </span>
                   </span>
                 )}
@@ -106,22 +109,22 @@ export default function StorageInsidePage() {
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 top-[128px] z-20 flex flex-col items-center gap-4 px-8 pt-8">
-        <WoodPlank className="mb-2">저장소</WoodPlank>
+        <WoodPlank className="mb-2">{t.title}</WoodPlank>
         <h1 className="whitespace-nowrap font-newsreader text-[40px] text-[#1a1a1a]">
-          저장한 기록을 열어보아요.
+          {t.insideTitle}
         </h1>
         <p className="font-mulish text-2xl font-normal leading-[17px] text-[#7F7B7B]">
           {status === "unauthenticated"
-            ? "로그인하면 저장한 기록을 볼 수 있어요"
+            ? t.loggedOut
             : frames === null
-              ? "액자를 걸고 있어요..."
+              ? t.loading
               : placed.length === 0
-                ? "리캡에서 🔖 저장하거나 메시지를 북마크하면 액자가 생겨요"
-                : `사진 ${totalPhotos}장 · 메시지 ${totalMessages}개가 조용히 기다리고 있어요`}
+                ? t.insideEmpty
+                : t.insideSummary(totalPhotos, totalMessages)}
         </p>
         {placed.length > 0 && (
           <p className="font-mulish text-2xl font-normal leading-[17px] text-[#1a1a1a]">
-            액자마다 한 분의 기록이 담겨 있어요. 액자를 눌러보아요
+            {t.framesHint}
           </p>
         )}
         {status === "unauthenticated" && (
@@ -130,7 +133,7 @@ export default function StorageInsidePage() {
             onClick={() => router.push(loginUrl("/storageinside"))}
             className="pointer-events-auto cursor-pointer rounded-full border border-[#AF9083] bg-white/90 px-5 py-2 font-mulish text-base font-semibold text-[#AF9083] hover:bg-[#FDD9BD]"
           >
-            로그인하기
+            {t.loginButton}
           </button>
         )}
       </div>

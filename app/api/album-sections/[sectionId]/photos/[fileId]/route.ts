@@ -7,6 +7,8 @@ import {
   getValidAccessTokenForConnection,
   streamDriveFileMedia,
 } from "@/lib/deceased-drive-token";
+import { isUploadedPhotoId } from "@/lib/uploaded-photos";
+import { uploadedPhotoResponse } from "@/lib/uploaded-photos-server";
 
 type RouteParams = {
   params: Promise<{ sectionId: string; fileId: string }>;
@@ -39,6 +41,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   if (photoError || !photo) {
     return NextResponse.json({ error: "Photo not in section" }, { status: 404 });
+  }
+
+  // 휴대폰에서 올린 사진은 우리 보관함에서
+  if (isUploadedPhotoId(fileId)) {
+    const response = await uploadedPhotoResponse(supabase, userEmail, fileId);
+    return response ?? NextResponse.json({ error: "Photo not found" }, { status: 404 });
   }
 
   const connection = section.drive_connection_id

@@ -1,3 +1,4 @@
+import { ko } from "@/lib/copy/ko";
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/api-session";
 import {
@@ -76,7 +77,7 @@ export async function GET() {
     });
   } catch (driveError) {
     console.error("[legacy/my-photos] drive failed", driveError);
-    return NextResponse.json({ error: "Drive 사진을 불러오지 못했어요." }, { status: 502 });
+    return NextResponse.json({ error: ko.errors.drivePhotosFailed }, { status: 502 });
   }
 }
 

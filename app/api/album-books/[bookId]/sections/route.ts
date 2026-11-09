@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (slot === -1) {
     return NextResponse.json(
-      { error: `한 앨범에는 섹션을 ${SECTION_SLOTS_PER_BOOK}개까지 만들 수 있어요.` },
+      { error: `한 앨범에는 묶음을 ${SECTION_SLOTS_PER_BOOK}개까지 만들 수 있어요.` },
       { status: 409 },
     );
   }

@@ -98,7 +98,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   // 이 계정으로 인물의 폴더를 실제로 열 수 있어야 이어 줌
   if (deceased?.drive_folder_id && !(await getDriveFolder(token.accessToken, deceased.drive_folder_id))) {
     return NextResponse.json(
-      { error: `${googleEmail} 계정에서는 이 인물의 폴더를 열 수 없어요. 폴더를 공유받은 계정으로 연결해 주세요.`, code: "folder_not_accessible" },
+      { error: `${googleEmail} 계정에서는 이 그리운 분의 폴더를 열 수 없어요. 폴더를 공유받은 계정으로 연결해 주세요.`, code: "folder_not_accessible" },
       { status: 403 },
     );
   }

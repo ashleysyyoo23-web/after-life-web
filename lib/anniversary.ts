@@ -1,3 +1,5 @@
+import { josa } from "@/lib/josa";
+
 // 개인 추모 랜드가 보이는 기간 계산 (기준: 한국 시간, 양력)
 // 기일 7일 전 ~ 3일 후에 섬이 열릴 수 있고, 동시에 최대 2개 (지도의 섬 자리 수)
 export const ISLAND_DAYS_BEFORE = 7;
@@ -40,8 +42,8 @@ export function anniversaryWindow(month: number, day: number, today = seoulToday
 // 반려동물이면 "무지개다리 건넌 날이 3일 남았어요"처럼
 export function daysUntilLabel(daysUntil: number, isPet = false) {
   const day = isPet ? "무지개다리 건넌 날" : "기일";
-  if (daysUntil === 0) return `오늘이 ${day}이에요`;
-  return daysUntil > 0 ? `${day}이 ${daysUntil}일 남았어요` : `${day}이 ${-daysUntil}일 지났어요`;
+  if (daysUntil === 0) return `오늘이 ${josa(day, "이에요/예요")}`;
+  return daysUntil > 0 ? `${josa(day, "이/가")} ${daysUntil}일 남았어요` : `${josa(day, "이/가")} ${-daysUntil}일 지났어요`;
 }
 
 // 다음 기일 (사흘 안에 지난 기일은 그대로 보여 줌): { 기일 날짜, 남은 날(지났으면 -1~-3) }
