@@ -373,7 +373,7 @@ export function RecapBookView({
       )}
 
       <div
-        className="absolute bottom-6 z-20 flex -translate-x-1/2 flex-col items-center gap-3 max-sm:bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] max-sm:w-[calc(100vw-32px)]"
+        className="absolute bottom-6 z-20 flex -translate-x-1/2 flex-col items-center gap-3 max-sm:bottom-[calc(var(--bottom-gap)+72px)] max-sm:w-[calc(100vw-32px)]"
         style={{ left: "calc(50% + var(--book-shift))" }}
       >
         {/* 폰: 가로로 돌리면 더 크게 (처음 몇 초만) */}

@@ -662,7 +662,6 @@ export const ko = {
     laterTitle: "닫아 둔 추모의 섬",
     openLater: (nickname: string) => `${nickname}의 섬 열기`,
     tourButton: "🚣 섬지기와 둘러보기",
-    islandChipsLabel: "섬 바로가기", // 폰: 아래 섬 칩 묶음 (화면 읽기 프로그램용)
     // 기일이 다가오면 뜨는 "섬 열기" 창
     ask: {
       title: (nickname: string) => `${nickname}의 추모의 섬을 열까요?`,

@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, Settings } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { PhoneTabBar } from "@/components/ui/PhoneTabBar";
 
 // 배경음악은 화면을 옮겨도 하나만 (모듈에 하나 두고 모든 화면의 위쪽 메뉴가 같이 씀)
 let globalBgm: HTMLAudioElement | null = null;
@@ -329,7 +330,7 @@ export function TopNav({
       </div>
 
       {/* 폰·태블릿·작은 노트북 (1280px 미만): 왼쪽 작은 로고 + 오른쪽 알림 · 설정 · ☰ 메뉴 */}
-      <div className="flex w-full items-center justify-between py-2 pl-4 pr-2 xl:hidden">
+      <div className="flex h-16 w-full items-center justify-between pl-4 pr-2 xl:hidden">
         <Link href="/mainland" className="inline-flex shrink-0 transition-opacity hover:opacity-70">
           <Image
             src="/icons/Logolong.svg"
@@ -388,6 +389,8 @@ export function TopNav({
           </button>
         </div>
       </Modal>
+      {/* 폰(640px 미만): 아래 탭 바 (M3 Navigation bar) */}
+      <PhoneTabBar />
     </nav>
   );
 }

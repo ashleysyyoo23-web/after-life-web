@@ -129,7 +129,7 @@ export function RecapControlPanel({
       <div
         role="toolbar"
         aria-label="추억 모음 조작"
-        className="pointer-events-auto fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 flex items-center gap-2 rounded-full border border-white/80 bg-[#FBF7F4]/90 p-1.5 font-mulish text-[#4A423C] shadow-[0px_6px_18px_rgba(74,66,60,0.12)] backdrop-blur-sm sm:hidden"
+        className="pointer-events-auto fixed inset-x-4 bottom-[var(--bottom-gap)] z-30 flex items-center gap-2 rounded-full border border-white/80 bg-[#FBF7F4]/90 p-1.5 font-mulish text-[#4A423C] shadow-[0px_6px_18px_rgba(74,66,60,0.12)] backdrop-blur-sm sm:hidden"
       >
         {showPlayback && <div className="flex-1">{playButton}</div>}
         <button

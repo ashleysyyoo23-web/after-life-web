@@ -756,7 +756,7 @@ function MylandPageContent() {
       {showSwipeHint && (
         <p
           aria-hidden
-          className="pointer-events-none fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+120px)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden"
+          className="pointer-events-none fixed bottom-[calc(var(--bottom-gap)+120px)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden"
         >
           ‹ {t.swipeHint} ›
         </p>
@@ -858,8 +858,8 @@ function MylandPageContent() {
       />
       {/* 오른쪽 버튼들
           노트북(640px 이상): 예전처럼 오른쪽 위에 세로로 (추가 · 마음 일기 · 기일)
-          폰: 화면 아래 — 위 줄에 작은 테두리 버튼(마음 일기 · 기일), 아래에 꽉 찬 ‘추가하기’ */}
-      <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex flex-col gap-2 sm:inset-x-auto sm:bottom-auto sm:right-12 sm:top-[128px] sm:items-end sm:gap-3">
+          폰: 탭 바 위 — 왼쪽에 작은 버튼(마음 일기 · 기일, M3 tonal), 오른쪽에 ‘추가하기’ FAB */}
+      <div className="fixed inset-x-4 bottom-[var(--bottom-gap)] z-40 flex flex-row items-end justify-between gap-2 sm:inset-x-auto sm:flex-col sm:bottom-auto sm:right-12 sm:top-[128px] sm:items-end sm:gap-3">
         <button
           type="button"
           onClick={() => {
@@ -869,15 +869,15 @@ function MylandPageContent() {
             }
             setShowAddModal(true);
           }}
-          className={`order-last min-h-12 w-full cursor-pointer rounded-full border-0 bg-brown-500 px-6 py-3 font-mulish text-body-2 font-semibold text-white shadow-md transition-colors hover:bg-brown-600 sm:order-first sm:w-auto sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:shadow-none${guideGlow(guideStep === "character" && !showAddModal)}`}
+          className={`order-last min-h-12 w-full cursor-pointer rounded-full border-0 bg-brown-500 px-6 py-3 font-mulish text-body-2 font-semibold text-white shadow-md transition-colors hover:bg-brown-600 max-sm:h-14 max-sm:w-auto max-sm:shrink-0 max-sm:self-end max-sm:whitespace-nowrap max-sm:rounded-2xl max-sm:px-4 max-sm:py-0 max-sm:text-body-3 max-sm:shadow-lg sm:order-first sm:w-auto sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:shadow-none${guideGlow(guideStep === "character" && !showAddModal)}`}
         >
           {t.addCharacterButton}
         </button>
-        <div className="flex gap-2 sm:contents">
+        <div className="flex min-w-0 flex-col items-start gap-2 sm:contents">
           <button
             type="button"
             onClick={() => setShowEmotionModal(true)}
-            className="min-h-11 flex-1 cursor-pointer rounded-full border border-brown-500 bg-white/90 px-3 py-2 font-mulish text-body-3 font-semibold text-brown-500 transition-colors hover:bg-pink-300 sm:flex-none sm:border-0 sm:bg-brown-500 sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:text-white sm:hover:bg-brown-600"
+            className="m3-state min-h-10 cursor-pointer rounded-full border border-transparent bg-bg-popup/95 px-3 py-2 font-mulish text-body-3 font-semibold whitespace-nowrap text-text-brown shadow-md transition-colors hover:bg-pink-300 sm:flex-none sm:border-0 sm:bg-brown-500 sm:shadow-none sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:text-white sm:hover:bg-brown-600"
           >
             {t.emotionReviewButton}
           </button>
@@ -886,7 +886,7 @@ function MylandPageContent() {
             <button
               type="button"
               onClick={openAnniversaryModal}
-              className="flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-brown-500 bg-white/90 px-3 py-2 font-mulish text-body-3 font-semibold text-brown-500 transition-colors hover:bg-pink-300 sm:flex-none sm:border-0 sm:bg-brown-500 sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:text-white sm:hover:bg-brown-600"
+              className="m3-state flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-full border border-transparent bg-bg-popup/95 px-3 py-2 font-mulish text-body-3 font-semibold whitespace-nowrap text-text-brown shadow-md transition-colors hover:bg-pink-300 sm:flex-none sm:border-0 sm:bg-brown-500 sm:shadow-none sm:px-[30px] sm:py-[15px] sm:text-[21px] sm:text-white sm:hover:bg-brown-600"
             >
               {t.anniversaryButton}
               {anniversarySoon && <span className="h-2.5 w-2.5 rounded-full bg-[#FDD9BD] max-sm:bg-pink-500" aria-label={t.anniversarySoonLabel} />}
@@ -995,7 +995,7 @@ function MylandPageContent() {
       {showRecordTypeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 max-sm:p-0">
           {/* 폰: 화면을 꽉 채우고, 아래 버튼 줄은 카드를 내려도 늘 보여요 */}
-          <div className="flex max-h-[90vh] w-full max-w-[1105px] flex-col gap-2 overflow-hidden rounded-2xl bg-[#FFFEFB] px-8 pb-11 pt-8 break-keep shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:h-dvh max-sm:max-h-none max-sm:rounded-none max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-4">
+          <div className="flex max-h-[90vh] w-full max-w-[1105px] flex-col gap-2 overflow-hidden rounded-2xl bg-[#FFFEFB] px-8 pb-11 pt-8 break-keep shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:h-dvh max-sm:max-h-none max-sm:rounded-none max-sm:px-4 max-sm:pb-[var(--bottom-gap)] max-sm:pt-4">
             <div className="flex items-center justify-end">
               <button
                 type="button"

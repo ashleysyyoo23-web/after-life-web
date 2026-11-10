@@ -66,7 +66,7 @@ export function Input({ label, hint, error, id, className = "", ...rest }: Input
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error || hint ? `${fieldId}-msg` : undefined}
-        className={`${BOX_CLASS} ${boxBorder(Boolean(error))} min-h-11 py-2.5 ${className}`}
+        className={`${BOX_CLASS} ${boxBorder(Boolean(error))} min-h-11 py-2.5 max-sm:min-h-14 max-sm:rounded-lg ${className}`}
         {...rest}
       />
     </Field>
@@ -85,7 +85,7 @@ export function Textarea({ label, hint, error, id, rows = 4, className = "", ...
         rows={rows}
         aria-invalid={error ? true : undefined}
         aria-describedby={error || hint ? `${fieldId}-msg` : undefined}
-        className={`${BOX_CLASS} ${boxBorder(Boolean(error))} resize-none py-3 leading-relaxed ${className}`}
+        className={`${BOX_CLASS} ${boxBorder(Boolean(error))} resize-none py-3 leading-relaxed max-sm:rounded-lg max-sm:py-4 ${className}`}
         {...rest}
       />
     </Field>

@@ -18,7 +18,6 @@ import { WavingFlag } from "@/components/WavingFlag";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Chip, ChipRow } from "@/components/ui/Chip";
 import { RichText } from "@/components/RichText";
 import { ko } from "@/lib/copy/ko";
 import { josa } from "@/lib/josa";
@@ -180,13 +179,6 @@ function MainlandPageContent() {
     setFocusedIsland(nearest.href);
   };
 
-  // 아래 섬 칩을 누르면 지도가 그 섬으로 스르르
-  const scrollToIsland = (island: (typeof mainlandIslands)[number]) => {
-    const el = sceneScrollRef.current;
-    if (!el) return;
-    setFocusedIsland(island.href);
-    el.scrollTo({ left: (parseFloat(island.left) / 100) * el.scrollWidth - el.clientWidth / 2, behavior: "smooth" });
-  };
 
   // 안내 빛: 다음에 갈 섬의 팻말이 반짝여요 (기록 정리·리캡은 마이 랜드, 반응은 커뮤니티 추모 랜드)
   const guideStep = useGuideStep();
@@ -385,24 +377,9 @@ function MainlandPageContent() {
       </div>
       </div>
 
-      {/* 폰: 섬 바로가기 칩 (누르면 지도가 그 섬으로 움직여요) */}
-      {tutorialStep === null && !asking && (
-        <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-20 flex justify-center sm:hidden">
-          <div className="rounded-full bg-white/85 px-2 shadow-sm">
-            <ChipRow label={t.islandChipsLabel}>
-              {mainlandIslands.map((island) => (
-                <Chip key={island.href} selected={focusedIsland === island.href} onClick={() => scrollToIsland(island)}>
-                  {island.label}
-                </Chip>
-              ))}
-            </ChipRow>
-          </div>
-        </div>
-      )}
-
       {/* 닫아 둔 개인 추모 랜드: 이번 기일 기간엔 다시 묻지 않지만 여기서 언제든 열 수 있어요 */}
       {laterIslands.length > 0 && !asking && (
-        <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-white/85 px-4 py-2 font-mulish text-sm text-[#4A423C] shadow max-sm:bottom-[calc(max(1rem,env(safe-area-inset-bottom))+64px)] max-sm:w-[calc(100vw-32px)] max-sm:rounded-2xl">
+        <div className="fixed bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full bg-white/85 px-4 py-2 font-mulish text-sm text-[#4A423C] shadow max-sm:bottom-[var(--bottom-gap)] max-sm:w-[calc(100vw-32px)] max-sm:rounded-2xl">
           <span className="text-[#898787]">{t.laterTitle}</span>
           {laterIslands.map((island) => (
             <button

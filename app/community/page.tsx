@@ -285,7 +285,7 @@ function CommunityContent() {
           >
             ▶
           </button>
-          <p className="pointer-events-none fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden">
+          <p className="pointer-events-none fixed bottom-[var(--bottom-gap)] left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden">
             {t.stoneSwipeHint}
           </p>
         </>
@@ -630,7 +630,7 @@ function StoneMessages({
       </button>
 
       {loaded && (
-        <div className="fixed bottom-10 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-white/85 px-6 py-3 font-mulish text-sm text-[#4A423C] break-keep max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:w-[calc(100vw-32px)] max-sm:justify-between max-sm:px-4">
+        <div className="fixed bottom-10 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-white/85 px-6 py-3 font-mulish text-sm text-[#4A423C] break-keep max-sm:bottom-[var(--bottom-gap)] max-sm:w-[calc(100vw-32px)] max-sm:justify-between max-sm:px-4">
           <span>
             {error ??
               (messages.length === 0

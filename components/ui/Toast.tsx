@@ -47,12 +47,12 @@ export function Toast({
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-4 bottom-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] z-[100] flex justify-center sm:bottom-10"
+      className="pointer-events-none fixed inset-x-4 bottom-[var(--bottom-gap)] z-[100] flex justify-center sm:bottom-10"
     >
       {message && (
         <p
           key={message}
-          className={`ui-toast pointer-events-auto w-full rounded-xl border px-5 py-3 text-center font-mulish text-body-3 leading-relaxed break-keep shadow-md sm:w-auto sm:max-w-[480px] sm:px-6 ${TONE_CLASS[tone]}`}
+          className={`ui-toast pointer-events-auto w-full rounded-xl border px-5 py-3 text-center font-mulish text-body-3 leading-relaxed break-keep shadow-md sm:w-auto sm:max-w-[480px] sm:px-6 ${TONE_CLASS[tone]} max-sm:min-h-12 max-sm:rounded-lg max-sm:border-transparent max-sm:bg-brown-900 max-sm:px-4 max-sm:text-left max-sm:text-white`}
         >
           {message}
         </p>

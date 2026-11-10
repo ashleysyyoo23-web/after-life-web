@@ -185,7 +185,7 @@ export default function KYHdrawingPage() {
       />
       {loaded && (error || messages.length === 0 || messages.length > placed.length) && (
         <p
-          className={`pointer-events-none fixed bottom-10 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-3 font-mulish text-sm text-[#4A423C] break-keep max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:w-max max-sm:max-w-[calc(100vw-32px)] max-sm:px-4 max-sm:text-center${
+          className={`pointer-events-none fixed bottom-10 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-3 font-mulish text-sm text-[#4A423C] break-keep max-sm:bottom-[var(--bottom-gap)] max-sm:w-max max-sm:max-w-[calc(100vw-32px)] max-sm:px-4 max-sm:text-center${
             !error && messages.length > 0 ? " max-sm:hidden" : ""
           }`}
         >
@@ -200,7 +200,7 @@ export default function KYHdrawingPage() {
         <button
           type="button"
           onClick={() => router.push("/KYHgrid")}
-          className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 min-h-12 cursor-pointer rounded-full border-0 bg-[#776257] px-6 py-3 font-mulish text-body-2 font-semibold text-white shadow-md transition-colors hover:bg-brown-900 sm:hidden"
+          className="fixed inset-x-4 bottom-[var(--bottom-gap)] z-30 min-h-12 cursor-pointer rounded-full border-0 bg-[#776257] px-6 py-3 font-mulish text-body-2 font-semibold text-white shadow-md transition-colors hover:bg-brown-900 sm:hidden"
         >
           {t.viewMessagesInListButton(messages.length)}
         </button>

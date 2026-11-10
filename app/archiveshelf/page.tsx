@@ -127,11 +127,11 @@ function ArchiveshelfPageContent() {
       >
         <BookSketchFilterDefs />
         {/* 폰: 바닥을 아래 버튼 자리까지 이어 깔아요 */}
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-[88px] sm:hidden" style={{ backgroundColor: FLOOR_COLOR, width: "300vw" }} />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-[calc(var(--bottom-gap)+76px)] sm:hidden" style={{ backgroundColor: FLOOR_COLOR, width: "300vw" }} />
         {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치
             폰: 무대를 300vw 로 줄여 책을 폰 크기로, 아래 버튼 위 바닥에 붙여요 (옆으로 밀어서 볼 수 있어요) */}
         <div
-          className="absolute left-1/2 top-1/2 h-[max(56.25vw,100vh)] w-[max(100vw,177.78vh)] -translate-x-1/2 -translate-y-1/2 max-sm:bottom-[88px] max-sm:left-0 max-sm:top-auto max-sm:h-[168.75vw] max-sm:w-[300vw] max-sm:translate-x-0 max-sm:translate-y-0"
+          className="absolute left-1/2 top-1/2 h-[max(56.25vw,100vh)] w-[max(100vw,177.78vh)] -translate-x-1/2 -translate-y-1/2 max-sm:bottom-[calc(var(--bottom-gap)+76px)] max-sm:left-0 max-sm:top-auto max-sm:h-[168.75vw] max-sm:w-[300vw] max-sm:translate-x-0 max-sm:translate-y-0"
           style={{ containerType: "size" }}
         >
           <div
@@ -207,7 +207,7 @@ function ArchiveshelfPageContent() {
       )}
 
       {!isEmpty && loaded && (
-        <p className="pointer-events-none fixed bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap font-mulish text-xs text-[#AF9083] max-sm:bottom-[calc(max(1rem,env(safe-area-inset-bottom))+56px)]">
+        <p className="pointer-events-none fixed bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap font-mulish text-xs text-[#AF9083] max-sm:bottom-[calc(var(--bottom-gap)+68px)]">
           <span className="sm:hidden">{t.renameHintMobile}</span>
           <span className="hidden sm:inline">{t.renameHint}</span>
         </p>
@@ -222,7 +222,7 @@ function ArchiveshelfPageContent() {
       <button
         type="button"
         onClick={() => setShowCreateModal(true)}
-        className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:left-4 max-sm:right-4 max-sm:top-auto max-sm:min-h-12 max-sm:py-3 max-sm:text-body-2 max-sm:shadow-md${guideGlow(glowCreate)}`}
+        className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] max-sm:bottom-[var(--bottom-gap)] max-sm:right-4 max-sm:top-auto max-sm:h-14 max-sm:rounded-2xl max-sm:px-5 max-sm:py-0 max-sm:text-body-2 max-sm:shadow-lg${guideGlow(glowCreate)}`}
       >
         {t.createAlbumButton}
       </button>

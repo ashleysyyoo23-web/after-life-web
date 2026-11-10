@@ -43,7 +43,7 @@ export default function UiKitPage() {
       </header>
 
       <div className="flex flex-col gap-6">
-        <Section title="1. 버튼 — 6가지 모양" desc="크기: 보통(14px) · 크게(16px). 누르는 높이는 최소 44px.">
+        <Section title="1. 버튼 — 6가지 모양" desc="크기: 보통(14px) · 크게(16px). 폰은 Material Design 3 크기 — 보통 높이 40px · 크게 48px, 모두 완전히 둥글게, 누르면 살짝 진해져요.">
           <ul className="flex flex-col divide-y divide-divider-1">
             {BUTTONS.map((b) => (
               <li key={b.variant} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center">
@@ -93,7 +93,7 @@ export default function UiKitPage() {
 
         <Section
           title="3. 칩"
-          desc="눌러 보세요. 폰에서는 한 줄로 두고 옆으로 밀어서 봐요. 누르는 영역은 높이 44px이에요."
+          desc="눌러 보세요. 폰에서는 한 줄로 두고 옆으로 밀어서 봐요. 폰은 M3 필터 칩 — 높이 32px · 모서리 8px, 고르면 ✓."
         >
           <ChipDemo />
         </Section>

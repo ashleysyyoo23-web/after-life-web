@@ -10,11 +10,11 @@ export function PetModeProvider({ petMode, children }: { petMode: boolean; child
   return (
     <PetModeContext.Provider value={petMode}>
       {children}
-      {/* 개발 중에만: 지금 반려동물 흐름이면 오른쪽 아래에 작게 표시 */}
+      {/* 개발 중에만: 지금 반려동물 흐름이면 화면 맨 위 가운데에 작게 표시 */}
       {petMode && process.env.NODE_ENV === "development" && (
         <p
           aria-hidden
-          className="pointer-events-none fixed bottom-2 right-2 z-[300] rounded-full bg-[#4B3F39]/80 px-2.5 py-1 font-mulish text-[11px] font-semibold text-white"
+          className="pointer-events-none fixed left-1/2 top-1 z-[300] -translate-x-1/2 rounded-full bg-[#4B3F39]/80 px-2.5 py-1 font-mulish text-[11px] font-semibold text-white"
         >
           🐾 반려동물 모드
         </p>

@@ -411,6 +411,41 @@ body {
   }
 }
 
+/* 화면 아래에 붙는 버튼들의 바닥 여백: 폰 아래 탭 바(components/ui/PhoneTabBar.tsx)가 있으면 그 위로 */
+:root {
+  --bottom-gap: max(1rem, env(safe-area-inset-bottom));
+}
+@media (max-width: 639.98px) {
+  html.has-tabbar {
+    --bottom-gap: calc(80px + env(safe-area-inset-bottom) + 12px);
+  }
+}
+
+/* Material Design 3 누를 때 반응 (state layer): 글자색과 같은 막이 살짝 깔려요 */
+.m3-state {
+  position: relative;
+  isolation: isolate;
+}
+.m3-state::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.m3-state:hover::before {
+  opacity: 0.08;
+}
+.m3-state:active::before {
+  opacity: 0.12;
+}
+.m3-state:disabled::before {
+  opacity: 0;
+}
+
 /* 잠깐 뜨는 알림 (components/ui/Toast.tsx): 아래에서 살짝 떠오르며 나타나요 */
 .ui-toast {
   animation: ui-toast-in 0.25s ease-out;

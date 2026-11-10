@@ -23,13 +23,15 @@ export function Chip({ selected = false, type = "button", className = "", childr
     >
       <span
         className={[
-          "rounded-full border px-4 py-1.5 font-mulish text-body-3 leading-none whitespace-nowrap transition-colors",
+          "rounded-full border px-4 py-1.5 font-mulish text-body-3 leading-none whitespace-nowrap transition-colors m3-state max-sm:inline-flex max-sm:h-8 max-sm:items-center max-sm:gap-1.5 max-sm:rounded-lg max-sm:py-0",
           "group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-brown-500",
           selected
-            ? "border-brown-500 bg-white font-semibold text-text-brown"
+            ? "border-brown-500 bg-white font-semibold text-text-brown max-sm:border-pink-300 max-sm:bg-pink-300"
             : "border-border-soft bg-white/60 text-neutral-500 group-hover:border-brown-500",
         ].join(" ")}
       >
+        {/* 폰: 고른 칩 앞에 ✓ (M3 필터 칩) */}
+        {selected && <span aria-hidden className="hidden max-sm:inline">✓</span>}
         {children}
       </span>
     </button>

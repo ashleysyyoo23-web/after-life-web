@@ -13,6 +13,7 @@ import type { ButtonHTMLAttributes } from "react";
  *  - accent  : 강조 (섬 열기 창)
  * size: md(14px) / lg(16px). 누르는 높이는 둘 다 최소 44px.
  * fullOnMobile: 폭 640px 미만(폰)에서 화면 폭을 꽉 채움.
+ * 폰(640px 미만)은 Material Design 3 크기: 보통 높이 40px · 크게 48px, 모서리 완전히 둥글게, 누를 때 반응(m3-state)
  */
 
 export type ButtonVariant = "brown" | "pink" | "outline" | "cancel" | "text" | "accent";
@@ -20,7 +21,7 @@ export type ButtonSize = "md" | "lg";
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   brown: "rounded-full bg-brown-500 text-white hover:bg-brown-600",
-  pink: "rounded-xl bg-pink-300 font-semibold text-text-brown hover:opacity-90",
+  pink: "rounded-xl bg-pink-300 font-semibold text-text-brown hover:opacity-90 max-sm:rounded-full",
   outline: "rounded-full border border-brown-500 bg-white font-semibold text-brown-500 hover:bg-pink-300",
   cancel: "rounded-full border border-neutral-300 bg-white text-neutral-700 hover:bg-brown-50",
   text: "rounded-full bg-transparent text-brown-500 hover:underline underline-offset-4",
@@ -28,8 +29,8 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
 };
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
-  md: "min-h-11 px-5 py-2 text-body-3",
-  lg: "min-h-12 px-6 py-3 text-body-2",
+  md: "min-h-11 px-5 py-2 text-body-3 max-sm:min-h-10 max-sm:px-6 max-sm:font-semibold",
+  lg: "min-h-12 px-6 py-3 text-body-2 max-sm:font-semibold",
 };
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -47,7 +48,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const classes = [
-    "inline-flex cursor-pointer items-center justify-center gap-2 font-mulish leading-none transition-colors",
+    "m3-state inline-flex cursor-pointer items-center justify-center gap-2 font-mulish leading-none transition-colors",
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown-500",
     "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:no-underline",
     VARIANT_CLASS[variant],

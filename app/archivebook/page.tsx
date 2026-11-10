@@ -211,7 +211,7 @@ function ArchivebookPageContent() {
       </div>
 
       {/* 폰: 노트북과 같은 길 그림을 세워서(길이 위→아래) 깔고, 묶음을 길 위 같은 자리에 놓아요. 위아래로 내려 봐요 */}
-      <div className="relative mb-[112px] mt-[164px] h-[177.78vw] w-full overflow-hidden sm:hidden">
+      <div className="relative mb-[calc(var(--bottom-gap)+72px)] mt-[164px] h-[177.78vw] w-full overflow-hidden sm:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/archivebook-empty.jpg"
@@ -333,7 +333,7 @@ function ArchivebookPageContent() {
           onClick={() => setShowCreateModal(true)}
           disabled={isFull}
           title={isFull ? t.sectionsFull : undefined}
-          className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50 max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:left-4 max-sm:right-4 max-sm:top-auto max-sm:min-h-12 max-sm:py-3 max-sm:text-body-2 max-sm:shadow-md${guideGlow(glowAddSection)}`}
+          className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50 max-sm:bottom-[var(--bottom-gap)] max-sm:right-4 max-sm:top-auto max-sm:h-14 max-sm:rounded-2xl max-sm:px-5 max-sm:py-0 max-sm:text-body-2 max-sm:shadow-lg${guideGlow(glowAddSection)}`}
         >
           {t.addSectionButton}
         </button>

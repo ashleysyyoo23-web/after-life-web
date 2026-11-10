@@ -91,8 +91,10 @@ export function Modal({
         SIZE_CLASS[size],
       ].join(" ")}
     >
-      <div className="flex max-h-[85dvh] flex-col rounded-t-2xl bg-bg-popup font-mulish shadow-lg break-keep sm:rounded-2xl">
-        <header className="relative shrink-0 px-5 pb-3 pt-6 pr-14 sm:px-7 sm:pt-7">
+      <div className="flex max-h-[85dvh] flex-col rounded-t-[28px] bg-bg-popup font-mulish shadow-lg break-keep sm:rounded-2xl">
+        {/* 폰: M3 손잡이 막대 */}
+        <span aria-hidden className="mx-auto mt-4 block h-1 w-8 shrink-0 rounded-full bg-neutral-300 sm:hidden" />
+        <header className="relative shrink-0 px-5 pb-3 pt-4 pr-14 sm:px-7 sm:pt-7">
           <h2 id={titleId} className="font-jeju-myeongjo text-body-1 text-text-brown">
             {title}
           </h2>
