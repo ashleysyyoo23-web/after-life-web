@@ -578,20 +578,20 @@ function RecapviewPageContent() {
                   sectionBookId ? router.push(`/archivebook?book=${encodeURIComponent(sectionBookId)}`) : router.back()
                 }
                 aria-label="뒤로 가기"
-                className="pointer-events-auto flex h-12 cursor-pointer items-center gap-1.5 rounded-full border border-[#5B5959] bg-white px-4 font-mulish text-base font-semibold text-[#4A423C] hover:bg-[#FDD9BD] max-sm:size-11 max-sm:justify-center max-sm:px-0"
+                className="pointer-events-auto flex h-12 cursor-pointer items-center gap-1.5 rounded-full border border-[#5B5959] bg-white px-4 font-mulish text-base font-semibold text-[#4A423C] hover:bg-[#FDD9BD] max-sm:size-9 max-sm:justify-center max-sm:px-0"
               >
                 <ArrowLeft className="h-5 w-5" aria-hidden />
                 {/* 폰: 화살표만 */}
                 <span className="max-sm:hidden">뒤로</span>
               </button>
-              <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
+              <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959] max-sm:h-9 max-sm:w-[112px]">
                   <button
                     type="button"
                     onClick={() => {
                       viewTouchedRef.current = true;
                       if (isSectionMode) setViewMode("book");
                     }}
-                    className={`relative h-12 w-[79px] cursor-pointer border-0 p-0 ${
+                    className={`relative h-12 w-[79px] cursor-pointer border-0 p-0 max-sm:h-9 max-sm:w-14 ${
                       bookTabActive ? "bg-[#FDD9BD]" : "bg-white"
                     }`}
                     aria-label={isSectionMode ? "책으로 넘겨 보기" : "책"}
@@ -607,13 +607,14 @@ function RecapviewPageContent() {
                       alt=""
                       className="absolute inset-0 h-full w-full"
                     />
-                    <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center p-1">
+                    <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center p-1 max-sm:left-2.5 max-sm:size-9">
                       <Image
                         src="/icons/recap-tab-book-icon-3ac964.png"
                         alt=""
                         width={34}
                         height={28}
                         unoptimized
+                        className="max-sm:h-auto max-sm:w-6"
                       />
                     </span>
                   </button>
@@ -627,7 +628,7 @@ function RecapviewPageContent() {
                         router.push("/recapmanual");
                       }
                     }}
-                    className={`relative h-12 w-[79px] cursor-pointer border-0 p-0 ${
+                    className={`relative h-12 w-[79px] cursor-pointer border-0 p-0 max-sm:h-9 max-sm:w-14 ${
                       shareTabActive ? "bg-[#FDD9BD]" : "bg-white"
                     }`}
                     aria-label={isSectionMode ? "자동으로 넘겨 보기" : "보내기"}
@@ -643,7 +644,7 @@ function RecapviewPageContent() {
                       alt=""
                       className="absolute inset-0 h-full w-full"
                     />
-                    <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center p-1">
+                    <span className="absolute left-4 top-0 flex h-12 w-12 items-center justify-center p-1 max-sm:left-2.5 max-sm:size-9">
                       <Image
                         src="/icons/recap-tab-export-icon-276154.png"
                         alt=""
@@ -651,6 +652,7 @@ function RecapviewPageContent() {
                         height={24}
                         unoptimized
                         style={{ transform: "rotate(90deg)" }}
+                        className="max-sm:h-auto max-sm:w-6"
                       />
                     </span>
                   </button>
@@ -659,7 +661,7 @@ function RecapviewPageContent() {
               </div>
 
               <div className="pointer-events-auto fixed right-8 top-24 z-20 flex flex-col items-end gap-2 max-sm:right-4 max-sm:top-[68px] max-sm:flex-row max-sm:items-center max-sm:gap-1.5">
-                <div className="flex h-14 items-center gap-7 rounded-[42px] bg-[#FDD9BD] px-5 py-3 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:h-11 max-sm:px-1.5 max-sm:py-2">
+                <div className="flex h-14 items-center gap-7 rounded-[42px] bg-[#FDD9BD] px-5 py-3 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:size-9 max-sm:justify-center max-sm:px-0 max-sm:py-0">
                   <button
                     type="button"
                     onClick={() => {
@@ -682,12 +684,13 @@ function RecapviewPageContent() {
                       alt=""
                       width={17}
                       height={25}
+                      className="max-sm:h-[18px] max-sm:w-auto"
                     />
                   </button>
                 </div>
                 {/* 중단하기: 언제든 한 번에 빠져나오기 (Esc) */}
                 <QuickExitButton
-                  className="mt-8 max-sm:mt-0 max-sm:px-3"
+                  className="mt-8 max-sm:mt-0"
                   onExit={() => {
                     setIsPlaying(false);
                   }}

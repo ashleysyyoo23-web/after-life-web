@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Gowun_Batang, Mulish, Nanum_Pen_Script, Newsreader } from "next/font/google";
 import { GlobalClickSound } from "@/app/components/GlobalClickSound";
 import { SessionProvider } from "@/components/providers/session-provider";
+import { PetModeProvider } from "@/components/providers/pet-mode-provider";
+import { PET_MODE_HEADER } from "@/lib/pet-mode";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -39,11 +42,14 @@ export const metadata: Metadata = {
   description: "소중한 분의 기억을 다시 만나는 곳",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 반려동물 흐름(휴대폰)인지: proxy.ts 가 요청마다 정해서 머리글로 넘겨 줘요
+  const petMode = (await headers()).get(PET_MODE_HEADER) === "1";
+
   return (
     <html
       lang="ko"
@@ -51,7 +57,9 @@ export default function RootLayout({
     >
       <body className={`${mulish.className} min-h-full flex flex-col`}>
         <GlobalClickSound />
-        <SessionProvider>{children}</SessionProvider>
+        <PetModeProvider petMode={petMode}>
+          <SessionProvider>{children}</SessionProvider>
+        </PetModeProvider>
       </body>
     </html>
   );

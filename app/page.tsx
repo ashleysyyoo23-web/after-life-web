@@ -6,10 +6,13 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useCopy } from "@/lib/copy/use-copy";
 
 // 첫 화면. 로그인했으면 예전처럼 로고를 잠깐 보여 주고 전체 지도로,
 // 로그인 안 했으면 로고 아래에 "Google로 시작하기"와 "먼저 둘러보기"를 보여줘요.
 export default function OnboardingPage() {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const t = useCopy().home;
   const router = useRouter();
   const { status } = useSession();
   const [isFadingOut, setIsFadingOut] = useState(false);
@@ -55,19 +58,19 @@ export default function OnboardingPage() {
           }`}
         >
           <p className="rounded-full bg-white/70 px-4 py-1.5 text-center font-mulish text-sm text-[#4A423C]">
-            소중한 분의 기억을 다시 만나는 곳
+            {t.tagline}
           </p>
           <Link
             href={loginUrl("/mainland")}
             className="flex h-14 w-full items-center justify-center rounded-xl border border-[#B75A34] bg-[#D99B82] font-mulish text-base font-semibold text-black shadow-[0px_4px_8px_rgba(0,0,0,0.12)] transition-colors hover:bg-[#C4836E] hover:text-white"
           >
-            Google로 시작하기
+            {t.startButton}
           </Link>
           <Link
             href="/mainland"
             className="font-mulish text-sm text-[#4A423C] underline underline-offset-4 hover:text-[#AF9083]"
           >
-            먼저 둘러볼게요
+            {t.browseButton}
           </Link>
         </div>
       )}

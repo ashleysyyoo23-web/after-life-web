@@ -187,11 +187,12 @@ export function TopNav({
         </span>
       </button>
 
+      {/* 폰(640px 미만): 알림 버튼 오른쪽에 설정·메뉴가 더 있어서, 화면 폭에 맞춰 위 메뉴 바로 아래에 펼쳐요 */}
       {showNotifications && (
-        <div className="absolute right-0 top-full z-50 mt-3 w-[min(320px,calc(100vw-32px))]">
+        <div className="absolute right-0 top-full z-50 mt-3 w-[min(320px,calc(100vw-32px))] max-sm:fixed max-sm:inset-x-4 max-sm:top-[60px] max-sm:mt-0 max-sm:w-auto">
           <div className="relative rounded-xl bg-[#AF9083] px-[10px] py-[12px]">
             <div
-              className="absolute -top-2 right-4 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-[#AF9083]"
+              className="absolute -top-2 right-4 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-[#AF9083] max-sm:right-[104px]"
               aria-hidden
             />
             {sessionStatus !== "authenticated" ? (

@@ -90,7 +90,7 @@ export default function CommunityTwoPage() {
         {HOVER_SPOTS.slice(0, placed.length).map((spot) => (
           <div
             key={spot.id}
-            className="pointer-events-auto absolute z-30 h-12 w-12 rounded-full bg-transparent"
+            className="pointer-events-auto absolute z-30 h-12 w-12 rounded-full bg-transparent max-sm:hidden"
             style={{ left: spot.hoverLeft, top: spot.hoverTop }}
             onMouseEnter={() => handleHoverEnter(spot.id)}
             onMouseLeave={handleHoverLeave}
@@ -181,12 +181,26 @@ export default function CommunityTwoPage() {
         onClose={() => setShowSettings(false)}
       />
       {loaded && (error || messages.length === 0 || messages.length > placed.length) && (
-        <p className="pointer-events-none fixed bottom-10 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-3 font-mulish text-sm text-[#4A423C]">
+        <p
+          className={`pointer-events-none fixed bottom-10 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-3 font-mulish text-sm text-[#4A423C] break-keep max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:w-max max-sm:max-w-[calc(100vw-32px)] max-sm:px-4 max-sm:text-center${
+            !error && messages.length > 0 ? " max-sm:hidden" : ""
+          }`}
+        >
           {error ??
             (messages.length === 0
               ? t.emptyMessages
               : t.recentOnIsland(placed.length, messages.length))}
         </p>
+      )}
+      {/* 폰: 그림 위 메시지 자리는 마우스를 올려야 열려서, 목록 보기로 안내해요 */}
+      {loaded && !error && messages.length > 0 && (
+        <button
+          type="button"
+          onClick={() => router.push("/communitytwogrid")}
+          className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 min-h-12 cursor-pointer rounded-full border-0 bg-[#776257] px-6 py-3 font-mulish text-body-2 font-semibold text-white shadow-md transition-colors hover:bg-brown-900 sm:hidden"
+        >
+          {t.viewMessagesInListButton(messages.length)}
+        </button>
       )}
       <KYHMessageModal
         isOpen={showMessageModal}

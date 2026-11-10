@@ -143,7 +143,22 @@ function CommunityContent() {
   const guideCommunity = useGuideStep() === "community";
   const [isListOpen, setIsListOpen] = useState(false);
   const viewport = useViewport();
-  const zoom = zoomStone ? zoomFor(zoomStone, viewport.width, viewport.height) : { scale: 1, x: 0, y: 0 };
+  // 폰(640px 미만): 돌탑 7개가 가로로 늘어서 있어 한 번에 다 안 보여요 → 하나씩 가운데로 옮겨 보기
+  const isPhone = viewport.width < 640;
+  const [focusIndex, setFocusIndex] = useState(3);
+  const panTo = (stone: Box) => {
+    const stage = stageBox(viewport.width, viewport.height);
+    return { scale: 1, x: viewport.width / 2 - (stage.x + (stage.width * (stone.left + stone.width / 2)) / 100), y: 0 };
+  };
+  const zoom = zoomStone
+    ? zoomFor(zoomStone, viewport.width, viewport.height)
+    : isPhone
+      ? panTo(STONES[focusIndex])
+      : { scale: 1, x: 0, y: 0 };
+  const moveFocus = (step: number) => setFocusIndex((index) => Math.min(STONES.length - 1, Math.max(0, index + step)));
+  // 손가락으로 옆으로 밀기 (민 직후의 “톡”은 돌 열기로 치지 않아요)
+  const swipeStartRef = useRef<number | null>(null);
+  const swipedRef = useRef(false);
 
   // 돌·목록을 누르면 주소에 ?stone= 을 남겨서, 뒤로 가기나 메시지를 남긴 뒤에도 그 돌로 돌아와요
   const openStone = (wall: CommunityStoneWall | null, view?: "cards") => {
@@ -171,12 +186,36 @@ function CommunityContent() {
   return (
     <>
       {/* 섬 전체 (돌을 고르면 그 돌 쪽으로 확대) */}
-      <div className="fixed inset-0 overflow-hidden">
+      <div
+        className="fixed inset-0 overflow-hidden"
+        onPointerDown={(event) => {
+          swipedRef.current = false;
+          if (isPhone && !selected && event.pointerType !== "mouse") swipeStartRef.current = event.clientX;
+        }}
+        onPointerUp={(event) => {
+          const start = swipeStartRef.current;
+          swipeStartRef.current = null;
+          if (start === null) return;
+          const dx = event.clientX - start;
+          if (Math.abs(dx) < 40) return;
+          swipedRef.current = true;
+          moveFocus(dx < 0 ? 1 : -1);
+        }}
+        onPointerCancel={() => {
+          swipeStartRef.current = null;
+        }}
+        onClickCapture={(event) => {
+          if (!swipedRef.current) return;
+          swipedRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+      >
         <div
           className="absolute inset-0 origin-top-left transition-transform duration-[1100ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none"
           style={{ transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})` }}
         >
-          <BackgroundPageLayout backgroundSrc="/community.jpg" skyScene="community" title="" motion={COMMUNITY_MOTION} />
+          <BackgroundPageLayout backgroundSrc="/community.jpg" skyScene="community" title="" motion={COMMUNITY_MOTION} fullStageOnPhone />
 
           {/* 확대: 고른 돌 말고는 회색으로, 고른 돌은 선명한 그림으로 */}
           {zoomStone && <StoneFocus key={zoomStone.wall} stone={zoomStone} />}
@@ -188,7 +227,7 @@ function CommunityContent() {
           >
             {!selected &&
               STONES.map((stone, index) => {
-                const hovered = hoveredStone === index;
+                const hovered = hoveredStone === index || (isPhone && focusIndex === index);
                 return (
                   <button
                     key={stone.wall}
@@ -198,7 +237,14 @@ function CommunityContent() {
                     onMouseLeave={() => setHoveredStone(null)}
                     onFocus={() => setHoveredStone(index)}
                     onBlur={() => setHoveredStone(null)}
-                    onClick={() => openStone(stone.wall)}
+                    onClick={() => {
+                      // 폰: 옆 돌탑을 누르면 먼저 가운데로, 가운데 돌탑을 누르면 들어가요
+                      if (isPhone && focusIndex !== index) {
+                        setFocusIndex(index);
+                        return;
+                      }
+                      openStone(stone.wall);
+                    }}
                     className={`pointer-events-auto absolute cursor-pointer rounded-[45%] border-0 transition-colors duration-200 ${
                       hovered ? "bg-white/15" : "bg-transparent"
                     }${guideGlow(guideCommunity && stone.wall === "friend")}`}
@@ -217,6 +263,33 @@ function CommunityContent() {
           </div>
         </div>
       </div>
+
+      {/* 폰: 돌탑 넘겨 보기 버튼 */}
+      {!selected && (
+        <>
+          <button
+            type="button"
+            onClick={() => moveFocus(-1)}
+            disabled={focusIndex === 0}
+            aria-label={t.prevStoneLabel}
+            className="fixed left-3 top-1/2 z-20 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-white/80 text-lg text-[#AF9083] shadow-sm disabled:opacity-30 sm:hidden"
+          >
+            ◀
+          </button>
+          <button
+            type="button"
+            onClick={() => moveFocus(1)}
+            disabled={focusIndex === STONES.length - 1}
+            aria-label={t.nextStoneLabel}
+            className="fixed right-3 top-1/2 z-20 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-0 bg-white/80 text-lg text-[#AF9083] shadow-sm disabled:opacity-30 sm:hidden"
+          >
+            ▶
+          </button>
+          <p className="pointer-events-none fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden">
+            {t.stoneSwipeHint}
+          </p>
+        </>
+      )}
 
       {/* 고른 돌: 꽃마다 메시지 (돌이 바뀌면 새로 불러오도록 key) */}
       {zoomStone && <StoneMessages key={zoomStone.wall} stone={zoomStone} zoom={zoom} viewport={viewport} />}
@@ -240,12 +313,12 @@ function CommunityContent() {
         <button
           type="button"
           onClick={() => setIsListOpen((prev) => !prev)}
-          className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-[#4B3F39] bg-[#776257] px-6 py-[7px] font-mulish text-xl font-semibold text-white max-sm:min-h-11 max-sm:px-4 max-sm:text-body-2"
+          className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-[#4B3F39] bg-[#776257] px-6 py-[7px] font-mulish text-xl font-semibold text-white max-sm:h-11 max-sm:py-0 max-sm:pl-3 max-sm:pr-2 max-sm:text-body-3"
           aria-expanded={isListOpen}
           aria-haspopup="listbox"
         >
           <span className="whitespace-nowrap">{t.openListButton}</span>
-          <span className="flex h-[39px] w-[39px] shrink-0 items-center justify-center p-1">
+          <span className="flex h-[39px] w-[39px] shrink-0 items-center justify-center p-1 max-sm:size-8">
             <Image
               src="/icons/community/dropdown-chevron.svg"
               alt=""
@@ -463,6 +536,7 @@ function StoneMessages({
   const [showMessageModal, setShowMessageModal] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placed = messages.slice(0, stone.flowers.length);
+  const isPhone = viewport.width < 640;
   // 안내 빛: 첫 꽃 → 뜬 카드의 좋아요 (메시지가 없으면 "메시지 남기기")
   const guideCommunity = useGuideStep() === "community";
 
@@ -498,7 +572,12 @@ function StoneMessages({
               onMouseLeave={leave}
               onFocus={() => enter(index)}
               onBlur={leave}
-              className={`pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 transition-all duration-200 ${
+              onClick={() => {
+                // 폰: 톡 누르면 열려요 (닫기는 카드 바깥 누르기)
+                if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+                setHovered(index);
+              }}
+              className={`pointer-events-auto absolute z-[35] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 transition-all duration-200 ${
                 active ? "border-white bg-white/25 shadow-[0_0_18px_rgba(255,255,255,0.9)]" : "border-white/70 bg-white/0 hover:bg-white/20"
               }${guideGlow(guideCommunity && index === 0 && hovered === null)}`}
               style={{ left: point.x, top: point.y, width: spot, height: spot }}
@@ -506,17 +585,26 @@ function StoneMessages({
           );
         })}
 
+        {/* 폰: 카드 바깥을 누르면 닫혀요 */}
+        {isPhone && hovered !== null && (
+          <div aria-hidden className="pointer-events-auto absolute inset-0 z-30" onClick={() => setHovered(null)} />
+        )}
         {hovered !== null && placed[hovered] && (() => {
           const point = flowerPoint(stone.flowers[hovered]);
           const onRight = point.x < viewport.width / 2;
           return (
             <div
               className="pointer-events-auto absolute z-40"
-              style={{
-                left: onRight ? point.x + spot / 2 + 16 : undefined,
-                right: onRight ? undefined : viewport.width - point.x + spot / 2 + 16,
-                top: Math.min(Math.max(point.y - 120, 220), viewport.height - 380),
-              }}
+              style={
+                isPhone
+                  ? // 폰: 손가락에 가리지 않게 화면 아래 가운데
+                    { left: "50%", transform: "translateX(-50%)", bottom: 96 }
+                  : {
+                      left: onRight ? point.x + spot / 2 + 16 : undefined,
+                      right: onRight ? undefined : viewport.width - point.x + spot / 2 + 16,
+                      top: Math.min(Math.max(point.y - 120, 220), viewport.height - 380),
+                    }
+              }
               onMouseEnter={() => enter(hovered)}
               onMouseLeave={leave}
             >
@@ -542,18 +630,18 @@ function StoneMessages({
       </button>
 
       {loaded && (
-        <div className="fixed bottom-10 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-white/85 px-6 py-3 font-mulish text-sm text-[#4A423C]">
+        <div className="fixed bottom-10 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-white/85 px-6 py-3 font-mulish text-sm text-[#4A423C] break-keep max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:w-[calc(100vw-32px)] max-sm:justify-between max-sm:px-4">
           <span>
             {error ??
               (messages.length === 0
                 ? t.emptyMessages
-                : t.flowerHint(placed.length, messages.length))}
+                : isPhone ? t.flowerHintMobile(placed.length, messages.length) : t.flowerHint(placed.length, messages.length))}
           </span>
           {messages.length > 0 && (
             <button
               type="button"
               onClick={() => setShowAll(true)}
-              className="cursor-pointer rounded-full border border-[#AF9083] px-3 py-1 text-xs font-semibold text-[#AF9083] hover:bg-[#FDD9BD]"
+              className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-[#AF9083] px-3 py-1 text-xs font-semibold text-[#AF9083] hover:bg-[#FDD9BD] max-sm:min-h-9"
             >
               {t.viewAllButton}
             </button>
@@ -562,22 +650,22 @@ function StoneMessages({
       )}
 
       {showAll && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-6" onClick={() => setShowAll(false)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-6 max-sm:px-4" onClick={() => setShowAll(false)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-label={t.allMessagesLabel(COMMUNITY_WALLS[stone.wall].title)}
-            className="flex max-h-[80vh] w-full max-w-[1100px] flex-col gap-5 overflow-hidden rounded-3xl bg-[#FAF6F0] p-8"
+            className="flex max-h-[80vh] w-full max-w-[1100px] flex-col gap-5 overflow-hidden rounded-3xl bg-[#FAF6F0] p-8 max-sm:gap-4 max-sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
-              <h2 className="font-jeju-myeongjo text-2xl text-[#2F2622]">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-jeju-myeongjo text-2xl text-[#2F2622] break-keep max-sm:text-body-2">
                 {t.wallMessageCount(COMMUNITY_WALLS[stone.wall].title, messages.length)}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAll(false)}
-                className="cursor-pointer rounded-full border border-[#E8DDD5] bg-white px-4 py-2 font-mulish text-sm text-[#4A423C] hover:bg-[#FDD9BD]"
+                className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-[#E8DDD5] bg-white px-4 py-2 font-mulish text-sm text-[#4A423C] hover:bg-[#FDD9BD] max-sm:min-h-11"
               >
                 {t.closeButton}
               </button>

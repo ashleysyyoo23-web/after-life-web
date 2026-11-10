@@ -110,10 +110,12 @@ export default function StorageInsidePage() {
 
       <div className="pointer-events-none fixed inset-x-0 top-[128px] z-20 flex flex-col items-center gap-4 px-8 pt-8 text-center break-keep max-sm:top-16 max-sm:gap-2 max-sm:px-4 max-sm:pt-2">
         <WoodPlank size="title" className="mb-2">{t.title}</WoodPlank>
-        <h1 className="whitespace-nowrap font-newsreader text-[40px] text-[#1a1a1a] max-sm:whitespace-normal max-sm:text-label-md">
+        {/* 폰: 한 줄로 (화면 폭에 맞춰 24px 아래로 줄어요) */}
+        <h1 className="whitespace-nowrap font-newsreader text-[40px] text-[#1a1a1a] max-sm:text-[min(24px,calc((100vw-32px)/17.8))]">
           {t.insideTitle}
         </h1>
-        <p className="font-mulish text-2xl font-normal leading-[17px] text-[#7F7B7B] max-sm:text-body-2 max-sm:leading-normal">
+        {/* 폰: 줄을 나누지 않고 한 줄로 (화면 폭에 맞춰 글자 크기를 14px 아래로 살짝 줄여요) */}
+        <p className="font-mulish text-2xl font-normal leading-[17px] text-[#7F7B7B] max-sm:order-2 max-sm:text-[min(14px,calc((100vw-32px)/27))] max-sm:leading-normal max-sm:whitespace-nowrap">
           {status === "unauthenticated"
             ? t.loggedOut
             : frames === null
@@ -123,7 +125,7 @@ export default function StorageInsidePage() {
                 : t.insideSummary(totalPhotos, totalMessages)}
         </p>
         {placed.length > 0 && (
-          <p className="font-mulish text-2xl font-normal leading-[17px] text-[#1a1a1a]">
+          <p className="font-mulish text-2xl font-normal leading-[17px] text-[#1a1a1a] max-sm:order-2 max-sm:text-body-2 max-sm:leading-normal">
             {t.framesHint}
           </p>
         )}
@@ -131,15 +133,17 @@ export default function StorageInsidePage() {
           <button
             type="button"
             onClick={() => router.push(loginUrl("/storageinside"))}
-            className="pointer-events-auto cursor-pointer rounded-full border border-[#AF9083] bg-white/90 px-5 py-2 font-mulish text-base font-semibold text-[#AF9083] hover:bg-[#FDD9BD]"
+            className="pointer-events-auto cursor-pointer rounded-full border border-[#AF9083] bg-white/90 px-5 py-2 font-mulish text-base font-semibold text-[#AF9083] hover:bg-[#FDD9BD] max-sm:order-3"
           >
             {t.loginButton}
           </button>
         )}
+        {/* 폰: 검색창은 제목 바로 아래, 설명은 그 아래 (노트북은 오른쪽 위에 따로) */}
+        {status === "authenticated" && <StorageSearch className="pointer-events-auto order-1 mt-1 w-full sm:hidden" />}
       </div>
 
       {/* 저장한 기록 찾기 (글·날짜) → 누르면 그 액자에서 열어 줘요 */}
-      {status === "authenticated" && <StorageSearch className="fixed right-12 top-[128px] z-30" />}
+      {status === "authenticated" && <StorageSearch className="fixed right-12 top-[128px] z-30 max-sm:hidden" />}
 
       <TopNav
         onSettingsClick={() => setShowSettings(true)}

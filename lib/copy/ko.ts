@@ -5,6 +5,13 @@
 import { josa } from "@/lib/josa";
 
 export const ko = {
+  // 첫 화면 (app/page.tsx)
+  home: {
+    tagline: "소중한 분의 기억을 다시 만나는 곳",
+    startButton: "Google로 시작하기",
+    browseButton: "먼저 둘러볼게요",
+  },
+
   // 로그인 (app/login/page.tsx)
   login: {
     logoAlt: "AFTER LIFE",
@@ -350,6 +357,8 @@ export const ko = {
     // 여러 추모 공간에서 같이 쓰는 말
     leaveMessageButton: "메시지 남기기",
     emptyMessages: "아직 남겨진 메시지가 없어요. ‘메시지 남기기’를 눌러 첫 마음을 전해 주세요.",
+    // 폰: 그림 보기에서 메시지는 목록 보기로 (김영희 님의 섬 · 세월호 추모공간)
+    viewMessagesInListButton: (count: number) => `메시지 ${count}개 모아 보기 ›`,
     recentOnIsland: (recent: number, total: number) =>
       `최근 메시지 ${recent}개가 섬에 있어요. 모든 메시지(${total}개)는 그리드 보기에서 볼 수 있어요.`,
     drawingViewLabel: "그리기 보기",
@@ -368,8 +377,15 @@ export const ko = {
     togetherCount: (n: number) => `함께하는 사람 ${n.toLocaleString("ko-KR")}명`,
     heartsCount: (n: number) => ` · 남겨진 마음 ${n}개`,
     viewMessageLabel: (nickname: string) => `${nickname}님의 메시지 보기`,
+    // 폰: 섬 전체 보기에서 돌탑을 하나씩 넘겨 봐요
+    prevStoneLabel: "이전 돌탑",
+    nextStoneLabel: "다음 돌탑",
+    stoneSwipeHint: "옆으로 밀어 돌탑을 고르고, 눌러서 들어가요",
     flowerHint: (recent: number, total: number) =>
       `꽃에 마우스를 올리면 남겨진 마음을 볼 수 있어요. (최근 ${recent}개 / 전체 ${total}개)`,
+    // 폰: 마우스가 없어서 "누르면"
+    flowerHintMobile: (recent: number, total: number) =>
+      `꽃을 누르면 남겨진 마음을 볼 수 있어요. (최근 ${recent}개 / 전체 ${total}개)`,
     viewAllButton: "전체 보기",
     allMessagesLabel: (title: string) => `${title} 전체 메시지`,
     wallMessageCount: (title: string, n: number) => `${title} · 메시지 ${n}개`,

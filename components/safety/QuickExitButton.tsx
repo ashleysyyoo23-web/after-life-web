@@ -39,9 +39,9 @@ export function QuickExitButton({ onExit, className = "" }: { onExit?: () => voi
         type="button"
         onClick={exit}
         aria-label="중단하기: 기록 보기를 멈추고 나의 섬으로 이동 (Esc)"
-        className={`pointer-events-auto flex h-11 cursor-pointer items-center gap-2 rounded-full border border-[#D99B82] bg-white/90 px-4 font-mulish text-sm font-semibold text-[#8C3B2E] shadow-[0px_2px_6px_rgba(0,0,0,0.12)] transition-colors hover:bg-[#FBEAEA] ${className}`}
+        className={`pointer-events-auto flex h-11 cursor-pointer items-center gap-2 rounded-full border border-[#D99B82] bg-white/90 px-4 font-mulish text-sm font-semibold text-[#8C3B2E] shadow-[0px_2px_6px_rgba(0,0,0,0.12)] transition-colors hover:bg-[#FBEAEA] max-sm:h-9 max-sm:gap-1.5 max-sm:px-3 max-sm:text-xs ${className}`}
       >
-        <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+        <X className="h-4 w-4 max-sm:h-3.5 max-sm:w-3.5" strokeWidth={2.2} aria-hidden />
         중단하기
         <kbd className="rounded border border-[#E8C6BA] px-1.5 py-px font-mulish text-[10px] font-normal text-[#AF9083] max-sm:hidden">Esc</kbd>
       </button>

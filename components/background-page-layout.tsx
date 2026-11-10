@@ -12,6 +12,8 @@ type BackgroundPageLayoutProps = {
   skyScene?: SkyScene;
   // 바다 물결·구름·새·살랑이는 꽃 같은 움직임 (lib/scene-motion.ts)
   motion?: SceneMotionConfig;
+  // 폰(640px 미만)에서도 그림 전체 폭(16:9)을 그려 둬요. 화면을 옆으로 옮겨 볼 때 그림 끝이 비지 않게
+  fullStageOnPhone?: boolean;
 };
 
 export function BackgroundPageLayout({
@@ -19,9 +21,14 @@ export function BackgroundPageLayout({
   title,
   skyScene,
   motion,
+  fullStageOnPhone = false,
 }: BackgroundPageLayoutProps) {
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div
+      className={`relative h-screen w-screen overflow-hidden${
+        fullStageOnPhone ? " max-sm:left-1/2 max-sm:w-[max(100vw,177.78vh)] max-sm:-translate-x-1/2" : ""
+      }`}
+    >
       {skyScene ? (
         <MoodSkyBackground scene={skyScene} clouds={Boolean(motion)} />
       ) : (

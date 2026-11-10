@@ -9,7 +9,7 @@ import { exposureBlurPx } from "@/lib/exposure";
 import { ko } from "@/lib/copy/ko";
 import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 const t = ko.archive;
 
@@ -26,6 +26,17 @@ const SECTION_SLOTS = [
   { left: 86.75, top: 15.56, labelTop: 36.11 },
 ];
 const SLOT_SIZE_CQW = 9.8;
+
+// 폰: 가로 그림을 시계 방향으로 90° 세워서 길이 위→아래로 이어지게 해요.
+// 가로 그림의 칸 가운데 (x%, y%) → 세운 그림에서 (100 - y%, x%)
+// 칸 높이는 가로 그림 높이의 17.42% (= 가로 폭 9.8% × 16/9)
+const SLOT_HEIGHT_PERCENT = (SLOT_SIZE_CQW * 16) / 9;
+function uprightSlotCenter(slot: (typeof SECTION_SLOTS)[number]) {
+  return {
+    left: 100 - (slot.top + SLOT_HEIGHT_PERCENT / 2),
+    top: slot.left + SLOT_SIZE_CQW / 2,
+  };
+}
 
 type Book = {
   id: string;
@@ -56,29 +67,6 @@ function ArchivebookPageContent() {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "not-found">(
     "loading",
   );
-
-  // 폰(640px 미만): 길 그림을 옆으로 밀어서 둘러봐요. 처음엔 첫 번째 칸이 보이게, 안내는 잠깐
-  const sceneScrollRef = useRef<HTMLDivElement>(null);
-  const [showSwipeHint, setShowSwipeHint] = useState(true);
-  // 처음 맞춘 자리 (여기서 사용자가 직접 밀었을 때만 안내를 숨겨요)
-  const startLeftRef = useRef(0);
-  useEffect(() => {
-    const el = sceneScrollRef.current;
-    if (!el) return;
-    const wide = window.matchMedia("(min-width: 640px)");
-    const firstCenter = (SECTION_SLOTS[0].left + SLOT_SIZE_CQW / 2) / 100;
-    const align = () => {
-      el.scrollLeft = wide.matches ? 0 : Math.max(0, firstCenter * el.scrollWidth - el.clientWidth / 2);
-      startLeftRef.current = el.scrollLeft;
-    };
-    align();
-    wide.addEventListener("change", align);
-    const timer = window.setTimeout(() => setShowSwipeHint(false), 5000);
-    return () => {
-      wide.removeEventListener("change", align);
-      window.clearTimeout(timer);
-    };
-  }, []);
 
   useEffect(() => {
     if (!bookId) {
@@ -133,15 +121,9 @@ function ArchivebookPageContent() {
 
   return (
     <>
-      {/* 폰: 옆으로 밀어서 둘러봐요 / 노트북(640px 이상): 예전처럼 화면에 맞춰 고정 */}
-      <div
-        ref={sceneScrollRef}
-        className="relative h-screen w-screen overflow-hidden bg-[#FDF0E8] max-sm:overflow-x-auto max-sm:[scrollbar-width:none]"
-        onScroll={(event) => {
-          if (Math.abs(event.currentTarget.scrollLeft - startLeftRef.current) > 8) setShowSwipeHint(false);
-        }}
-      >
-      <div className="relative h-full w-[max(100vw,177.78vh)] sm:w-full">
+      {/* 노트북(640px 이상): 가로 그림 위 점선 길 / 폰: 아래의 세로 지그재그 길 (위아래로 내려 봐요) */}
+      <div className="relative h-screen w-screen overflow-hidden bg-[#FDF0E8] max-sm:overflow-y-auto">
+      <div className="relative h-full w-full max-sm:hidden">
         {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치 */}
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
@@ -228,7 +210,69 @@ function ArchivebookPageContent() {
         </div>
       </div>
 
-        <div className="absolute left-0 top-20 z-20 p-8 max-sm:fixed max-sm:top-16 max-sm:px-4 max-sm:pt-2">
+      {/* 폰: 노트북과 같은 길 그림을 세워서(길이 위→아래) 깔고, 묶음을 길 위 같은 자리에 놓아요. 위아래로 내려 봐요 */}
+      <div className="relative mb-[112px] mt-[164px] h-[177.78vw] w-full overflow-hidden sm:hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/archivebook-empty.jpg"
+          alt=""
+          aria-hidden
+          className="absolute left-1/2 top-1/2 h-[100vw] w-[177.78vw] max-w-none -translate-x-1/2 -translate-y-1/2 rotate-90"
+        />
+        {sections.map((section) => {
+          const slot = SECTION_SLOTS[section.slot];
+          if (!slot) return null;
+          const center = uprightSlotCenter(slot);
+          return (
+            <div
+              key={section.id}
+              className="absolute w-[19vw] -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${center.left}%`, top: `${center.top}%` }}
+            >
+              <div className={`relative aspect-square${guideGlow(section.id === glowRecapId)}`}>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/recapview?section=${encodeURIComponent(section.id)}`)}
+                  aria-label={t.sectionRecapLabel(section.title)}
+                  className="block h-full w-full cursor-pointer overflow-hidden border-0 bg-white p-[3px] shadow-[0_1px_3px_rgba(42,37,34,0.18)]"
+                >
+                  {section.hasCover && (
+                    // 본인만 볼 수 있는 API 주소라 일반 img 사용
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/album-sections/${section.id}/cover?v=${encodeURIComponent(section.coverFileId ?? "")}`}
+                      alt=""
+                      className="h-full w-full bg-[#F2EAE2] object-cover"
+                      style={{
+                        filter:
+                          section.coverHidden && !section.coverRevealed
+                            ? `blur(${exposureBlurPx(book?.emotionLevel, 0.5)}px)`
+                            : "none",
+                      }}
+                    />
+                  )}
+                </button>
+                {/* 사진 편집: 작은 칸이라 연필 동그라미로 (누르는 영역은 넉넉히) */}
+                <button
+                  type="button"
+                  onClick={() => setEditingSectionId(section.id)}
+                  aria-label={`${section.title} ${t.editPhotosButton}`}
+                  className={`absolute -right-3 -top-3 flex size-9 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0${
+                    section.id === glowEditId ? " guide-glow" : ""
+                  }`}
+                >
+                  <span className="flex size-7 items-center justify-center rounded-full bg-white text-xs text-[#4A423C] shadow">✎</span>
+                </button>
+              </div>
+              <p className="absolute left-1/2 top-full mt-1 w-max max-w-[34vw] -translate-x-1/2 truncate text-center font-jeju-myeongjo text-etc text-[#2A2522]">
+                {section.title}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+        <div className="absolute left-0 top-20 z-20 p-8 max-sm:fixed max-sm:inset-x-0 max-sm:top-0 max-sm:bg-[#FDF0E8] max-sm:px-4 max-sm:pb-3 max-sm:pt-[72px]">
           <button
             type="button"
             onClick={() =>
@@ -295,15 +339,6 @@ function ArchivebookPageContent() {
         </button>
       )}
 
-      {/* 폰: 옆으로 밀 수 있다는 안내 (처음 5초, 밀면 바로 사라져요) */}
-      {showSwipeHint && loadState === "ready" && (
-        <p
-          aria-hidden
-          className="pointer-events-none fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+64px)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden"
-        >
-          ‹ {ko.myland.swipeHint} ›
-        </p>
-      )}
 
       {/* 중단하기: "+ 섹션 추가" 바로 아래, 기록 화면마다 같은 오른쪽 위 자리 (폰: 위 메뉴 아래 오른쪽) */}
       <QuickExitButton className="fixed top-[200px] right-12 z-40 max-sm:right-4 max-sm:top-[72px]" />

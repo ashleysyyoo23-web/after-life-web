@@ -2,6 +2,7 @@
 
 import { RichText } from "@/components/RichText";
 import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import { Fragment, useEffect, useId, useState } from "react";
 
 // 전체 지도 튜토리얼: 배를 탄 "섬지기"가 말풍선으로 섬들을 소개하고, 소개하는 곳을 점선 타원으로 비춰요.
@@ -16,18 +17,19 @@ type Step = {
   ghostIslands?: boolean; // 개인 추모 랜드 자리 미리 보여 주기
 };
 
-const t = ko.guide;
+// 단계 순서·비추는 자리는 아래 MAP_TUTORIAL_STEPS, 글은 화면에서 useCopy() 로 (휴대폰이면 반려동물 문구)
+const guideText = ko.guide;
 
 export const MAP_TUTORIAL_STEPS: Step[] = [
   {
-    text: t.steps[0],
+    text: guideText.steps[0],
   },
   {
-    text: t.steps[1],
+    text: guideText.steps[1],
     spots: [{ cx: 49.4, cy: 51.8, rx: 23.8, ry: 20.2 }],
   },
   {
-    text: t.steps[2],
+    text: guideText.steps[2],
     spots: [
       { cx: 20.7, cy: 82.5, rx: 21.5, ry: 19 },
       { cx: 82.8, cy: 84, rx: 18.8, ry: 19.5 },
@@ -35,15 +37,15 @@ export const MAP_TUTORIAL_STEPS: Step[] = [
     ghostIslands: true,
   },
   {
-    text: t.steps[3],
+    text: guideText.steps[3],
     spots: [{ cx: 17, cy: 43.3, rx: 17.6, ry: 16.4 }],
   },
   {
-    text: t.steps[4],
+    text: guideText.steps[4],
     spots: [{ cx: 84.2, cy: 42.4, rx: 16.6, ry: 16.4 }],
   },
   {
-    text: t.steps[5],
+    text: guideText.steps[5],
     menu: true,
   },
 ];
@@ -101,6 +103,7 @@ export function MapTutorial({
   // 폰에서 지도를 옆으로 민 만큼(px, 가운데 기준): 비추는 곳도 같이 옮겨요
   shiftX?: number;
 }) {
+  const t = useCopy().guide;
   const maskId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const current = MAP_TUTORIAL_STEPS[step];
   const last = step === MAP_TUTORIAL_STEPS.length - 1;
@@ -218,7 +221,7 @@ export function MapTutorial({
             ✕
           </button>
           <p className="font-jeju-myeongjo text-[15px] leading-[1.75] text-[#4A3A33]" aria-live="polite">
-            <RichText text={current.text} boldClassName="font-bold text-[#9E4B3B]" />
+            <RichText text={t.steps[step] ?? current.text} boldClassName="font-bold text-[#9E4B3B]" />
           </p>
           <div className="mt-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5" aria-label={t.progressLabel(MAP_TUTORIAL_STEPS.length, step + 1)}>

@@ -2,7 +2,7 @@
 
 import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { RichText } from "@/components/RichText";
-import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import { safeCallbackUrl } from "@/lib/login";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
@@ -18,9 +18,10 @@ export default function LoginPage() {
   );
 }
 
-const t = ko.login;
 
 function LoginPageContent() {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const t = useCopy().login;
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status } = useSession();
@@ -42,7 +43,7 @@ function LoginPageContent() {
     <main className="relative flex min-h-screen w-screen items-center justify-center overflow-x-hidden py-10">
       <MoodSkyBackground scene="onboarding" />
 
-      <div className="relative z-10 flex w-full max-w-[460px] flex-col items-center gap-6 rounded-3xl bg-white/90 px-10 py-12 text-center shadow-[0px_8px_24px_rgba(0,0,0,0.12)]">
+      <div className="relative z-10 flex w-full max-w-[460px] flex-col items-center gap-6 rounded-3xl bg-white/90 px-10 py-12 text-center break-keep shadow-[0px_8px_24px_rgba(0,0,0,0.12)] max-sm:px-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/onboarding-logo.svg" alt={t.logoAlt} className="h-[88px] w-auto" />
 
