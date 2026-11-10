@@ -8,6 +8,7 @@ import {
   CHARACTER_NICKNAME_MAX,
   CHARACTER_RELATIONS,
   sanitizeExcludedTypes,
+  sanitizePetInfo,
 } from "@/lib/character-fields";
 import {
   CHARACTER_ROOT_FOLDER_NAME,
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
   const preferences = { description, emotionLevel, excludedTypes, allowRecommendation };
 
   if (body.photoSource === "upload") {
-    return createUploadCharacter(supabase, userEmail, { nickname, relation, appearance, ...preferences }, body.specialDates);
+    return createUploadCharacter(supabase, userEmail, { nickname, relation, appearance, ...preferences }, body.specialDates, body.pet);
   }
 
   // 1) 내 Drive 연결로 그 폴더를 실제로 열 수 있는지 확인 (폴더 ID 만 알아서 남의 고인에 합류하는 것 방지)
@@ -253,6 +254,7 @@ export async function POST(request: NextRequest) {
   // 4) 의미 있는 날짜 (내 날짜로 저장, 기일은 한 개만)
   await saveSpecialDates(supabase, userEmail, deceased.id, body.specialDates);
 
+  await savePetInfo(supabase, (saved.data as CharacterRow).id, body.pet);
   return NextResponse.json({ character: toClient(saved.data as CharacterRow, { googleEmail: connection.google_email, needsReconnect: false }) }, { status: 201 });
 }
 
@@ -270,6 +272,7 @@ async function createUploadCharacter(
     allowRecommendation: boolean;
   },
   specialDates: unknown,
+  pet: unknown,
 ) {
   const { data: deceased, error: deceasedError } = await supabase
     .from("deceased")
@@ -313,7 +316,19 @@ async function createUploadCharacter(
   }
 
   await saveSpecialDates(supabase, userEmail, deceased.id, specialDates);
+  await savePetInfo(supabase, (saved.data as CharacterRow).id, pet);
   return NextResponse.json({ character: toClient(saved.data as CharacterRow) }, { status: 201 });
+}
+
+// 반려동물 정보 (종·품종·성별·함께한 기간). 따로 저장해서, supabase/step_pet_fields.sql 실행 전이면
+// 이 정보만 빠지고 캐릭터는 그대로 만들어져요
+async function savePetInfo(supabase: SupabaseClient, characterId: string, pet: unknown) {
+  if (!pet) return;
+  const fields = sanitizePetInfo(pet);
+  if (Object.values(fields).every((value) => value === null)) return;
+  const { error } = await supabase.from("user_characters").update(fields).eq("id", characterId);
+  // 칸이 아직 없음(SQL 실행 전): PGRST204 / 42703 → 조용히 넘어가요
+  if (error && error.code !== "PGRST204" && error.code !== "42703") console.error("반려동물 정보 저장 실패", error.message);
 }
 
 // 마이 랜드에서 비어 있는 기본 자리 (다 찼으면 모래 위 아무 데나)

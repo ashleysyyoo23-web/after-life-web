@@ -2,7 +2,20 @@
 
 import { CharacterPartsPicker } from "@/components/CharacterPartsPicker";
 import { DEFAULT_APPEARANCE, appearanceForRelation, type CharacterAppearance } from "@/lib/character-parts";
-import { CHARACTER_RELATIONS, emptySpecialDate, isPetRelation, type SpecialDate } from "@/lib/character-fields";
+import {
+  CHARACTER_RELATIONS,
+  PET_DEFAULT_DATE_LABELS,
+  PET_RELATION,
+  PET_SEXES,
+  PET_SPECIES,
+  PET_TEXT_MAX,
+  emptyPetInfo,
+  emptySpecialDate,
+  isPetRelation,
+  type PetInfo,
+  type SpecialDate,
+} from "@/lib/character-fields";
+import { usePetMode } from "@/components/providers/pet-mode-provider";
 import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { guideGlow, useGuideStep } from "@/lib/guide";
 import { ko } from "@/lib/copy/ko";
@@ -83,6 +96,58 @@ export function readCharacterDraft(): CharacterDraft | null {
   }
 }
 
+// 반려동물 흐름: 하나 고르기 (종류·성별)
+function PetChoice<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly { value: T; label: string }[];
+  value: T | null;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="font-mulish text-sm text-[#4A423C]">{label}</span>
+      <div role="radiogroup" aria-label={label} className="grid grid-cols-3 gap-2">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            onClick={() => onChange(option.value)}
+            className={`min-h-12 cursor-pointer rounded-xl border font-mulish text-base transition-colors ${
+              value === option.value ? "border-[#AF9083] bg-[#FDD9BD]/30 text-[#AF9083]" : "border-gray-200 bg-white text-[#1a1a1a]"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 반려동물 흐름: 짧게 적기 (품종·함께한 기간)
+function PetText({ label, value, placeholder, onChange }: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
+  return (
+    <label className="flex flex-col gap-2">
+      <span className="font-mulish text-sm text-[#4A423C]">{label}</span>
+      <input
+        type="text"
+        value={value}
+        maxLength={PET_TEXT_MAX}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-xl border border-gray-200 px-4 py-3 font-mulish text-base text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
+      />
+    </label>
+  );
+}
+
 function GoogleDriveIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" aria-hidden="true">
@@ -110,16 +175,24 @@ export function CharacterCreateModal({
 }) {
   // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
   const t = useCopy().character.create;
+  // 휴대폰(반려동물 흐름): 관계 고르기 없이 반려동물로, 사진은 휴대폰에서만, 특별한 날 3칸을 미리
+  const petMode = usePetMode();
+  const [pet, setPet] = useState<PetInfo>(emptyPetInfo);
   // 계정을 연결하고 돌아오면(보관한 내용이 있으면) 기록 불러오기부터 이어서
   const [step, setStep] = useState(initialDraft ? RECORDS_STEP : 1);
   const [nickname, setNickname] = useState(initialDraft?.nickname ?? "");
-  const [relation, setRelation] = useState(initialDraft?.relation ?? "");
+  const [relation, setRelation] = useState(initialDraft?.relation ?? (petMode ? PET_RELATION : ""));
   const isPet = isPetRelation(relation);
   const [description, setDescription] = useState(initialDraft?.description ?? "");
-  const [appearance, setAppearance] = useState<CharacterAppearance>(initialDraft?.appearance ?? DEFAULT_APPEARANCE);
+  const [appearance, setAppearance] = useState<CharacterAppearance>(
+    initialDraft?.appearance ?? appearanceForRelation(DEFAULT_APPEARANCE, petMode),
+  );
   const [emotionLevel, setEmotionLevel] = useState(initialDraft?.emotionLevel ?? 50);
   const [excludedTypes, setExcludedTypes] = useState<string[]>(initialDraft?.excludedTypes ?? []);
-  const [specialDates, setSpecialDates] = useState<SpecialDate[]>(initialDraft?.specialDates ?? [emptySpecialDate()]);
+  const [specialDates, setSpecialDates] = useState<SpecialDate[]>(
+    initialDraft?.specialDates ??
+      (petMode ? PET_DEFAULT_DATE_LABELS.map((label) => ({ ...emptySpecialDate(), label })) : [emptySpecialDate()]),
+  );
   const [allowRecommendation, setAllowRecommendation] = useState(initialDraft?.allowRecommendation ?? true);
 
   // Drive 계정·폴더
@@ -133,7 +206,7 @@ export function CharacterCreateModal({
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
 
   // 사진 출처, 휴대폰에서 고른 사진
-  const [photoSource, setPhotoSource] = useState<"drive" | "upload">("drive");
+  const [photoSource, setPhotoSource] = useState<"drive" | "upload">(petMode ? "upload" : "drive");
   const [pickedFiles, setPickedFiles] = useState<File[]>([]);
   const [pickNotice, setPickNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -267,6 +340,7 @@ export function CharacterCreateModal({
             : { driveConnectionId: connectionId, folderId: selectedFolder?.id }),
           emotionLevel, excludedTypes, allowRecommendation,
           specialDates: specialDates.filter((d) => d.date.trim()),
+          ...(petMode ? { pet } : {}),
         }),
       });
       const json = (await res.json().catch(() => null)) as { character?: CreatedCharacter; error?: string } | null;
@@ -339,6 +413,26 @@ export function CharacterCreateModal({
                   className="w-full rounded-xl border border-gray-200 px-4 py-4 font-mulish text-base text-[#1a1a1a] outline-none placeholder:text-[#AF9083]"
                 />
               </div>
+              {petMode ? (
+                <div className="mt-2 flex flex-col gap-[18px]">
+                  <p className={sectionLabel}><span>2</span><span>{t.petInfoLabel}</span></p>
+                  <div className="flex flex-col gap-4">
+                    <PetChoice
+                      label={t.speciesLabel}
+                      options={PET_SPECIES}
+                      value={pet.species}
+                      onChange={(species) => {
+                        setPet((prev) => ({ ...prev, species }));
+                        // 캐릭터 그림은 강아지·고양이만 있어서 '기타'는 강아지 모양으로 시작해요
+                        setAppearance((prev) => ({ ...appearanceForRelation(prev, true), species: species === "cat" ? "cat" : "dog" }));
+                      }}
+                    />
+                    <PetText label={t.breedLabel} value={pet.breed} placeholder={t.breedPlaceholder} onChange={(breed) => setPet((prev) => ({ ...prev, breed }))} />
+                    <PetChoice label={t.sexLabel} options={PET_SEXES} value={pet.sex} onChange={(sex) => setPet((prev) => ({ ...prev, sex }))} />
+                    <PetText label={t.yearsLabel} value={pet.years} placeholder={t.yearsPlaceholder} onChange={(years) => setPet((prev) => ({ ...prev, years }))} />
+                  </div>
+                </div>
+              ) : (
               <div className="mt-2 flex flex-col gap-[18px]">
                 <p className={sectionLabel}><span>2</span><span>{t.relationLabel}</span></p>
                 <div className="grid grid-cols-4 gap-x-[22px] gap-y-[10px] max-sm:grid-cols-2 max-sm:gap-x-2.5">
@@ -359,6 +453,7 @@ export function CharacterCreateModal({
                   ))}
                 </div>
               </div>
+              )}
               <div className="mt-2 flex flex-col gap-[18px]">
                 <p className={sectionLabel}>
                   <span>3</span>
@@ -388,6 +483,7 @@ export function CharacterCreateModal({
                 />
               </div>
 
+              {!petMode && (
               <div className="flex flex-col gap-[18px]">
                 <p className={sectionLabel}><span>2</span><span>{t.sourceLabel}</span></p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -414,10 +510,11 @@ export function CharacterCreateModal({
                   ))}
                 </div>
               </div>
+              )}
 
               {photoSource === "upload" && (
                 <div className="flex flex-col gap-[18px]">
-                  <p className={sectionLabel}><span>3</span><span>{t.uploadLabel(PICK_MAX)}</span></p>
+                  <p className={sectionLabel}><span>{petMode ? 2 : 3}</span><span>{t.uploadLabel(PICK_MAX)}</span></p>
                   <input
                     ref={fileInputRef}
                     type="file"

@@ -181,6 +181,14 @@ export const ko = {
       folderHelp: "폴더 이름을 누르면 선택되고, ‘열기’를 누르면 안으로 들어가요.",
       sameFolderNote: "다른 가족이 같은 폴더를 고르면 기일 섬에서 함께 만나요.",
       // 사진 출처 고르기 (Drive 폴더 / 휴대폰에서 올리기)
+      // 반려동물 흐름(휴대폰): 관계 고르기 대신 아이 정보
+      petInfoLabel: "우리 아이를 소개해 주세요",
+      speciesLabel: "종류",
+      breedLabel: "품종",
+      breedPlaceholder: "예: 말티즈, 코리안 숏헤어 (모르면 비워 두세요)",
+      sexLabel: "성별",
+      yearsLabel: "함께한 기간",
+      yearsPlaceholder: "예: 2012 ~ 2024",
       sourceLabel: "사진을 어디서 가져올까요?",
       sourceDrive: "Google Drive 폴더",
       sourceDriveHelp: "폴더를 연결하면 나중에 넣은 사진도 함께 보여요.",
@@ -357,6 +365,8 @@ export const ko = {
 
   // 설정 창 (app/components/SettingsModal.tsx) — 화면에 바로 적혀 있던 것 중 반려동물 흐름에서 바뀌는 줄
   settings: {
+    profileMenu: "나의 프로필",
+    profileTitle: "사용자님의 프로필을 설정해보세요.",
     deceasedGroup: "고인 관련 설정",
     editPersonMenu: "그리운 분 편집",
     viewTypeHelp: "고인의 기록을 어떤 방식으로 볼지 골라주세요. 슬라이드쇼는 자동으로 넘어가고, 책은 손으로 넘겨요.",

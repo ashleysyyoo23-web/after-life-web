@@ -6,6 +6,40 @@ export const CHARACTER_RELATIONS = ["배우자", "부모님", "조부모님", "�
 export const PET_RELATION = "반려동물";
 export const isPetRelation = (relation: string | null | undefined) => relation === PET_RELATION;
 
+// ── 반려동물 정보 (휴대폰 반려동물 흐름) — supabase/step_pet_fields.sql ──
+export const PET_SPECIES = [
+  { value: "dog", label: "강아지" },
+  { value: "cat", label: "고양이" },
+  { value: "other", label: "기타" },
+] as const;
+export const PET_SEXES = [
+  { value: "male", label: "남아" },
+  { value: "female", label: "여아" },
+  { value: "unknown", label: "모름" },
+] as const;
+export const PET_TEXT_MAX = 20;
+export type PetSpecies = (typeof PET_SPECIES)[number]["value"];
+export type PetSex = (typeof PET_SEXES)[number]["value"];
+export type PetInfo = { species: PetSpecies | null; breed: string; sex: PetSex | null; years: string };
+export const emptyPetInfo = (): PetInfo => ({ species: null, breed: "", sex: null, years: "" });
+
+// 화면에서 온 값 → 저장할 칸 (틀린 값은 비워요)
+export function sanitizePetInfo(value: unknown) {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const pick = <T extends string>(input: unknown, allowed: readonly { value: T }[]) =>
+    allowed.some((item) => item.value === input) ? (input as T) : null;
+  const text = (input: unknown) => (typeof input === "string" ? input.trim().slice(0, PET_TEXT_MAX) || null : null);
+  return {
+    pet_species: pick(raw.species, PET_SPECIES),
+    pet_breed: text(raw.breed),
+    pet_sex: pick(raw.sex, PET_SEXES),
+    pet_years: text(raw.years),
+  };
+}
+
+// 반려동물 흐름의 특별한 날 기본 3칸
+export const PET_DEFAULT_DATE_LABELS = ["생일", "입양일", "무지개다리 건넌 날"] as const;
+
 // ── 열람방식 설정하기 (캐릭터 만들기 4단계 · 인물 편집 공용) ──
 export const CHARACTER_EXCLUDED_TYPES = [
   "작별 직전의 순간",

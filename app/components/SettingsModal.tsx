@@ -2,6 +2,7 @@
 
 import { ko } from "@/lib/copy/ko";
 import { useCopy } from "@/lib/copy/use-copy";
+import { usePetMode } from "@/components/providers/pet-mode-provider";
 import {
   LegacyDatePicker,
   toLegacyDateTimestamp,
@@ -140,6 +141,9 @@ export function SettingsModal({
 }: SettingsModalProps) {
   // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
   const settingsText = useCopy().settings;
+  // 휴대폰(반려동물 흐름): '내가 남길 기록'(내가 떠난 뒤를 위한 설정)은 숨겨요
+  const petMode = usePetMode();
+  const visibleMySettings = petMode ? mySettingsItems.filter((item) => item.id !== "legacy") : mySettingsItems;
   const [selectedSetting, setSelectedSetting] =
     useState<SettingId>("view-method");
   // "특정 메뉴로 열기"(openToSetting): 창이 그 메뉴로 열릴 때 바로 그 메뉴를 고름 (렌더 중에 한 번만 맞춤)
@@ -752,7 +756,7 @@ export function SettingsModal({
                   나의 설정
                 </p>
                 <div className="flex flex-col gap-2">
-                  {mySettingsItems.map((item) => (
+                  {visibleMySettings.map((item) => (
                     <button
                       key={item.id}
                       type="button"
@@ -769,7 +773,7 @@ export function SettingsModal({
                           className="h-5 w-5 object-contain"
                         />
                       </span>
-                      <span>{item.label}</span>
+                      <span>{item.id === "profile" ? settingsText.profileMenu : item.label}</span>
                       <span className="ml-auto pr-1 text-neutral-500 sm:hidden" aria-hidden>›</span>
                     </button>
                   ))}
@@ -966,7 +970,7 @@ export function SettingsModal({
                   {selectedSetting === "profile" && (
                     <div className="flex h-full min-h-0 flex-col">
                       <h2 className="sticky top-0 z-10 shrink-0 bg-white pb-4 pl-6 pr-2 font-newsreader text-[32px] leading-tight text-black max-sm:bg-[#FFFEFB] max-sm:pl-0 max-sm:text-label-md">
-                        사용자님의 프로필을 설정해보세요.
+                        {settingsText.profileTitle}
                       </h2>
 
                       <div className="flex min-h-0 flex-1 flex-col items-center gap-[60px] overflow-y-auto pb-11 max-sm:gap-8">

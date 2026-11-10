@@ -85,6 +85,8 @@ export const koPet: CopyOverrides<typeof ko> = {
 
   // ── 2단계 마지막 묶음: 설정 · 우리 아이 편집 · 보관함 ──
   settings: {
+    profileMenu: "보호자 프로필",
+    profileTitle: "보호자님의 프로필을 설정해 보세요.",
     deceasedGroup: "우리 아이 설정",
     editPersonMenu: "우리 아이 편집",
     viewTypeHelp: "아이의 기록을 어떤 방식으로 볼지 골라주세요. 슬라이드쇼는 자동으로 넘어가고, 책은 손으로 넘겨요.",
