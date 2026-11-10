@@ -6,12 +6,14 @@ import { CHARACTER_RELATIONS, emptySpecialDate, isPetRelation, type SpecialDate 
 import { ViewingPreferencesFields } from "@/components/ViewingPreferencesFields";
 import { guideGlow, useGuideStep } from "@/lib/guide";
 import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import { uploadPhotos } from "@/lib/shrink-photo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const RELATIONS = CHARACTER_RELATIONS;
 const t = ko.character.create;
 // 3단계 (Task 7 과제와 맞춤). 예전 1·2단계(정보 입력·캐릭터 꾸미기)를 한 화면으로 합쳤어요.
+// 단계 수는 문구와 상관없이 같아요 (이름은 화면에서 useCopy() 로)
 const STEPS = t.steps;
 const RECORDS_STEP = 2;
 const LAST_STEP = STEPS.length;
@@ -106,6 +108,8 @@ export function CharacterCreateModal({
   onClose: () => void;
   onCreated: (character: CreatedCharacter) => void;
 }) {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const t = useCopy().character.create;
   // 계정을 연결하고 돌아오면(보관한 내용이 있으면) 기록 불러오기부터 이어서
   const [step, setStep] = useState(initialDraft ? RECORDS_STEP : 1);
   const [nickname, setNickname] = useState(initialDraft?.nickname ?? "");
@@ -199,7 +203,7 @@ export function CharacterCreateModal({
     return () => {
       cancelled = true;
     };
-  }, [connectionId, parentId]);
+  }, [connectionId, parentId, t.foldersLoadFailed]);
 
   const chooseConnection = (id: string) => {
     setConnectionId(id);
@@ -302,7 +306,7 @@ export function CharacterCreateModal({
       >
         <div className="flex items-center justify-between">
           <p className="font-mulish text-sm text-[#AF9083]">
-            {STEPS.map((label, index) => (
+            {t.steps.map((label, index) => (
               <span key={label}>
                 {index > 0 && " > "}
                 <span className={index + 1 === step ? "font-bold" : ""}>{label}</span>

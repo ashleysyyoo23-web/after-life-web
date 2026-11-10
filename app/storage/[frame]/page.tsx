@@ -11,7 +11,7 @@ import type { CommunityMessage, CommunityReaction } from "@/lib/community";
 import type { SavedPhoto } from "@/lib/storage-frames";
 import { loginUrl } from "@/lib/login";
 import { useSession } from "next-auth/react";
-import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -37,6 +37,8 @@ export default function StorageFramePage() {
 }
 
 function StorageFrameContent() {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const t = useCopy().storage;
   const router = useRouter();
   const { frame } = useParams<{ frame: string }>();
   const { status } = useSession();
@@ -155,13 +157,13 @@ function StorageFrameContent() {
         <div className="mx-auto flex max-w-5xl flex-col gap-10">
           <header className="flex flex-col items-center gap-4">
             <Link href="/storageinside" className="self-start font-mulish text-base text-[#AF9083] hover:opacity-70">
-              {ko.storage.backToStorage}
+              {t.backToStorage}
             </Link>
             <WoodPlank>{detail ? (isCommunity ? detail.title : `${detail.title}의 액자`) : "액자"}</WoodPlank>
             <p className="font-mulish text-lg text-[#7F7B7B]">
               {isCommunity
-                ? "추모 공간에서 북마크한 메시지가 모여 있어요"
-                : "추억 모음에서 보관한 사진과 북마크한 메시지가 모여 있어요"}
+                ? t.frameCommunityHint
+                : t.framePersonHint}
             </p>
           </header>
 
@@ -223,7 +225,7 @@ function StorageFrameContent() {
                 <h2 className="font-jeju-myeongjo text-2xl text-[#3F2F24]">북마크한 메시지 ({messages.length})</h2>
                 {messages.length === 0 ? (
                   <p className="rounded-xl bg-white/70 px-5 py-6 font-mulish text-[#7F7B7B]">
-                    아직 북마크한 메시지가 없어요. 추모 공간 메시지 카드의 북마크를 눌러 담아 보아요.
+                    {t.frameNoMessages}
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">

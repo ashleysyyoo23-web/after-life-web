@@ -7,6 +7,7 @@ import { useMoodSky } from "@/lib/mood-sky";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useCopy } from "@/lib/copy/use-copy";
 
 const MOOD_OPTIONS = [
   { mood: "평온", emoji: "☀️", background: "/moodcheckone.jpg" },
@@ -24,6 +25,8 @@ const BACKGROUND_IMAGES = [
 ];
 
 export default function RecapfeedbackPage() {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const t = useCopy().recapFeedback;
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
   const [selectedMood, setSelectedMood] = useState("");
@@ -110,16 +113,16 @@ export default function RecapfeedbackPage() {
 
         <div className="absolute left-1/2 top-[35%] z-10 flex w-full max-w-2xl -translate-x-1/2 flex-col items-center px-8">
           <h1
-            className={`text-center font-newsreader text-4xl ${textColor}`}
+            className={`text-center font-newsreader text-4xl break-keep max-sm:text-label-lg ${textColor}`}
           >
-            기록을 모두 열어봤어요
+            {t.title}
           </h1>
 
           <div
-            className={`mt-6 text-center font-mulish text-lg ${textColor}`}
+            className={`mt-6 text-center font-mulish text-lg break-keep max-sm:text-body-2 ${textColor}`}
           >
-            <p>&apos;{characterNickname ?? "할머니"}&apos;와의 기록을 함께해줘서 고맙습니다.</p>
-            <p>지금은 어떤 마음인가요?</p>
+            <p>{t.thanks(characterNickname ?? t.fallbackName)}</p>
+            <p>{t.question}</p>
           </div>
 
           <div className="mt-6 flex items-center justify-center gap-4">

@@ -14,11 +14,10 @@ import {
   type SpecialDate,
 } from "@/lib/character-fields";
 import { appearanceForRelation, type CharacterAppearance } from "@/lib/character-parts";
-import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const t = ko.character.manager;
 
 // 마이 랜드가 열려 있으면 인물을 다시 불러오게 알림
 export const CHARACTERS_UPDATED_EVENT = "afterlife:characters-updated";
@@ -51,6 +50,7 @@ const inputClass =
 
 // 설정 "마이랜드의 인물 편집": 인물 목록 → 편집(호칭·관계·소개·모습) / 삭제
 export function CharacterManager() {
+  const t = useCopy().character.manager;
   const [characters, setCharacters] = useState<CreatedCharacter[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Detail | null>(null);
@@ -84,6 +84,8 @@ export function CharacterManager() {
       if ("error" in result) setListError(result.error ?? null);
       else setCharacters(result.characters);
     })();
+    // 목록은 창을 열 때 한 번만 불러와요 (문구 t 는 창이 열려 있는 동안 바뀌지 않아요)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const notifyMyland = () => window.dispatchEvent(new Event(CHARACTERS_UPDATED_EVENT));

@@ -7,18 +7,19 @@ import { MoodSkyBackground } from "@/components/MoodSkyBackground";
 import { TopNav } from "@/app/components/TopNav";
 import { SettingsModal } from "@/app/components/SettingsModal";
 import type { FrameSummary } from "@/lib/storage-frames";
-import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import { josa } from "@/lib/josa";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const t = ko.storage;
+// 화면 안에서는 useCopy() (휴대폰이면 반려동물 문구)
 
 // 문 위치 (그림 기준 %): 빛이 문에서 어긋나면 이 네 숫자를 조절하세요
 const DOOR = { left: 70.6, top: 34, width: 4.2, height: 12.8 };
 
 export default function StoragePage() {
+  const t = useCopy().storage;
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
   // 폰(640px 미만): 가로로 긴 그림을 옆으로 밀 수 있고, 처음엔 문이 화면 가운데 오게

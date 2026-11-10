@@ -324,6 +324,10 @@ export const ko = {
     savedPhotoTitle: "추억 보관함에 보관했어요 (누르면 취소)",
     savedNotice: "추억 보관함에 보관했어요.",
     unsavedNotice: "보관을 취소했어요.",
+    // 액자 안 (app/storage/[frame]/page.tsx)
+    frameCommunityHint: "추모 공간에서 북마크한 메시지가 모여 있어요",
+    framePersonHint: "추억 모음에서 보관한 사진과 북마크한 메시지가 모여 있어요",
+    frameNoMessages: "아직 북마크한 메시지가 없어요. 추모 공간 메시지 카드의 북마크를 눌러 담아 보아요.",
   },
 
   // 기록 책장 (app/archiveshelf 책장 · app/archivebook 앨범 · app/archiveroom 기록 방)
@@ -349,6 +353,41 @@ export const ko = {
     // 기록 방
     roomLabel: "기록 선반으로 이동",
     roomHint: "공간을 눌러 기록을 살펴보세요.",
+  },
+
+  // 설정 창 (app/components/SettingsModal.tsx) — 화면에 바로 적혀 있던 것 중 반려동물 흐름에서 바뀌는 줄
+  settings: {
+    deceasedGroup: "고인 관련 설정",
+    editPersonMenu: "그리운 분 편집",
+    viewTypeHelp: "고인의 기록을 어떤 방식으로 볼지 골라주세요. 슬라이드쇼는 자동으로 넘어가고, 책은 손으로 넘겨요.",
+  },
+
+  // 감상을 마친 뒤 마음 기록 (app/recapfeedback/page.tsx)
+  recapFeedback: {
+    title: "기록을 모두 열어봤어요",
+    // 이름을 못 불러왔을 때 대신 부르는 말
+    fallbackName: "그리운 분",
+    thanks: (name: string) => `'${name}'${josa(name, "과/와").slice(name.length)}의 기록을 함께해줘서 고맙습니다.`,
+    question: "지금은 어떤 마음인가요?",
+  },
+
+  // 오늘의 쪽지 (components/TodayNote.tsx)
+  todayNote: {
+    recapTitle: (nickname: string) => `${nickname}의 추억 모음 보기`,
+    recapSubBook: (bookTitle: string) => `'${bookTitle}' 책이 새로 정리됐어요`,
+    recapSub: (nickname: string) => `${nickname}의 기록을 천천히 꺼내 봐요`,
+    myIslandButton: "나의 섬",
+    addTitle: "그리운 분 추가하기",
+    addSub: "나의 섬에 그리운 분을 모셔 와요",
+    communityTitle: "추모 커뮤니티에 꽃 남기기",
+    communitySub: (wallTitle: string) => `${wallTitle}에 꽃 한 송이로 마음을 보태요`,
+    communityButton: "함께 기억하는 섬",
+    islandTitle: (nickname: string, label: string) => `${nickname} ${label}에 메시지 남기기`,
+    islandSub: (month: number, day: number) => `${month}월 ${day}일, 기억하고 싶은 날이 다가와요`,
+    islandButton: "추모의 섬",
+    moodTitle: "오늘의 마음 날씨 기록하기",
+    moodSub: "지금 마음은 어떤 날씨인가요?",
+    moodButton: "마음 일기",
   },
 
   // 커뮤니티 · 추모 공간 (app/community, app/island/[deceasedId], 예전 시안 communitytwo·KYH…, components/community, KYHMessageModal)
@@ -538,7 +577,7 @@ export const ko = {
     finishedAll: (total: number) => `분류를 마쳤어요. ${total}장 모두 분류했어요.`,
     // 사진 목록 상태
     noMatch: "조건에 맞는 사진이 없어요.",
-    loadingPhotos: "Drive 사진을 불러오는 중이에요.",
+    loadingPhotos: "사진을 불러오는 중이에요.",
     notConnected: "Drive가 연결되어 있지 않아요. 오른쪽 위 설정 › 내가 남길 기록에서 Google Drive를 먼저 연결해 주세요.",
     noPhotos: "연결된 폴더에 사진이 없어요.",
     // 휴대폰에서 사진을 올린 인물

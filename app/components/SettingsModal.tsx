@@ -1,6 +1,7 @@
 "use client";
 
 import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import {
   LegacyDatePicker,
   toLegacyDateTimestamp,
@@ -89,7 +90,7 @@ const deceasedSettingsItems: {
   {
     id: "edit-person",
     icon: "/icons/settings/edit-person-673177.png",
-    label: "그리운 분 편집",
+    label: ko.settings.editPersonMenu, // 화면에서는 useCopy() 문구로 바꿔 보여요
   },
 ];
 
@@ -137,6 +138,8 @@ export function SettingsModal({
   onClose,
   openToSetting = null,
 }: SettingsModalProps) {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const settingsText = useCopy().settings;
   const [selectedSetting, setSelectedSetting] =
     useState<SettingId>("view-method");
   // "특정 메뉴로 열기"(openToSetting): 창이 그 메뉴로 열릴 때 바로 그 메뉴를 고름 (렌더 중에 한 번만 맞춤)
@@ -775,7 +778,7 @@ export function SettingsModal({
 
               <div className="flex flex-col gap-2">
                 <p className="px-2 font-mulish text-[10px] text-[#898787]">
-                  고인 관련 설정
+                  {settingsText.deceasedGroup}
                 </p>
                 <div className="flex flex-col gap-2">
                   {deceasedSettingsItems.map((item) => (
@@ -795,7 +798,7 @@ export function SettingsModal({
                           className="h-[22px] w-[22px] object-contain"
                         />
                       </span>
-                      <span className="whitespace-nowrap">{item.label}</span>
+                      <span className="whitespace-nowrap">{item.id === "edit-person" ? settingsText.editPersonMenu : item.label}</span>
                       <span className="ml-auto pr-1 text-neutral-500 sm:hidden" aria-hidden>›</span>
                     </button>
                   ))}
@@ -899,7 +902,7 @@ export function SettingsModal({
                             <div className="flex gap-2 font-mulish text-sm text-[#898787]">
                               <span>2</span>
                               <span>
-                                고인의 기록을 어떤 방식으로 볼지 골라주세요. 슬라이드쇼는 자동으로 넘어가고, 책은 손으로 넘겨요.
+                                {settingsText.viewTypeHelp}{" "}
                                 리캡 안에서도 언제든 바꿀 수 있어요.
                               </span>
                             </div>

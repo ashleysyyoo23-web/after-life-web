@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import type { TodayNote as TodayNoteData } from "@/app/api/me/today-note/route";
 import { noteDateLabel, readNoteChecks, writeNoteChecks } from "@/lib/today-note";
+import { useCopy } from "@/lib/copy/use-copy";
 
 type NoteItem = {
   key: string;
@@ -25,6 +26,8 @@ export function TodayNote({
   onAddCharacter: () => void;
   onOpenEmotion: () => void;
 }) {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const t = useCopy().todayNote;
   const [note, setNote] = useState<TodayNoteData | null>(null);
   const [failed, setFailed] = useState(false);
   // 접어두기: 우체통 쪽으로 작아지며 날아가요 (우체통 자리까지의 거리)
@@ -87,42 +90,42 @@ export function TodayNote({
       const { nickname, bookId, bookTitle, characterId } = note.recap;
       items.push({
         key: "recap",
-        title: `${nickname}의 추억 모음 보기`,
-        sub: bookTitle ? `'${bookTitle}' 책이 새로 정리됐어요` : `${nickname}의 기록을 천천히 꺼내 봐요`,
-        button: "나의 섬",
+        title: t.recapTitle(nickname),
+        sub: bookTitle ? t.recapSubBook(bookTitle) : t.recapSub(nickname),
+        button: t.myIslandButton,
         href: bookId ? `/archivebook?book=${encodeURIComponent(bookId)}` : `/archiveshelf?character=${encodeURIComponent(characterId)}`,
       });
     } else {
       items.push({
         key: "character",
-        title: "그리운 분 추가하기",
-        sub: "나의 섬에 그리운 분을 모셔 와요",
-        button: "나의 섬",
+        title: t.addTitle,
+        sub: t.addSub,
+        button: t.myIslandButton,
         onClick: onAddCharacter,
       });
     }
     items.push({
       key: "community",
-      title: "추모 커뮤니티에 꽃 남기기",
-      sub: `${note.community.title}에 꽃 한 송이로 마음을 보태요`,
-      button: "함께 기억하는 섬",
+      title: t.communityTitle,
+      sub: t.communitySub(note.community.title),
+      button: t.communityButton,
       href: `/community?stone=${note.community.wall}`,
     });
     if (note.island) {
       const { nickname, label, month, day, deceasedId, open } = note.island;
       items.push({
         key: "island",
-        title: `${nickname} ${label}에 메시지 남기기`,
-        sub: `${month}월 ${day}일, 기억하고 싶은 날이 다가와요`,
-        button: "추모의 섬",
+        title: t.islandTitle(nickname, label),
+        sub: t.islandSub(month, day),
+        button: t.islandButton,
         href: open ? `/island/${encodeURIComponent(deceasedId)}` : "/mainland",
       });
     }
     items.push({
       key: "mood",
-      title: "오늘의 마음 날씨 기록하기",
-      sub: "지금 마음은 어떤 날씨인가요?",
-      button: "마음 일기",
+      title: t.moodTitle,
+      sub: t.moodSub,
+      button: t.moodButton,
       ...(note.mood.done ? { onClick: onOpenEmotion } : { href: "/moodcheck" }),
     });
   }

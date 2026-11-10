@@ -30,6 +30,7 @@ import { isPetRelation } from "@/lib/character-fields";
 import { RichText } from "@/components/RichText";
 import { Toast } from "@/components/ui/Toast";
 import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 // 캐릭터를 끌어서 옮기기: 이만큼(px) 이상 움직여야 "끌기"로 봄 (그보다 적으면 그냥 클릭)
@@ -140,6 +141,8 @@ export default function MylandPage() {
 }
 
 function MylandPageContent() {
+  // 휴대폰(반려동물 흐름)이면 반려동물 문구 (lib/copy/ko-pet.ts)
+  const t = useCopy().myland;
   const router = useRouter();
   const searchParams = useSearchParams();
   // 로그인 안 했으면 인물을 불러올 수 없어서 로그인 입구로 안내
@@ -329,7 +332,7 @@ function MylandPageContent() {
       );
     })();
     router.replace("/myland?from=moodcheck");
-  }, [router, searchParams]);
+  }, [router, searchParams, t.notices]);
 
   // 폰: 처음 들어오면 섬 그림의 가운데로 (노트북은 넘치는 폭이 없어서 그대로)
   useEffect(() => {
@@ -562,7 +565,8 @@ function MylandPageContent() {
     const handleUpdated = () => void loadMyCharacter();
     window.addEventListener("afterlife:profile-updated", handleUpdated);
     return () => window.removeEventListener("afterlife:profile-updated", handleUpdated);
-  }, []);
+    // t(문구 묶음)는 화면이 열려 있는 동안 바뀌지 않아요
+  }, [t.myCharacterFallbackName]);
 
   // 고인 캐릭터 목록: 처음에 한 번, 그리고 설정 "마이랜드의 인물 편집"에서 고치거나 지울 때마다
   useEffect(() => {

@@ -14,16 +14,17 @@ import {
   type FrameSummary,
 } from "@/lib/storage-frames";
 import { loginUrl } from "@/lib/login";
-import { ko } from "@/lib/copy/ko";
+import { useCopy } from "@/lib/copy/use-copy";
 import { StorageSearch } from "@/components/StorageSearch";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const t = ko.storage;
+// 화면 안에서는 useCopy() (휴대폰이면 반려동물 문구)
 
 // 저장소 안: 벽의 액자 = 고인마다 하나 + 커뮤니티 추모 랜드 하나. 누르면 그 액자에 저장한 사진·메시지
 export default function StorageInsidePage() {
+  const t = useCopy().storage;
   const router = useRouter();
   const { status } = useSession();
   const [showSettings, setShowSettings] = useState(false);
