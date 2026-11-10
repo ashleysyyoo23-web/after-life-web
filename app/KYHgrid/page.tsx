@@ -21,7 +21,7 @@ export default function KYHgridPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#FAF6F0]">
-      <div className="pointer-events-none fixed inset-x-0 top-[160px] z-20 flex items-center justify-between px-8">
+      <div className="pointer-events-none fixed inset-x-0 top-[160px] z-20 flex items-center justify-between px-8 max-sm:top-16 max-sm:px-4 max-sm:pt-[64px]">
         <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
           <button
             type="button"
@@ -56,14 +56,14 @@ export default function KYHgridPage() {
           </button>
         </div>
 
-        <WoodPlank as="h1" className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+        <WoodPlank as="h1" size="title" className="pointer-events-none absolute left-1/2 -translate-x-1/2 max-sm:top-0">
           {t.kyhTitle}
         </WoodPlank>
 
         <button
           type="button"
           onClick={() => setShowMessageModal(true)}
-          className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-xl font-semibold text-white"
+          className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-xl font-semibold text-white max-sm:h-11 max-sm:gap-1.5 max-sm:px-3 max-sm:text-body-3"
         >
           <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
           {t.leaveMessageButton}

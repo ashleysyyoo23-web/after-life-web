@@ -43,7 +43,7 @@ export function QuickExitButton({ onExit, className = "" }: { onExit?: () => voi
       >
         <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />
         중단하기
-        <kbd className="rounded border border-[#E8C6BA] px-1.5 py-px font-mulish text-[10px] font-normal text-[#AF9083]">Esc</kbd>
+        <kbd className="rounded border border-[#E8C6BA] px-1.5 py-px font-mulish text-[10px] font-normal text-[#AF9083] max-sm:hidden">Esc</kbd>
       </button>
       {/* 누른 순간 사진을 가림 (이동하는 동안에도 보이지 않게) */}
       {leaving && <div className="fixed inset-0 z-[200] bg-[#FAF6F0]" aria-hidden="true" />}

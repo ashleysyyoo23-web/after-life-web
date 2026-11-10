@@ -108,12 +108,12 @@ export default function StorageInsidePage() {
         </div>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 top-[128px] z-20 flex flex-col items-center gap-4 px-8 pt-8">
-        <WoodPlank className="mb-2">{t.title}</WoodPlank>
-        <h1 className="whitespace-nowrap font-newsreader text-[40px] text-[#1a1a1a]">
+      <div className="pointer-events-none fixed inset-x-0 top-[128px] z-20 flex flex-col items-center gap-4 px-8 pt-8 text-center break-keep max-sm:top-16 max-sm:gap-2 max-sm:px-4 max-sm:pt-2">
+        <WoodPlank size="title" className="mb-2">{t.title}</WoodPlank>
+        <h1 className="whitespace-nowrap font-newsreader text-[40px] text-[#1a1a1a] max-sm:whitespace-normal max-sm:text-label-md">
           {t.insideTitle}
         </h1>
-        <p className="font-mulish text-2xl font-normal leading-[17px] text-[#7F7B7B]">
+        <p className="font-mulish text-2xl font-normal leading-[17px] text-[#7F7B7B] max-sm:text-body-2 max-sm:leading-normal">
           {status === "unauthenticated"
             ? t.loggedOut
             : frames === null

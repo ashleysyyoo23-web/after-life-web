@@ -9,7 +9,7 @@ import { exposureBlurPx } from "@/lib/exposure";
 import { ko } from "@/lib/copy/ko";
 import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 const t = ko.archive;
 
@@ -56,6 +56,29 @@ function ArchivebookPageContent() {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "not-found">(
     "loading",
   );
+
+  // 폰(640px 미만): 길 그림을 옆으로 밀어서 둘러봐요. 처음엔 첫 번째 칸이 보이게, 안내는 잠깐
+  const sceneScrollRef = useRef<HTMLDivElement>(null);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
+  // 처음 맞춘 자리 (여기서 사용자가 직접 밀었을 때만 안내를 숨겨요)
+  const startLeftRef = useRef(0);
+  useEffect(() => {
+    const el = sceneScrollRef.current;
+    if (!el) return;
+    const wide = window.matchMedia("(min-width: 640px)");
+    const firstCenter = (SECTION_SLOTS[0].left + SLOT_SIZE_CQW / 2) / 100;
+    const align = () => {
+      el.scrollLeft = wide.matches ? 0 : Math.max(0, firstCenter * el.scrollWidth - el.clientWidth / 2);
+      startLeftRef.current = el.scrollLeft;
+    };
+    align();
+    wide.addEventListener("change", align);
+    const timer = window.setTimeout(() => setShowSwipeHint(false), 5000);
+    return () => {
+      wide.removeEventListener("change", align);
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!bookId) {
@@ -110,7 +133,15 @@ function ArchivebookPageContent() {
 
   return (
     <>
-      <div className="relative h-screen w-screen overflow-hidden bg-[#FDF0E8]">
+      {/* 폰: 옆으로 밀어서 둘러봐요 / 노트북(640px 이상): 예전처럼 화면에 맞춰 고정 */}
+      <div
+        ref={sceneScrollRef}
+        className="relative h-screen w-screen overflow-hidden bg-[#FDF0E8] max-sm:overflow-x-auto max-sm:[scrollbar-width:none]"
+        onScroll={(event) => {
+          if (Math.abs(event.currentTarget.scrollLeft - startLeftRef.current) > 8) setShowSwipeHint(false);
+        }}
+      >
+      <div className="relative h-full w-[max(100vw,177.78vh)] sm:w-full">
         {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치 */}
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
@@ -175,7 +206,7 @@ function ArchivebookPageContent() {
                     type="button"
                     onClick={() => setEditingSectionId(section.id)}
                     className={`absolute right-[0.5cqw] top-[0.5cqw] cursor-pointer rounded-full border-0 bg-white/90 px-3 py-1 font-mulish text-xs font-semibold text-[#4A423C] shadow transition-opacity hover:bg-[#FDD9BD] focus-visible:opacity-100 group-hover:opacity-100 ${
-                      section.id === glowEditId ? "opacity-100 guide-glow" : "opacity-0"
+                      section.id === glowEditId ? "opacity-100 guide-glow" : "opacity-0 max-sm:opacity-100"
                     }`}
                   >
                     {t.editPhotosButton}
@@ -195,8 +226,9 @@ function ArchivebookPageContent() {
             );
           })}
         </div>
+      </div>
 
-        <div className="absolute left-0 top-20 z-20 p-8">
+        <div className="absolute left-0 top-20 z-20 p-8 max-sm:fixed max-sm:top-16 max-sm:px-4 max-sm:pt-2">
           <button
             type="button"
             onClick={() =>
@@ -206,19 +238,19 @@ function ArchivebookPageContent() {
                   : "/myland?from=moodcheck",
               )
             }
-            className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
+            className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70 max-sm:min-h-11"
           >
             {t.backToShelf}
           </button>
           {book && !editingTitle && (
-            <div className="group mt-4 flex items-center gap-3">
-              <h1 className="font-newsreader text-5xl text-[#1a1a1a]">{book.title}</h1>
+            <div className="group mt-4 flex items-center gap-3 max-sm:mt-0 max-sm:gap-2">
+              <h1 className="font-newsreader text-5xl text-[#1a1a1a] max-sm:text-label-md">{book.title}</h1>
               <button
                 type="button"
                 onClick={() => setEditingTitle(true)}
                 aria-label={t.renameAlbum}
                 title={t.renameTitle}
-                className="cursor-pointer rounded-full border-0 bg-white/70 px-3 py-1 font-mulish text-base text-[#AF9083] opacity-60 transition-opacity hover:opacity-100 group-hover:opacity-100"
+                className="cursor-pointer rounded-full border-0 bg-white/70 px-3 py-1 font-mulish text-base text-[#AF9083] opacity-60 transition-opacity hover:opacity-100 group-hover:opacity-100 max-sm:flex max-sm:size-11 max-sm:items-center max-sm:justify-center max-sm:px-0 max-sm:opacity-100"
               >
                 ✎
               </button>
@@ -228,7 +260,7 @@ function ArchivebookPageContent() {
             <BookTitleForm
               bookId={book.id}
               initialTitle={book.title}
-              className="mt-4 w-96 rounded-xl bg-white/90 p-4"
+              className="mt-4 w-96 rounded-xl bg-white/90 p-4 max-sm:mt-1 max-sm:w-[calc(100vw-32px)]"
               onCancel={() => setEditingTitle(false)}
               onSaved={(title) => {
                 setBook((prev) => (prev ? { ...prev, title } : prev));
@@ -240,13 +272,13 @@ function ArchivebookPageContent() {
       </div>
 
       {loadState === "ready" && sections.length === 0 && (
-        <p className="pointer-events-none fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
+        <p className="pointer-events-none fixed left-1/2 top-1/2 z-20 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal break-keep text-[#1a1a1a] max-sm:px-5 max-sm:text-body-3">
           {t.bookEmpty}
         </p>
       )}
 
       {loadState === "not-found" && (
-        <p className="fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
+        <p className="fixed left-1/2 top-1/2 z-20 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal break-keep text-[#1a1a1a] max-sm:px-5 max-sm:text-body-3">
           {t.bookNotFound}
         </p>
       )}
@@ -257,14 +289,24 @@ function ArchivebookPageContent() {
           onClick={() => setShowCreateModal(true)}
           disabled={isFull}
           title={isFull ? t.sectionsFull : undefined}
-          className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50${guideGlow(glowAddSection)}`}
+          className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] disabled:cursor-not-allowed disabled:opacity-50 max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:left-4 max-sm:right-4 max-sm:top-auto max-sm:min-h-12 max-sm:py-3 max-sm:text-body-2 max-sm:shadow-md${guideGlow(glowAddSection)}`}
         >
           {t.addSectionButton}
         </button>
       )}
 
-      {/* 중단하기: "+ 섹션 추가" 바로 아래, 기록 화면마다 같은 오른쪽 위 자리 */}
-      <QuickExitButton className="fixed top-[200px] right-12 z-40" />
+      {/* 폰: 옆으로 밀 수 있다는 안내 (처음 5초, 밀면 바로 사라져요) */}
+      {showSwipeHint && loadState === "ready" && (
+        <p
+          aria-hidden
+          className="pointer-events-none fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+64px)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/85 px-4 py-2 font-mulish text-body-3 text-text-brown shadow-sm sm:hidden"
+        >
+          ‹ {ko.myland.swipeHint} ›
+        </p>
+      )}
+
+      {/* 중단하기: "+ 섹션 추가" 바로 아래, 기록 화면마다 같은 오른쪽 위 자리 (폰: 위 메뉴 아래 오른쪽) */}
+      <QuickExitButton className="fixed top-[200px] right-12 z-40 max-sm:right-4 max-sm:top-[72px]" />
 
       <TopNav
         onSettingsClick={() => setShowSettings(true)}

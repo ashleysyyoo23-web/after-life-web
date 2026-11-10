@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import {
   BOOK_STROKE_COLOR,
   getBookColor,
@@ -29,8 +30,8 @@ export function BookSketchFilterDefs() {
 type ShelfBookProps = {
   book: ShelfBookData;
   onSelect: (bookId: string) => void;
-  // 우클릭 (이름 바꾸기 등)
-  onContextMenu?: (bookId: string, event: React.MouseEvent) => void;
+  // 우클릭 · 폰에서 꾹 누르기 (이름 바꾸기 등). x·y 는 누른 자리
+  onContextMenu?: (bookId: string, point: { x: number; y: number }) => void;
   // 제목이 비어 있는 책(아직 앨범이 없을 때)의 툴팁
   emptyLabel?: string;
   // 안내 빛 (다음에 열 책)
@@ -44,14 +45,62 @@ export function ShelfBook({ book, onSelect, onContextMenu, emptyLabel, glow = fa
   const isHorizontal = book.titleLayout === "horizontal";
   const fontSize = Math.min(1.05, Math.max(0.72, shape.width * 0.36));
   const label = book.title || emptyLabel || "";
+  // 폰: 손가락으로 0.5초 꾹 누르면 우클릭과 같아요 (아이폰은 꾹 눌러도 우클릭으로 바꿔 주지 않아서 직접 재요)
+  const pressRef = useRef<{ timer: number; fired: boolean } | null>(null);
+  // 꾹 누른 직후의 “톡”(앨범 열기)은 무시
+  const ignoreClickUntilRef = useRef(0);
+  const clearPress = () => {
+    if (pressRef.current) window.clearTimeout(pressRef.current.timer);
+  };
+  const endPress = (timeStamp: number) => {
+    clearPress();
+    if (pressRef.current?.fired) ignoreClickUntilRef.current = timeStamp + 700;
+    pressRef.current = null;
+  };
 
   return (
     <button
       type="button"
-      onClick={() => onSelect(book.id)}
-      onContextMenu={onContextMenu ? (event) => onContextMenu(book.id, event) : undefined}
+      onClick={(event) => {
+        if (event.timeStamp < ignoreClickUntilRef.current) return;
+        onSelect(book.id);
+      }}
+      onContextMenu={
+        onContextMenu
+          ? (event) => {
+              event.preventDefault();
+              // 안드로이드는 꾹 누르면 우클릭도 보내요: 이미 열었으면 한 번만
+              if (pressRef.current) {
+                if (pressRef.current.fired) return;
+                window.clearTimeout(pressRef.current.timer);
+                pressRef.current.fired = true;
+              }
+              onContextMenu(book.id, { x: event.clientX, y: event.clientY });
+            }
+          : undefined
+      }
+      onPointerDown={(event) => {
+        clearPress();
+        pressRef.current = null;
+        if (!onContextMenu || event.pointerType === "mouse") return;
+        const point = { x: event.clientX, y: event.clientY };
+        const press = {
+          fired: false,
+          timer: window.setTimeout(() => {
+            press.fired = true;
+            onContextMenu(book.id, point);
+          }, 500),
+        };
+        pressRef.current = press;
+      }}
+      onPointerMove={(event) => {
+        // 손가락이 움직이면(옆으로 밀기) 꾹 누르기가 아니에요
+        if (pressRef.current && !pressRef.current.fired && (Math.abs(event.movementX) > 4 || Math.abs(event.movementY) > 4)) clearPress();
+      }}
+      onPointerUp={(event) => endPress(event.timeStamp)}
+      onPointerCancel={(event) => endPress(event.timeStamp)}
       aria-label={label}
-      className={`group relative shrink-0 cursor-pointer border-0 bg-transparent p-0 transition-transform duration-300 ease-out hover:-translate-y-[1.6cqh] focus-visible:-translate-y-[1.6cqh] focus-visible:outline-none${glow ? " guide-glow rounded-sm" : ""}`}
+      className={`group relative shrink-0 cursor-pointer select-none border-0 bg-transparent p-0 [-webkit-touch-callout:none] transition-transform duration-300 ease-out hover:-translate-y-[1.6cqh] focus-visible:-translate-y-[1.6cqh] focus-visible:outline-none${glow ? " guide-glow rounded-sm" : ""}`}
       style={{
         width: `${shape.width}cqw`,
         height: `${shape.height}cqh`,

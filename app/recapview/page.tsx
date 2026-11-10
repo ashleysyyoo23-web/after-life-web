@@ -319,6 +319,11 @@ function RecapviewPageContent() {
     return () => clearTimeout(timer);
   }, [showConfirm]);
 
+  // 폰: 사진을 손가락으로 옆으로 밀면 넘기기 (시작한 x 자리)
+  const swipeStartRef = useRef<number | null>(null);
+  // 밀어서 넘긴 직후의 “톡”(흐림 풀기 등)은 무시
+  const swipedRef = useRef(false);
+
   const goToPrevious = () => {
     if (slideCount === 0) return;
     setCurrentIndex((prev) => (prev - 1 + slideCount) % slideCount);
@@ -340,10 +345,10 @@ function RecapviewPageContent() {
   const currentSize = photoSizes[albumPhotos[currentIndex]?.driveFileId ?? ""];
   const frameStyle = currentSize
     ? {
-        width: `min(55vw, calc(60vh * ${currentSize.w / currentSize.h}))`,
-        height: `min(60vh, calc(55vw * ${currentSize.h / currentSize.w}))`,
+        width: `min(var(--fw), calc(var(--fh) * ${currentSize.w / currentSize.h}))`,
+        height: `min(var(--fh), calc(var(--fw) * ${currentSize.h / currentSize.w}))`,
       }
-    : { width: "55vw", height: "60vh" };
+    : { width: "var(--fw)", height: "var(--fh)" };
 
   const currentTitle = isSectionMode
     ? albumTitle
@@ -563,9 +568,9 @@ function RecapviewPageContent() {
             isBookMode ? "pointer-events-none" : ""
           }`}
         >
-          <div className="relative px-8 pt-24">
+          <div className="relative px-8 pt-24 max-sm:px-4 max-sm:pt-[68px]">
             <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 max-sm:gap-1.5">
               {/* 뒤로 가기: 이 섹션이 든 앨범으로 (모르면 바로 전 화면) */}
               <button
                 type="button"
@@ -573,10 +578,11 @@ function RecapviewPageContent() {
                   sectionBookId ? router.push(`/archivebook?book=${encodeURIComponent(sectionBookId)}`) : router.back()
                 }
                 aria-label="뒤로 가기"
-                className="pointer-events-auto flex h-12 cursor-pointer items-center gap-1.5 rounded-full border border-[#5B5959] bg-white px-4 font-mulish text-base font-semibold text-[#4A423C] hover:bg-[#FDD9BD]"
+                className="pointer-events-auto flex h-12 cursor-pointer items-center gap-1.5 rounded-full border border-[#5B5959] bg-white px-4 font-mulish text-base font-semibold text-[#4A423C] hover:bg-[#FDD9BD] max-sm:size-11 max-sm:justify-center max-sm:px-0"
               >
                 <ArrowLeft className="h-5 w-5" aria-hidden />
-                뒤로
+                {/* 폰: 화살표만 */}
+                <span className="max-sm:hidden">뒤로</span>
               </button>
               <div className="pointer-events-auto flex h-12 w-[158px] overflow-hidden rounded-full border border-[#5B5959]">
                   <button
@@ -652,8 +658,8 @@ function RecapviewPageContent() {
 
               </div>
 
-              <div className="pointer-events-auto fixed right-8 top-24 z-20 flex flex-col items-end gap-2">
-                <div className="flex h-14 items-center gap-7 rounded-[42px] bg-[#FDD9BD] px-5 py-3 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]">
+              <div className="pointer-events-auto fixed right-8 top-24 z-20 flex flex-col items-end gap-2 max-sm:right-4 max-sm:top-[68px] max-sm:flex-row max-sm:items-center max-sm:gap-1.5">
+                <div className="flex h-14 items-center gap-7 rounded-[42px] bg-[#FDD9BD] px-5 py-3 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:h-11 max-sm:px-1.5 max-sm:py-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -681,7 +687,7 @@ function RecapviewPageContent() {
                 </div>
                 {/* 중단하기: 언제든 한 번에 빠져나오기 (Esc) */}
                 <QuickExitButton
-                  className="mt-8"
+                  className="mt-8 max-sm:mt-0 max-sm:px-3"
                   onExit={() => {
                     setIsPlaying(false);
                   }}
@@ -689,8 +695,8 @@ function RecapviewPageContent() {
               </div>
             </div>
 
-            <div className="pointer-events-none absolute left-1/2 top-24 mt-8 -translate-x-1/2 text-center">
-              <h1 className="font-newsreader text-3xl text-[#1a1a1a]">
+            <div className="pointer-events-none absolute left-1/2 top-24 mt-8 -translate-x-1/2 text-center break-keep max-sm:static max-sm:mt-3 max-sm:translate-x-0">
+              <h1 className="font-newsreader text-3xl text-[#1a1a1a] max-sm:text-label-md">
                 {albumLoading ? "..." : currentTitle}
               </h1>
               <p className="mt-1 text-center font-mulish text-sm text-[#AF9083]">
@@ -707,21 +713,43 @@ function RecapviewPageContent() {
           </div>
 
           {!isBookMode && (
-          <div className="relative flex flex-1 items-center justify-center px-8">
+          <div className="relative flex flex-1 items-center justify-center px-8 [--fh:60vh] [--fw:55vw] max-sm:px-4 max-sm:pb-[84px] max-sm:[--fh:52vh] max-sm:[--fw:calc(100vw-32px)]">
             <div className="flex flex-col items-center">
               <div className="relative">
                 <button
                   type="button"
                   onClick={goToPrevious}
-                  className="absolute top-1/2 right-full mr-4 -translate-y-1/2 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083]"
+                  className="absolute top-1/2 right-full z-[4] mr-4 -translate-y-1/2 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083] max-sm:left-2 max-sm:right-auto max-sm:mr-0 max-sm:flex max-sm:size-11 max-sm:items-center max-sm:justify-center max-sm:rounded-full max-sm:bg-white/75 max-sm:text-lg max-sm:shadow-sm"
                   aria-label="이전"
                 >
                   ◀
                 </button>
 
                 <div
-                  className="relative overflow-hidden rounded-lg transition-[width,height] duration-500 ease-in-out"
+                  className="relative touch-pan-y overflow-hidden rounded-lg transition-[width,height] duration-500 ease-in-out"
                   style={frameStyle}
+                  onPointerDown={(event) => {
+                    swipedRef.current = false;
+                    if (event.pointerType !== "mouse") swipeStartRef.current = event.clientX;
+                  }}
+                  onPointerUp={(event) => {
+                    const start = swipeStartRef.current;
+                    swipeStartRef.current = null;
+                    if (start === null) return;
+                    const dx = event.clientX - start;
+                    if (Math.abs(dx) >= 50) swipedRef.current = true;
+                    if (dx <= -50) goToNext();
+                    if (dx >= 50) goToPrevious();
+                  }}
+                  onPointerCancel={() => {
+                    swipeStartRef.current = null;
+                  }}
+                  onClickCapture={(event) => {
+                    if (!swipedRef.current) return;
+                    swipedRef.current = false;
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
                 >
                 <div
                   className="flex h-full transition-transform duration-500 ease-in-out"
@@ -801,7 +829,7 @@ function RecapviewPageContent() {
                 <button
                   type="button"
                   onClick={goToNext}
-                  className="absolute top-1/2 left-full ml-4 -translate-y-1/2 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083]"
+                  className="absolute top-1/2 left-full z-[4] ml-4 -translate-y-1/2 cursor-pointer border-0 bg-transparent text-4xl text-[#AF9083] max-sm:left-auto max-sm:right-2 max-sm:ml-0 max-sm:flex max-sm:size-11 max-sm:items-center max-sm:justify-center max-sm:rounded-full max-sm:bg-white/75 max-sm:text-lg max-sm:shadow-sm"
                   aria-label="다음"
                 >
                   ▶
@@ -852,7 +880,7 @@ function RecapviewPageContent() {
       {saveNotice && (
         <p
           role="status"
-          className="pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#4A423C]/85 px-5 py-2 font-mulish text-sm text-white shadow"
+          className="pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#4A423C]/85 px-5 py-2 max-sm:bottom-[96px] font-mulish text-sm text-white shadow"
         >
           {saveNotice}
         </p>

@@ -10,7 +10,7 @@ import { guideGlow, refreshGuide, useGuideStep } from "@/lib/guide";
 import { arrangeBooksFromCenter, type ShelfBookData } from "@/lib/book-styles";
 import { ko } from "@/lib/copy/ko";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 // 책 없는 책장 배경(Figma: public/archiveshelf-empty.jpg)이 준비되기 전까지 쓰는 색
 const WALL_COLOR = "#FDF0E8";
@@ -46,7 +46,21 @@ function ArchiveshelfPageContent() {
   const [nickname, setNickname] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   // 책 우클릭 → 이름 바꾸기 (누른 자리 근처에 작은 창)
-  const [renaming, setRenaming] = useState<{ bookId: string; title: string; x: number; y: number } | null>(null);
+  // sheet: 폰(640px 미만)이면 이름 바꾸기 창을 화면 아래에
+  const [renaming, setRenaming] = useState<{ bookId: string; title: string; x: number; y: number; sheet: boolean } | null>(null);
+  // 폰: 책장 장면을 옆으로 밀 수 있고, 처음엔 가운데(책이 놓인 곳)
+  const sceneScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sceneScrollRef.current;
+    if (!el) return;
+    const wide = window.matchMedia("(min-width: 640px)");
+    const align = () => {
+      el.scrollLeft = wide.matches ? 0 : (el.scrollWidth - el.clientWidth) / 2;
+    };
+    align();
+    wide.addEventListener("change", align);
+    return () => wide.removeEventListener("change", align);
+  }, []);
 
   useEffect(() => {
     // 어느 캐릭터의 책장인지 모르면 마이 랜드에서 캐릭터를 고르도록
@@ -84,11 +98,10 @@ function ArchiveshelfPageContent() {
     router.push(`/archivebook?book=${encodeURIComponent(bookId)}`);
   };
 
-  const handleBookContextMenu = (bookId: string, event: React.MouseEvent) => {
+  const handleBookContextMenu = (bookId: string, point: { x: number; y: number }) => {
     const target = books.find((book) => book.id === bookId);
     if (!target) return;
-    event.preventDefault();
-    setRenaming({ bookId, title: target.title, x: event.clientX, y: event.clientY });
+    setRenaming({ bookId, title: target.title, ...point, sheet: !window.matchMedia("(min-width: 640px)").matches });
   };
 
   const handleCreated = (book: CreatedBook) => {
@@ -108,18 +121,18 @@ function ArchiveshelfPageContent() {
   return (
     <>
       <div
-        className="relative h-screen w-screen overflow-hidden"
+        ref={sceneScrollRef}
+        className="relative h-screen w-screen overflow-hidden max-sm:overflow-x-auto max-sm:[scrollbar-width:none]"
         style={{ backgroundColor: WALL_COLOR }}
       >
         <BookSketchFilterDefs />
-        {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치 */}
+        {/* 폰: 바닥을 아래 버튼 자리까지 이어 깔아요 */}
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-[88px] sm:hidden" style={{ backgroundColor: FLOOR_COLOR, width: "300vw" }} />
+        {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치
+            폰: 무대를 300vw 로 줄여 책을 폰 크기로, 아래 버튼 위 바닥에 붙여요 (옆으로 밀어서 볼 수 있어요) */}
         <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-          style={{
-            width: "max(100vw, 177.78vh)",
-            height: "max(56.25vw, 100vh)",
-            containerType: "size",
-          }}
+          className="absolute left-1/2 top-1/2 h-[max(56.25vw,100vh)] w-[max(100vw,177.78vh)] -translate-x-1/2 -translate-y-1/2 max-sm:bottom-[88px] max-sm:left-0 max-sm:top-auto max-sm:h-[168.75vw] max-sm:w-[300vw] max-sm:translate-x-0 max-sm:translate-y-0"
+          style={{ containerType: "size" }}
         >
           <div
             className="absolute inset-x-0 bottom-0"
@@ -146,30 +159,38 @@ function ArchiveshelfPageContent() {
         </div>
       </div>
 
-      <div className="absolute left-0 top-20 z-20 p-8">
+      <div className="absolute left-0 top-20 z-20 p-8 max-sm:top-16 max-sm:px-4 max-sm:pt-2">
         <button
           type="button"
           onClick={() => router.push("/myland?from=moodcheck")}
-          className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70"
+          className="cursor-pointer border-0 bg-transparent font-mulish text-sm text-[#AF9083] transition-opacity hover:opacity-70 max-sm:min-h-11"
         >
           {t.backToMyland}
         </button>
         {nickname && (
-          <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a]">{t.shelfTitle(nickname)}</h1>
+          <h1 className="mt-4 font-newsreader text-5xl text-[#1a1a1a] max-sm:mt-1 max-sm:text-label-md">{t.shelfTitle(nickname)}</h1>
         )}
       </div>
 
       {renaming && (
         <>
-          <div className="fixed inset-0 z-40" onMouseDown={() => setRenaming(null)} aria-hidden="true" />
+          <div className={`fixed inset-0 z-40${renaming.sheet ? " bg-black/30" : ""}`} onMouseDown={() => setRenaming(null)} aria-hidden="true" />
           <div
             role="dialog"
             aria-label={t.renameAlbum}
-            className="fixed z-50 w-80 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
-            style={{
-              left: `min(${renaming.x}px, calc(100vw - 21rem))`,
-              top: `max(1rem, calc(${renaming.y}px - 9rem))`,
-            }}
+            className={
+              renaming.sheet
+                ? "fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border border-b-0 border-[#E8DDD5] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-lg"
+                : "fixed z-50 w-80 rounded-xl border border-[#E8DDD5] bg-white p-4 shadow-lg"
+            }
+            style={
+              renaming.sheet
+                ? undefined
+                : {
+                    left: `min(${renaming.x}px, calc(100vw - 21rem))`,
+                    top: `max(1rem, calc(${renaming.y}px - 9rem))`,
+                  }
+            }
           >
             <p className="mb-3 font-mulish text-xs text-[#AF9083]">{t.renameAlbum}</p>
             <BookTitleForm
@@ -186,13 +207,14 @@ function ArchiveshelfPageContent() {
       )}
 
       {!isEmpty && loaded && (
-        <p className="pointer-events-none fixed bottom-6 left-1/2 z-20 -translate-x-1/2 font-mulish text-xs text-[#AF9083]">
-          {t.renameHint}
+        <p className="pointer-events-none fixed bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap font-mulish text-xs text-[#AF9083] max-sm:bottom-[calc(max(1rem,env(safe-area-inset-bottom))+56px)]">
+          <span className="sm:hidden">{t.renameHintMobile}</span>
+          <span className="hidden sm:inline">{t.renameHint}</span>
         </p>
       )}
 
       {isEmpty && (
-        <p className="pointer-events-none fixed left-1/2 top-[30%] z-20 -translate-x-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal text-[#1a1a1a]">
+        <p className="pointer-events-none fixed left-1/2 top-[30%] z-20 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-xl bg-white/80 px-6 py-4 font-mulish font-normal break-keep text-[#1a1a1a] max-sm:px-5 max-sm:text-body-3">
           {EMPTY_HINT}
         </p>
       )}
@@ -200,13 +222,13 @@ function ArchiveshelfPageContent() {
       <button
         type="button"
         onClick={() => setShowCreateModal(true)}
-        className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71]${guideGlow(glowCreate)}`}
+        className={`fixed top-[128px] right-12 z-40 cursor-pointer rounded-full border-0 bg-[#AF9083] px-[30px] py-[15px] font-mulish text-[21px] font-semibold text-white transition-colors hover:bg-[#9a7d71] max-sm:bottom-[max(1rem,env(safe-area-inset-bottom))] max-sm:left-4 max-sm:right-4 max-sm:top-auto max-sm:min-h-12 max-sm:py-3 max-sm:text-body-2 max-sm:shadow-md${guideGlow(glowCreate)}`}
       >
         {t.createAlbumButton}
       </button>
 
       {/* 중단하기: "+ 앨범 만들기" 바로 아래, 기록 화면마다 같은 오른쪽 위 자리 */}
-      <QuickExitButton className="fixed top-[200px] right-12 z-40" />
+      <QuickExitButton className="fixed top-[200px] right-12 z-40 max-sm:right-4 max-sm:top-[72px]" />
 
       <TopNav
         onSettingsClick={() => setShowSettings(true)}

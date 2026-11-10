@@ -328,6 +328,7 @@ export const ko = {
     emptyBookLabel: "눌러서 앨범 만들기",
     renameAlbum: "앨범 이름 바꾸기",
     renameHint: "책을 우클릭하면 이름을 바꿀 수 있어요.",
+    renameHintMobile: "책을 길게 누르면 이름을 바꿀 수 있어요.", // 폰: 우클릭이 없어요
     createAlbumButton: "+ 앨범 만들기",
     // 앨범 (섹션 8칸)
     backToShelf: "‹ 책장으로",

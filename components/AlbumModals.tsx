@@ -38,21 +38,21 @@ function ModalShell({ heading, onClose, children, wide = false }: ModalShellProp
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 max-sm:px-0">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={heading}
-        className={`relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl bg-white p-10 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] ${
+        className={`relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl bg-white p-10 break-keep shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] max-sm:h-dvh max-sm:max-h-none max-sm:rounded-none max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:pt-3 ${
           wide ? "max-w-6xl" : "max-w-2xl"
         }`}
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="font-newsreader text-3xl text-[#1a1a1a]">{heading}</h2>
+          <h2 className="font-newsreader text-3xl text-[#1a1a1a] max-sm:text-label-md">{heading}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer border-0 bg-transparent font-mulish text-xl text-[#898787]"
+            className="-m-2.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent font-mulish text-xl text-[#898787]"
             aria-label={t.closeLabel}
           >
             X
@@ -1021,7 +1021,7 @@ export function SectionPhotosModal({
               if (event.target === event.currentTarget && !tagSaving) setTagEditing(null);
             }}
           >
-            <div role="dialog" aria-modal="true" aria-label={t.tagDialogLabel} className="flex w-[420px] flex-col gap-4 rounded-2xl bg-white p-6 shadow-lg">
+            <div role="dialog" aria-modal="true" aria-label={t.tagDialogLabel} className="flex w-[min(420px,calc(100vw-32px))] flex-col gap-4 rounded-2xl bg-white p-6 shadow-lg max-sm:p-5">
               {(() => {
                 const file = files.find((item) => item.id === tagEditing.fileId);
                 return (

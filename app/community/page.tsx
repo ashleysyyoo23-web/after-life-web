@@ -227,20 +227,20 @@ function CommunityContent() {
       )}
 
       {cardsView ? null : selectedStone ? (
-        <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
+        <WoodPlank as="h1" size="title" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2 max-sm:top-[68px]">
           {COMMUNITY_WALLS[selectedStone.wall].title}
         </WoodPlank>
       ) : (
-        <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
+        <WoodPlank as="h1" size="title" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2 max-sm:top-[68px]">
           {t.landTitle}
         </WoodPlank>
       )}
 
-      <div ref={dropdownRef} className="fixed right-12 top-[160px] z-30 w-[338px]">
+      <div ref={dropdownRef} className="fixed right-12 top-[160px] z-30 w-[338px] max-sm:left-4 max-sm:right-4 max-sm:top-[124px] max-sm:w-auto">
         <button
           type="button"
           onClick={() => setIsListOpen((prev) => !prev)}
-          className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-[#4B3F39] bg-[#776257] px-6 py-[7px] font-mulish text-xl font-semibold text-white"
+          className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-[#4B3F39] bg-[#776257] px-6 py-[7px] font-mulish text-xl font-semibold text-white max-sm:min-h-11 max-sm:px-4 max-sm:text-body-2"
           aria-expanded={isListOpen}
           aria-haspopup="listbox"
         >
@@ -310,7 +310,7 @@ function CommunityContent() {
         <button
           type="button"
           onClick={() => openStone(null)}
-          className="fixed left-12 top-[160px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-white/90 px-4 font-mulish text-lg font-semibold text-[#4B3F39] hover:bg-white"
+          className="fixed left-12 top-[160px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-white/90 px-4 font-mulish text-lg font-semibold text-[#4B3F39] hover:bg-white max-sm:left-4 max-sm:top-[180px] max-sm:h-11 max-sm:gap-1.5 max-sm:px-3 max-sm:text-body-3"
         >
           {t.backToIsland}
         </button>
@@ -337,26 +337,26 @@ function StoneCards({ wall, onShowStone }: { wall: CommunityStoneWall; onShowSto
 
   return (
     <div className="fixed inset-0 z-[25] bg-[#FAF6F0]">
-      <div className="pointer-events-none absolute inset-x-0 top-[160px] flex items-center gap-3 pl-[236px]">
+      <div className="pointer-events-none absolute inset-x-0 top-[160px] flex items-center gap-3 pl-[236px] max-sm:top-[180px] max-sm:justify-between max-sm:px-4">
         <button
           type="button"
           onClick={onShowStone}
-          className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-white px-4 font-mulish text-lg font-semibold text-[#4B3F39] hover:bg-[#FDD9BD]"
+          className="pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-white px-4 font-mulish text-lg font-semibold text-[#4B3F39] hover:bg-[#FDD9BD] max-sm:h-11 max-sm:gap-1.5 max-sm:px-3 max-sm:text-body-3"
         >
           {t.stoneViewButton}
         </button>
         <button
           type="button"
           onClick={() => setShowMessageModal(true)}
-          className={`pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 font-mulish text-lg font-semibold text-white${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
+          className={`pointer-events-auto flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 font-mulish text-lg font-semibold text-white max-sm:h-11 max-sm:gap-1.5 max-sm:px-3 max-sm:text-body-3${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
         >
           <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
           {t.leaveMessageButton}
         </button>
       </div>
 
-      <div className="absolute inset-x-0 top-[232px] flex flex-col items-center gap-1 text-center">
-        <WoodPlank as="h1">{COMMUNITY_WALLS[wall].title}</WoodPlank>
+      <div className="absolute inset-x-0 top-[232px] flex flex-col items-center gap-1 text-center max-sm:top-[236px] max-sm:px-4">
+        <WoodPlank as="h1" size="title">{COMMUNITY_WALLS[wall].title}</WoodPlank>
         <p className="font-mulish text-sm text-[#AF9083]">
           {t.togetherCount(COUNTS[wall])}{loaded && !error ? t.heartsCount(messages.length) : ""}
         </p>
@@ -535,7 +535,7 @@ function StoneMessages({
       <button
         type="button"
         onClick={() => setShowMessageModal(true)}
-        className={`fixed left-12 top-[224px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-lg font-semibold text-white${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
+        className={`fixed left-12 top-[224px] z-30 flex h-[52px] cursor-pointer items-center gap-2 rounded-lg border border-[#4B3F39] bg-[#776257] px-4 py-[11px] font-mulish text-lg font-semibold text-white max-sm:left-auto max-sm:right-4 max-sm:top-[180px] max-sm:h-11 max-sm:gap-1.5 max-sm:px-3 max-sm:text-body-3${guideGlow(guideCommunity && loaded && messages.length === 0)}`}
       >
         <Image src="/icons/kyhdrawing/message-plus.svg" alt="" width={24} height={24} />
         {t.leaveMessageButton}

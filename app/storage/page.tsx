@@ -11,13 +11,29 @@ import { ko } from "@/lib/copy/ko";
 import { josa } from "@/lib/josa";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const t = ko.storage;
+
+// 문 위치 (그림 기준 %): 빛이 문에서 어긋나면 이 네 숫자를 조절하세요
+const DOOR = { left: 70.6, top: 34, width: 4.2, height: 12.8 };
 
 export default function StoragePage() {
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
+  // 폰(640px 미만): 가로로 긴 그림을 옆으로 밀 수 있고, 처음엔 문이 화면 가운데 오게
+  const sceneScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sceneScrollRef.current;
+    if (!el) return;
+    const wide = window.matchMedia("(min-width: 640px)");
+    const align = () => {
+      el.scrollLeft = wide.matches ? 0 : ((DOOR.left + DOOR.width / 2) / 100) * el.scrollWidth - el.clientWidth / 2;
+    };
+    align();
+    wide.addEventListener("change", align);
+    return () => wide.removeEventListener("change", align);
+  }, []);
   // 말풍선에 저장한 기록 수 (로그인했을 때)
   const { status } = useSession();
   const [counts, setCounts] = useState<{ photos: number; messages: number } | null>(null);
@@ -48,17 +64,20 @@ export default function StoragePage() {
 
   return (
     <>
+      {/* 폰: 그림을 옆으로 밀 수 있어요 / 노트북(640px 이상): 예전처럼 화면에 맞춰 고정 */}
       <div
-        className="relative h-screen w-screen cursor-pointer overflow-hidden"
+        ref={sceneScrollRef}
+        className="relative h-screen w-screen cursor-pointer overflow-x-auto overflow-y-hidden [scrollbar-width:none] sm:overflow-hidden"
         onClick={() => router.push("/storageinside")}
       >
+      <div className="relative h-full w-[max(100vw,177.78vh)] sm:w-full">
         <MoodSkyBackground scene="storagefar" clouds />
         <SceneMotion config={STORAGE_MOTION} />
 
-        {/* 문 위치: 빛이 문에서 어긋나면 이 네 숫자를 조절하세요 */}
+        {/* 문 (DOOR 숫자로 자리 조절) */}
         <div
           className="pointer-events-none absolute z-10"
-          style={{ left: "70.6%", top: "34%", width: "4.2%", height: "12.8%" }}
+          style={{ left: `${DOOR.left}%`, top: `${DOOR.top}%`, width: `${DOOR.width}%`, height: `${DOOR.height}%` }}
         >
           {/* 문에서 나오는 빛 */}
           <div
@@ -72,8 +91,8 @@ export default function StoragePage() {
           />
 
           {/* 말풍선 */}
-          <div className="absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-2xl border border-[#e9d8c4] bg-[#fffaf3] px-6 py-3 shadow-[0_6px_18px_rgba(80,50,30,0.15)]">
-            <p className="font-mulish text-lg text-[#4a3a2e]">
+          <div className="absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-2xl border border-[#e9d8c4] bg-[#fffaf3] px-6 py-3 shadow-[0_6px_18px_rgba(80,50,30,0.15)] max-sm:w-max max-sm:max-w-[calc(100vw-48px)] max-sm:whitespace-normal max-sm:px-4 max-sm:text-center max-sm:break-keep">
+            <p className="font-mulish text-lg text-[#4a3a2e] max-sm:text-body-2">
               <strong className="font-bold">{t.title}</strong>
               {josa(t.title, "으로/로").slice(t.title.length)} {t.entranceBubble}
             </p>
@@ -83,8 +102,9 @@ export default function StoragePage() {
           </div>
         </div>
       </div>
+      </div>
 
-      <WoodPlank as="h1" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2">
+      <WoodPlank as="h1" size="title" className="pointer-events-none fixed left-1/2 top-[150px] z-20 -translate-x-1/2 max-sm:top-[68px]">
         {t.title}
       </WoodPlank>
 

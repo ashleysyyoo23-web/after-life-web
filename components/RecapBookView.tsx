@@ -27,16 +27,21 @@ export type BookPhoto = {
 // 왼쪽 조작 카드(리캡 조작)에 가리지 않게 책을 오른쪽으로 옮기는 거리
 export const BOOK_SHIFT = "4vw";
 // 책 무대: 16:9, 화면을 꽉 채우는 크기 그대로 BOOK_SHIFT 만큼 오른쪽으로
-const STAGE_SIZE = { width: "max(100vw, 177.78vh)", height: "max(56.25vw, 100vh)" };
+// 폰(640px 미만)은 펼친 책(무대 가로의 64.3%)이 화면 폭에 맞게 무대를 142vw 로 줄이고 책을 가운데로
+// (값은 아래 STAGE_VARS 클래스에서 화면 폭에 따라 바뀌어요)
+// (Tailwind 는 글자 그대로 쓴 클래스만 만들어서 4vw 를 직접 적어요. BOOK_SHIFT 를 바꾸면 여기도 같이)
+const STAGE_VARS =
+  "[--stage-w:max(100vw,177.78vh)] [--stage-h:max(56.25vw,100vh)] [--book-shift:4vw] max-sm:[--stage-w:142vw] max-sm:[--stage-h:79.875vw] max-sm:[--book-shift:-1.21vw]";
+const STAGE_SIZE = { width: "var(--stage-w)", height: "var(--stage-h)" };
 const STAGE_STYLE: React.CSSProperties = {
   ...STAGE_SIZE,
-  transform: `translate(calc(-50% + ${BOOK_SHIFT}), -50%)`,
+  transform: "translate(calc(-50% + var(--book-shift)), -50%)",
   containerType: "size",
 };
 // 옮겨서 왼쪽에 생기는 빈틈은 배경을 좌우로 뒤집어 이어 붙여 채워요 (경계가 이어져 보여요)
 const MIRROR_STYLE: React.CSSProperties = {
   ...STAGE_SIZE,
-  transform: `translate(calc(-150% + ${BOOK_SHIFT}), -50%) scaleX(-1)`,
+  transform: "translate(calc(-150% + var(--book-shift)), -50%) scaleX(-1)",
 };
 
 const PHOTO_SLOTS = [
@@ -103,6 +108,12 @@ export function RecapBookView({
   const [photoRatios, setPhotoRatios] = useState<Record<string, number>>({});
   const [isDrawing, setIsDrawing] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  // 폰: "가로로 돌리면 더 크게" 안내는 처음 6초만
+  const [showRotateHint, setShowRotateHint] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowRotateHint(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const spreadCount = Math.max(1, Math.ceil(photos.length / PHOTOS_PER_SPREAD));
   const spreadPhotos = photos.slice(
@@ -131,6 +142,18 @@ export function RecapBookView({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [goTo, isDrawing, spreadIndex]);
 
+  // 폰: 쪽 표시 양옆의 ◀ ▶ (노트북은 책 바로 바깥 큰 화살표)
+  const pageArrow = (direction: "prev" | "next") => (
+    <button
+      type="button"
+      onClick={() => goTo(spreadIndex + (direction === "prev" ? -1 : 1))}
+      className="flex size-11 cursor-pointer items-center justify-center rounded-full border-0 bg-white/80 text-lg text-[#AF9083] shadow-sm sm:hidden"
+      aria-label={direction === "prev" ? "이전 쪽" : "다음 쪽"}
+    >
+      {direction === "prev" ? "◀" : "▶"}
+    </button>
+  );
+
   const flash = (message: string) => {
     setSaveMessage(message);
     window.setTimeout(() => setSaveMessage(null), 1800);
@@ -158,10 +181,10 @@ export function RecapBookView({
   };
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#FDF9F4]">
+    <div className={`absolute inset-0 overflow-hidden bg-[#FDF9F4] ${STAGE_VARS}`}>
       {/* 16:9 무대를 화면에 꽉 차게(object-cover 처럼) 놓고, 그 안에서 % 로 배치.
           왼쪽 조작 카드에 가리지 않게 책을 BOOK_SHIFT 만큼 오른쪽으로 */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2" style={MIRROR_STYLE} aria-hidden>
+      <div className="pointer-events-none absolute left-1/2 top-1/2 max-sm:hidden" style={MIRROR_STYLE} aria-hidden>
         <MoodSkyBackground scene="recapmanual-empty" className="absolute inset-0 h-full w-full" />
       </div>
       <div
@@ -327,7 +350,7 @@ export function RecapBookView({
       {/* 쪽 넘기기 (기존 책 화면과 같은 자리·모양) */}
       {spreadCount > 1 && !isDrawing && (
         // 책 그림과 같은 무대 위에 놓아서 책 가장자리 바로 바깥에 붙어 있게
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20" style={STAGE_STYLE}>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 max-sm:hidden" style={STAGE_STYLE}>
           <button
             type="button"
             onClick={() => goTo(spreadIndex - 1)}
@@ -350,18 +373,29 @@ export function RecapBookView({
       )}
 
       <div
-        className="absolute bottom-6 z-20 flex -translate-x-1/2 flex-col items-center gap-3"
-        style={{ left: `calc(50% + ${BOOK_SHIFT})` }}
+        className="absolute bottom-6 z-20 flex -translate-x-1/2 flex-col items-center gap-3 max-sm:bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] max-sm:w-[calc(100vw-32px)]"
+        style={{ left: "calc(50% + var(--book-shift))" }}
       >
+        {/* 폰: 가로로 돌리면 더 크게 (처음 몇 초만) */}
+        {showRotateHint && (
+          <p className="pointer-events-none rounded-full bg-white/90 px-4 py-2 text-center font-mulish text-body-3 text-[#4A423C] shadow-sm break-keep sm:hidden">
+            폰을 가로로 돌리면 책을 더 크게 볼 수 있어요
+          </p>
+        )}
         {/* 그리는 중에는 쪽 표시를 숨겨서 그리기 도구와 헷갈리지 않게 */}
         {spreadCount > 1 &&
           !isDrawing &&
           (spreadCount > MAX_DOTS ? (
-            <p className="font-mulish text-sm text-[#AF9083]">
-              {spreadIndex + 1} / {spreadCount}
-            </p>
+            <div className="flex items-center gap-2">
+              {pageArrow("prev")}
+              <p className="font-mulish text-sm text-[#AF9083]">
+                {spreadIndex + 1} / {spreadCount}
+              </p>
+              {pageArrow("next")}
+            </div>
           ) : (
             <div className="flex items-center justify-center gap-2">
+              {pageArrow("prev")}
               {Array.from({ length: spreadCount }, (_, index) => (
                 <button
                   key={index}
@@ -376,6 +410,7 @@ export function RecapBookView({
                   }`}
                 />
               ))}
+              {pageArrow("next")}
             </div>
           ))}
 
@@ -753,7 +788,7 @@ function DrawingLayer({
       </svg>
 
       {active && (
-        <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full bg-white/95 px-4 py-2 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)]">
+        <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full bg-white/95 px-4 py-2 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] max-sm:bottom-auto max-sm:top-[calc(100%+12px)] max-sm:w-[calc(100vw-16px)] max-sm:flex-wrap max-sm:justify-center max-sm:gap-x-2 max-sm:gap-y-1.5 max-sm:rounded-2xl max-sm:px-2">
           {DRAWING_COLORS.map((swatch, index) => (
             <button
               key={swatch}
@@ -764,7 +799,7 @@ function DrawingLayer({
               }}
               aria-label={`${COLOR_NAMES[index]} 펜`}
               aria-pressed={tool === "pen" && color === swatch}
-              className={`h-6 w-6 cursor-pointer rounded-full border-2 p-0 ${
+              className={`h-6 w-6 cursor-pointer rounded-full border-2 p-0 max-sm:size-8 ${
                 tool === "pen" && color === swatch ? "border-[#4A423C] scale-110" : "border-white"
               }`}
               style={{ backgroundColor: swatch }}
@@ -803,7 +838,7 @@ function DrawingLayer({
                 }
                 aria-label={label}
                 aria-pressed={selected}
-                className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 ${
+                className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 max-sm:size-9 ${
                   selected ? "bg-[#FDD9BD]" : "bg-transparent"
                 }`}
               >

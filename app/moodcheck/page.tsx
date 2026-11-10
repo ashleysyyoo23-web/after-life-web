@@ -115,7 +115,7 @@ export default function MoodcheckPage() {
             ×
           </button>
 
-          <h1 className="mb-10 text-center font-newsreader text-[32px] leading-tight text-black">
+          <h1 className="mb-10 text-center font-newsreader text-[32px] leading-tight text-black break-keep max-sm:mb-6 max-sm:text-label-md">
             {t.question}
           </h1>
 
